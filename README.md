@@ -15,7 +15,7 @@ multi-project mesh: one dbt project and one Dagster code location per project, a
 Prerequisites: [`just`](https://github.com/casey/just) and git. Everything else is installed for you.
 
 ```bash
-git clone git@github.com:rootcube/enexis-dev-day.git && cd enexis-dev-day
+git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
 just init              # uv, .venv (Python 3.13), .env, dbt packages
 just snowflake setup   # one-time login, key pair registered on your user, .env filled in
 just snowflake check   # proves key-pair login works (`just snowflake context` re-points .env at a project later)

@@ -4,7 +4,7 @@ icon: material/git
 
 # Git workflow
 
-The repo lives on GitHub at [rootcube/enexis-dev-day](https://github.com/rootcube/enexis-dev-day).
+The repo lives on GitHub at [rootcube/data-mesh-template](https://github.com/rootcube/data-mesh-template).
 Humans own git: every branch, commit and pull request is made by a person. There is no release
 automation, no changelog tooling and no commit signing requirement, so the workflow is short.
 

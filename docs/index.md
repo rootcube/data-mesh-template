@@ -143,7 +143,7 @@ The starter ships one organisation (`example`), one team (`platform`) and one pr
 
 !!! tip "In a hurry?"
     ```bash
-    git clone git@github.com:rootcube/enexis-dev-day.git && cd enexis-dev-day
+    git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
     just init              # uv, .venv, .env, dbt packages
     just snowflake setup   # one-time login, key pair registered on your user, .env filled in
     just snowflake check   # proves key-pair login works

@@ -67,7 +67,7 @@ the first login.
 ### 3. What the person runs
 
 ```bash
-git clone git@github.com:rootcube/enexis-dev-day.git && cd enexis-dev-day
+git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
 just init
 just snowflake setup
 just snowflake check
