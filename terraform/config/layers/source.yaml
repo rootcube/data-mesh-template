@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Source
+# =============
+
+code: "src"
+name: "Source Layer"
+desc: "Actively collected raw data from source systems"
+type: "input"
+sort: 110
+disabled: false
+required: true

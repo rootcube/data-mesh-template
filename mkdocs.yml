@@ -1,0 +1,141 @@
+# Documentation site (MkDocs Material). Local: `just docs` (http://localhost:8000).
+site_name: Data Mesh Platform Starter
+site_description: A runnable starter for a data mesh platform on Snowflake with Dagster, dlt and dbt.
+repo_url: https://github.com/rootcube/enexis-dev-day
+repo_name: rootcube/enexis-dev-day
+edit_uri: edit/main/docs/
+copyright: rootcube
+
+theme:
+  name: material
+  language: en
+  logo: assets/icon-rootcube.svg
+  favicon: assets/icon-rootcube.svg
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - getting-started/index.md
+      - Prerequisites: getting-started/prerequisites.md
+      - Installation: getting-started/installation.md
+      - Snowflake authentication: getting-started/snowflake-auth.md
+      - First run: getting-started/first-run.md
+      - Troubleshooting: getting-started/troubleshooting.md
+  - Concepts:
+      - concepts/index.md
+      - Organisation: concepts/organisation.md
+      - Team: concepts/team.md
+      - Project: concepts/project.md
+      - Environment: concepts/environment.md
+      - Layer: concepts/layer.md
+      - Role: concepts/role.md
+      - Compute: concepts/compute.md
+  - Architecture:
+      - architecture/index.md
+      - Layers in practice: architecture/layers.md
+      - Ingestion (dlt): architecture/ingestion.md
+      - Transformation (dbt): architecture/transformation.md
+      - Orchestration (Dagster): architecture/orchestration.md
+      - Snowflake: architecture/snowflake.md
+  - Development:
+      - development/index.md
+      - Adding a dlt load: development/adding-dlt-loads.md
+      - Adding a dbt model: development/adding-dbt-models.md
+      - Adding a project: development/adding-projects.md
+      - Adding Python assets: development/adding-python-assets.md
+      - Testing: development/testing.md
+  - Conventions:
+      - conventions/index.md
+      - Python style: conventions/python-style.md
+      - SQL style: conventions/sql-style.md
+      - dbt style guide: conventions/dbt-style-guide.md
+      - Naming: conventions/naming.md
+      - Git workflow: conventions/git-workflow.md
+  - AI agents:
+      - ai-agents/index.md
+      - Standards: ai-agents/standards.md
+      - Dagster: ai-agents/dagster.md
+      - dbt: ai-agents/dbt.md
+      - dlt: ai-agents/dlt.md
+      - Snowflake: ai-agents/snowflake.md
+      - Python: ai-agents/python.md
+      - SQL: ai-agents/sql.md
+  - Administration:
+      - administration/index.md
+      - Snowflake provisioning: administration/snowflake-provisioning.md
+      - Onboarding: administration/onboarding.md
+  - Reference:
+      - reference/index.md
+      - Commands: reference/commands.md
+      - Environment variables: reference/environment-variables.md
+      - Glossary: reference/glossary.md

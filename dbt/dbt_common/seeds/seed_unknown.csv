@@ -1,0 +1,4 @@
+unknown_id,unknown_code,unknown_name,unknown_desc,unknown_date,unknown_sort
+"-1","<< emp >>","<< empty >>","<< empty record >>","9999-12-31","-1"
+"-2","<< unk >>","<< unknown >>","<< unknown record >>","9999-12-31","-2"
+"-3","<< n/a >>","<< not applicable >>","<< not applicable record>>","9999-12-31","-3"

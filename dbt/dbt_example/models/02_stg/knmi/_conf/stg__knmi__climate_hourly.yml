@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: stg__knmi__climate_hourly
+    description: Typed KNMI hourly observations, one row per station per hour.
+
+    data_tests:
+      - dbt_common.has_data:
+          name: stg__knmi__climate_hourly__has_data
+
+      - dbt_utils.unique_combination_of_columns:
+          name: stg__knmi__climate_hourly__station_code__observed_at__unique
+          arguments:
+            combination_of_columns: [station_code, observed_at]
+
+    columns:
+      - name: station_code
+        description: KNMI station number.
+        data_type: integer
+        data_tests:
+          - not_null:
+              name: stg__knmi__climate_hourly__station_code__not_null
+
+      - name: observed_at
+        description: End of the observation hour (timestamp, no timezone).
+        data_type: timestamp_ntz
+        data_tests:
+          - not_null:
+              name: stg__knmi__climate_hourly__observed_at__not_null
+
+      - name: temperature_celsius
+        description: Air temperature at 1.50 m.
+        data_type: number
+
+      - name: wind_speed_ms
+        description: Hourly mean wind speed in m/s.
+        data_type: number
+
+      - name: precipitation_mm
+        description: Hourly precipitation in mm.
+        data_type: number
+        data_tests:
+          - dbt_common.not_negative:
+              name: stg__knmi__climate_hourly__precipitation_mm__not_negative
+
+      - name: global_radiation_jcm2
+        description: Global radiation in J/cm2.
+        data_type: integer
+
+      - name: relative_humidity_pct
+        description: Relative humidity in percent.
+        data_type: integer
+
+      - name: _dlt_load_id
+        description: dlt load package that wrote the source row.
+        data_type: varchar

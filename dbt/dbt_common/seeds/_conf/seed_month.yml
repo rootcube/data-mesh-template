@@ -1,0 +1,44 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_month
+    description: Contains all the Months
+
+    config:
+      enabled: true
+      column_types:
+        month_nr: integer
+        month_code: varchar(3)
+        month_name: varchar(20)
+
+    columns:
+      - name: month_nr
+        data_type: integer
+
+        data_tests:
+          - unique:
+              name: seed_month__month_nr__unique
+
+          - not_null:
+              name: seed_month__month_nr__not_null
+
+      - name: month_code
+        data_type: varchar(3)
+
+        data_tests:
+          - unique:
+              name: seed_month__month_code__unique
+
+          - not_null:
+              name: seed_month__month_code__not_null
+
+      - name: month_name
+        data_type: varchar(20)
+
+        data_tests:
+          - unique:
+              name: seed_month__month_name__unique
+
+          - not_null:
+              name: seed_month__month_name__not_null

@@ -1,0 +1,147 @@
+version: 2
+
+
+models:
+  - name: dim__generic__calendar
+    description: Calendar dimension containing date attributes and Dutch holidays
+
+    data_tests:
+      - has_data:
+          name: dim__generic__calendar__has_data
+
+    columns:
+      - name: id_dim__generic__calendar
+        description: Surrogate key for the calendar dimension, based on the simple date integer
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__id_dim__generic__calendar__not_null
+
+          - unique:
+              name: dim__generic__calendar__id_dim__generic__calendar__unique
+
+      - name: date
+        description: The calendar date
+        data_type: date
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__date__not_null
+
+          - unique:
+              name: dim__generic__calendar__date__unique
+
+      - name: date_time
+        description: The calendar date as a timestamp (midnight)
+        data_type: timestamp
+
+      - name: date_simple
+        description: The date represented as an integer in YYYYMMDD format
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__date_simple__not_null
+
+      - name: year_nr
+        description: The year number (e.g. 2025)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__year_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__year_nr__not_negative
+
+      - name: base_year
+        description: Meteorological base year where Jan-Mar maps to previous year and Apr-Dec maps to current year
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__base_year__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__base_year__not_negative
+
+      - name: quarter_nr
+        description: The quarter number (1-4)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__quarter_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__quarter_nr__not_negative
+
+      - name: month_nr
+        description: The month number (1-12)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__month_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__month_nr__not_negative
+
+      - name: month_name
+        description: The name of the month (e.g. January, February)
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__month_name__not_null
+
+      - name: week_nr
+        description: The week number of the year
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__week_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__week_nr__not_negative
+
+      - name: iso_year_nr
+        description: The ISO year number
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__iso_year_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__iso_year_nr__not_negative
+
+      - name: iso_week_nr
+        description: The ISO week number
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__iso_week_nr__not_null
+
+          - not_negative:
+              name: dim__generic__calendar__iso_week_nr__not_negative
+
+      - name: is_holiday
+        description: Indicates whether the date is a public holiday
+        data_type: boolean
+
+        data_tests:
+          - not_null:
+              name: dim__generic__calendar__is_holiday__not_null
+
+      - name: holiday_name
+        description: The name of the holiday, if applicable
+        data_type: varchar
+
+    constraints:
+      - columns:
+          - id_dim__generic__calendar
+        type: primary_key

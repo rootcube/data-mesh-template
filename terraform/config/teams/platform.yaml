@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/team.schema.json
+# Team: Platform
+# ==============
+
+organisation: "example"
+code: "platform"
+name: "Platform Team"
+type: "team"
+desc: "Central platform engineering team responsible for infrastructure and shared services"
+owners:
+  - "platform-admin@example.com"

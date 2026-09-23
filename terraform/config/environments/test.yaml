@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/environment.schema.json
+# Environment: Test
+# =================
+
+letter: "t"
+code: "tst"
+name: "Test Environment"
+desc: "Automated testing and validation with fixed datasets"
+sort: 200
+disabled: true
+required: false

@@ -1,0 +1,45 @@
+# Shared by every dbt project under dbt/ (DBT_PROFILES_DIR points here, set by the justfile
+# and .envrc). One profile, one target per environment; the target follows ENVIRONMENT (dev,
+# tst, acc, prd) unless DBT_TARGET overrides it. Every target reads the same SNOWFLAKE_*
+# variables: your personal key pair in dev, the transform system user's key pair elsewhere.
+default:
+  target: "{{ env_var('DBT_TARGET', env_var('ENVIRONMENT', 'dev')) }}"
+
+  outputs:
+    # Development: personal schemas (<SNOWFLAKE_SCHEMA>_<LAYER>) in DB_<PROJECT>_DEV.
+    dev: &snowflake
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', '') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', '') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', '') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT') }}"
+      threads: 8
+      client_session_keep_alive: false
+
+    # Shared environments: the layer schemas (_STG, _MRT, ...) of DB_<PROJECT>_<ENV>.
+    tst:
+      <<: *snowflake
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
+      threads: 16
+    acc:
+      <<: *snowflake
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
+      threads: 16
+    prd:
+      <<: *snowflake
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
+      threads: 16
+
+    # Parse, compile and lint without any Snowflake credentials (CI, pre-commit, sqlfluff): an
+    # in-memory DuckDB stands in for the warehouse. The sqlfluff dbt templater needs a working
+    # adapter connection to populate dbt's relation cache, which a fake Snowflake target can
+    # never provide. SQL is only rendered here, never executed.
+    dummy:
+      type: duckdb
+      path: ":memory:"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT') }}"
+      threads: 1

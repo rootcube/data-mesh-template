@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../_validation/schemas/compute.schema.json
+# Compute: Transform
+# ==================
+
+code: "tfm"
+name: "Transform"
+desc: "Dedicated compute for transformation workloads (dbt builds, backfills, modeling)"
+disabled: false
+required: false
+
+sizes:
+  - s
+  - m
+  - l
+
+auto_suspend: 120
+auto_resume: true
+min_cluster_count: 1
+max_cluster_count: 1

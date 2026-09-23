@@ -1,0 +1,366 @@
+version: 2
+
+
+models:
+  - name: int__generic__calendar
+    description: Collection of dates in a calendar format, used to support date dimensions
+
+    data_tests:
+      - has_data:
+          name: int__generic__calendar__has_data
+
+    columns:
+      - name: date
+        description: Unique calendar date
+        data_type: date
+
+        data_tests:
+          - not_null:
+              name: int__generic__calendar__date__not_null
+
+          - unique:
+              name: int__generic__calendar__date__unique
+
+      - name: date_time
+        description: Date with time component (midnight for regular dates)
+        data_type: datetime
+
+      - name: date_simple
+        description: Date represented as an integer in YYYYMMDD format
+        data_type: integer
+
+      - name: year_nr
+        description: Calendar year number
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_nr__not_negative
+
+      - name: base_year
+        description: Meteorological base year where Jan-Mar maps to previous year and Apr-Dec maps to current year
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__base_year__not_negative
+
+      - name: quarter_nr
+        description: Calendar quarter number (1-4)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__quarter_nr__not_negative
+
+      - name: month_nr
+        description: Calendar month number (1-12)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__month_nr__not_negative
+
+      - name: week_nr
+        description: Calendar week number
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__week_nr__not_negative
+
+      - name: iso_year_nr
+        description: ISO year number
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__iso_year_nr__not_negative
+
+      - name: iso_week_nr
+        description: ISO week number
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__iso_week_nr__not_negative
+
+      - name: year_quarter_month_nr
+        description: Combined year, quarter, and month as a single integer
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_quarter_month_nr__not_negative
+
+      - name: year_quarter_nr
+        description: Combined year and quarter as a single integer (YYYYQQ)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_quarter_nr__not_negative
+
+      - name: year_month_nr
+        description: Combined year and month as a single integer (YYYYMM)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_month_nr__not_negative
+
+      - name: year_week_nr
+        description: Combined year and week as a single integer (YYYYWW)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_week_nr__not_negative
+
+      - name: iso_year_week_nr
+        description: Combined ISO year and ISO week as a single integer
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__iso_year_week_nr__not_negative
+
+      - name: day_of_year_nr
+        description: Day number within the year (1-366)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__day_of_year_nr__not_negative
+
+      - name: day_of_month_nr
+        description: Day number within the month (1-31)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__day_of_month_nr__not_negative
+
+      - name: day_of_week_nr
+        description: Day number within the week (1=Monday, 7=Sunday)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__day_of_week_nr__not_negative
+
+      - name: iso_year_day_nr
+        description: Day number within the ISO year
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__iso_year_day_nr__not_negative
+
+      - name: year_code
+        description: Year code in format YXXXX (e.g. Y2024)
+        data_type: varchar(10)
+
+      - name: year_name
+        description: Year name in format Year XXXX
+        data_type: varchar(10)
+
+      - name: quarter_code
+        description: Quarter code in format QX (e.g. Q1)
+        data_type: varchar(10)
+
+      - name: quarter_name
+        description: Quarter name in format Quarter X
+        data_type: varchar(10)
+
+      - name: month_code
+        description: Month code in format MXX (e.g. M01)
+        data_type: varchar(10)
+
+      - name: month_name
+        description: Full month name (e.g. January)
+        data_type: varchar(10)
+
+      - name: month_abbr
+        description: Abbreviated month name (e.g. Jan)
+        data_type: varchar(10)
+
+      - name: week_code
+        description: Week code in format WXX (e.g. W01)
+        data_type: varchar(10)
+
+      - name: week_desc
+        description: Week description in format Week XX
+        data_type: varchar(20)
+
+      - name: iso_year_code
+        description: ISO year code in format YXXXX
+        data_type: varchar(10)
+
+      - name: iso_year_desc
+        description: ISO year description in format ISO Year XXXX
+        data_type: varchar(20)
+
+      - name: iso_week_code
+        description: ISO week code in format WXX
+        data_type: varchar(10)
+
+      - name: iso_week_desc
+        description: ISO week description in format ISO Week XX
+        data_type: varchar(20)
+
+      - name: year_day_code
+        description: Year day code in format YDXXX
+        data_type: varchar(10)
+
+      - name: month_day_code
+        description: Month day code in format MDXX
+        data_type: varchar(10)
+
+      - name: week_day_code
+        description: Week day code in format WDXX
+        data_type: varchar(10)
+
+      - name: week_day_name
+        description: Full weekday name (e.g. Monday)
+        data_type: varchar(10)
+
+      - name: week_day_abbr
+        description: Abbreviated weekday name (e.g. Mon)
+        data_type: varchar(10)
+
+      - name: is_first_day_of_year
+        description: Indicator whether the date is the first day of the year (Y/N)
+        data_type: char(1)
+
+      - name: is_first_day_of_quarter
+        description: Indicator whether the date is the first day of the quarter (Y/N)
+        data_type: char(1)
+
+      - name: is_first_day_of_month
+        description: Indicator whether the date is the first day of the month (Y/N)
+        data_type: char(1)
+
+      - name: is_first_day_of_week
+        description: Indicator whether the date is the first day of the week (Y/N)
+        data_type: char(1)
+
+      - name: is_last_day_of_year
+        description: Indicator whether the date is the last day of the year (Y/N)
+        data_type: char(1)
+
+      - name: is_last_day_of_quarter
+        description: Indicator whether the date is the last day of the quarter (Y/N)
+        data_type: char(1)
+
+      - name: is_last_day_of_month
+        description: Indicator whether the date is the last day of the month (Y/N)
+        data_type: char(1)
+
+      - name: is_last_day_of_week
+        description: Indicator whether the date is the last day of the week (Y/N)
+        data_type: char(1)
+
+      - name: is_leap_year
+        description: Indicator whether the year is a leap year (Y/N)
+        data_type: char(1)
+
+      - name: is_leap_day
+        description: Indicator whether the date is a leap day (Feb 29) (Y/N)
+        data_type: char(1)
+
+      - name: is_weekend
+        description: Indicator whether the date is a weekend day (Y/N)
+        data_type: char(1)
+
+      - name: is_workday
+        description: Indicator whether the date is a workday (Y/N)
+        data_type: char(1)
+
+      - name: first_date_of_year
+        description: First date of the year for this date
+        data_type: date
+
+      - name: first_date_of_quarter
+        description: First date of the quarter for this date
+        data_type: date
+
+      - name: first_date_of_month
+        description: First date of the month for this date
+        data_type: date
+
+      - name: first_date_of_week
+        description: First date of the week for this date
+        data_type: date
+
+      - name: last_date_of_year
+        description: Last date of the year for this date
+        data_type: date
+
+      - name: last_date_of_quarter
+        description: Last date of the quarter for this date
+        data_type: date
+
+      - name: last_date_of_month
+        description: Last date of the month for this date
+        data_type: date
+
+      - name: last_date_of_week
+        description: Last date of the week for this date
+        data_type: date
+
+      - name: iso_year_sort
+        description: Sort order sequence for ISO year
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__iso_year_sort__not_negative
+
+      - name: year_sort
+        description: Sort order sequence for calendar year
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__year_sort__not_negative
+
+      - name: quarter_sort
+        description: Sort order sequence for quarter
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__quarter_sort__not_negative
+
+      - name: month_sort
+        description: Sort order sequence for month
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__month_sort__not_negative
+
+      - name: day_sort
+        description: Sort order sequence for day
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__day_sort__not_negative
+
+      - name: week_sort
+        description: Sort order sequence for week
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__calendar__week_sort__not_negative
+
+      - name: is_holiday
+        description: Indicator whether the date is a public holiday
+        data_type: boolean
+
+      - name: holiday_name
+        description: Name of the public holiday (null if not a holiday)
+        data_type: varchar

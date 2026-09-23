@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "team.schema.json",
+  "title": "Team Configuration",
+  "description": "Human ownership and accountability units responsible for projects.",
+  "type": "object",
+  "required": ["code", "name", "type", "organisation"],
+  "additionalProperties": false,
+  "properties": {
+    "organisation": {
+      "type": "string",
+      "description": "The organisation key this team belongs to",
+      "minLength": 1
+    },
+    "code": {
+      "type": "string",
+      "description": "Short code for the team",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 2,
+      "maxLength": 20
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the team",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of team",
+      "enum": ["team", "department", "domain"]
+    },
+    "desc": {
+      "type": "string",
+      "description": "Description of the team's responsibilities",
+      "maxLength": 500
+    },
+    "alias": {
+      "type": "string",
+      "description": "Alternative name or abbreviation for the team",
+      "maxLength": 50
+    },
+    "owners": {
+      "type": "array",
+      "description": "Email addresses of team owners",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "contacts": {
+      "type": "object",
+      "description": "Contact information for the team",
+      "additionalProperties": false,
+      "properties": {
+        "technical": {
+          "type": "array",
+          "description": "Technical contact email addresses",
+          "items": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "business": {
+          "type": "array",
+          "description": "Business contact email addresses",
+          "items": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      }
+    }
+  }
+}

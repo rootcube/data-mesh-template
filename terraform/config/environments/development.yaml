@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/environment.schema.json
+# Environment: Development
+# ========================
+
+letter: "d"
+code: "dev"
+name: "Development Environment"
+desc: "Rapid iteration and experimentation with light governance"
+sort: 100
+disabled: false
+required: true

@@ -1,0 +1,140 @@
+# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# Role: Engineer
+# ==============
+
+code: "eng"
+name: "Engineer"
+type: "person"
+level: "project"
+desc: "Role for developing and maintaining ingestion and transformation pipelines"
+disabled: false
+required: true
+
+privileges:
+  database:
+    # Personal schemas (<prefix>_STG, ...) in the development database
+    dev: [CREATE SCHEMA]
+  computes:
+    default:
+      all: [USAGE, OPERATE, MONITOR]
+    ingest:
+      all: [USAGE, OPERATE, MONITOR]
+    transform:
+      all: [USAGE, OPERATE, MONITOR]
+  layers:
+    source:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      tst:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    staging:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    integration:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    mart:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    expose:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    temporary:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    reference:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    metadata:
+      dev:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+      prd: [USAGE, SELECT ON TABLES]
+  roles:
+    transform: [dev, tst]
+    ingest: [dev, tst]
+    analyst: [all]

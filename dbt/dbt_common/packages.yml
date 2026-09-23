@@ -1,0 +1,7 @@
+# dbt_common carries no package dependencies of its own: every consuming project declares
+# dbt_utils (and anything else it needs) directly in its packages.yml.
+packages: []
+
+# NOTE: keep it that way if possible. A dependency added here does NOT propagate to the
+# consuming projects on its own: each project's package-lock.yml hashes only that project's
+# own packages.yml. If you must add one, run `dbt deps --upgrade` in every project afterwards.

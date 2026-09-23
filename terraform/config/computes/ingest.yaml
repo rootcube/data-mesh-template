@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../_validation/schemas/compute.schema.json
+# Compute: Ingest
+# ===============
+
+code: "ing"
+name: "Ingest"
+desc: "Dedicated compute for ingestion workloads (extract/load, landing, incremental)"
+disabled: false
+required: false
+
+sizes:
+  - s
+  - m
+
+auto_suspend: 60
+auto_resume: true
+min_cluster_count: 1
+max_cluster_count: 1

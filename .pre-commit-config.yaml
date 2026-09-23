@@ -1,0 +1,78 @@
+# Install once with `just pre-commit-install`; run on everything with `just pre-commit`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"] # dbt YAML carries {{ env_var() }} and dagster defs.yaml carries templates
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Python: ruff (format + lint) and ty (types), from this repo's venv.
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: ty-check
+        name: ty check
+        entry: uv run ty check
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # dbt: every project must parse without credentials (dummy target); SQL follows the sqlfluff rules.
+  - repo: local
+    hooks:
+      - id: dbt-parse
+        name: dbt parse (all projects, dummy target)
+        entry: uv run python scripts/dbt_all.py parse --target dummy --quiet
+        language: system
+        files: ^dbt/.*\.(sql|yml|yaml|csv|py)$
+        pass_filenames: false
+
+      - id: sqlfluff-lint
+        name: sqlfluff lint (dbt models)
+        entry: bash -c 'cd dbt/dbt_example && DBT_PROFILES_DIR=.. uv run sqlfluff lint models'
+        language: system
+        files: ^dbt/dbt_example/models/.*\.sql$
+        pass_filenames: false
+
+  # Dagster: every code location must load.
+  - repo: local
+    hooks:
+      - id: dagster-validate
+        name: dagster definitions validate
+        entry: uv run dagster definitions validate -w workspace.yaml
+        language: system
+        files: ^(src|dlt_pipelines)/.*\.(py|yaml)$
+        pass_filenames: false
+
+  # Terraform: formatting and the YAML configuration (only fire on those files).
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: terraform fmt -recursive terraform
+        language: system
+        files: \.tf$
+        pass_filenames: false
+
+      - id: validate-configs
+        name: validate terraform/config YAML
+        entry: uv run python terraform/config/_validation/validate_configs.py
+        language: system
+        files: ^terraform/config/.*\.(yaml|json)$
+        pass_filenames: false

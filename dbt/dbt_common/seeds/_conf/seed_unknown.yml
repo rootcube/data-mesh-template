@@ -1,0 +1,38 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_unknown
+    description: Contains dummy values for dimensions
+
+    config:
+      enabled: true
+      column_types:
+        unknown_id: varchar
+        unknown_date: timestamp_ntz
+
+    columns:
+      - name: unknown_id
+        data_type: varchar
+
+        data_tests:
+          - unique:
+              name: seed_unknown__unknown_id__unique
+
+          - not_null:
+              name: seed_unknown__unknown_id__not_null
+
+      - name: unknown_code
+        data_type: varchar
+
+      - name: unknown_name
+        data_type: varchar
+
+      - name: unknown_desc
+        data_type: varchar
+
+      - name: unknown_date
+        data_type: timestamp_ntz
+
+      - name: unknown_sort
+        data_type: integer

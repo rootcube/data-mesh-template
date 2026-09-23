@@ -1,0 +1,44 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_weekday
+    description: Contains all the Days of the Week
+
+    config:
+      enabled: true
+      column_types:
+        weekday_nr: integer
+        weekday_code: varchar(3)
+        weekday_name: varchar(10)
+
+    columns:
+      - name: weekday_nr
+        data_type: integer
+
+        data_tests:
+          - unique:
+              name: seed_weekday__weekday_nr__unique
+
+          - not_null:
+              name: seed_weekday__weekday_nr__not_null
+
+      - name: weekday_code
+        data_type: varchar(3)
+
+        data_tests:
+          - unique:
+              name: seed_weekday__weekday_code__unique
+
+          - not_null:
+              name: seed_weekday__weekday_code__not_null
+
+      - name: weekday_name
+        data_type: varchar(10)
+
+        data_tests:
+          - unique:
+              name: seed_weekday__weekday_name__unique
+
+          - not_null:
+              name: seed_weekday__weekday_name__not_null

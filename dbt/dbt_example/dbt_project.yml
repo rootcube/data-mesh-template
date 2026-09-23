@@ -1,0 +1,75 @@
+name: "dbt_example"
+version: "1.0.0"
+config-version: 2
+
+profile: "default"
+
+require-dbt-version: [">=1.11.0", "<2.0.0"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+model-paths: ["models", "sources"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
+
+packages-install-path: "packages"
+
+clean-targets:
+  - "target"
+  - "packages"
+
+# dbt_common owns the project-wide macro overrides (generate_schema_name, set_query_tag);
+# listing it first makes dbt dispatch pick them up.
+dispatch:
+  - macro_namespace: dbt
+    search_order: ["dbt_common", "dbt"]
+
+# Layers of the project database: dlt lands sources in _SRC, dbt builds _STG -> _INT -> _MRT -> _EXP
+# (seeds in _REF, run metadata in _MTD, test failures in _TMP). In dev every engineer gets
+# personal copies prefixed with SNOWFLAKE_SCHEMA (dbt_common's generate_schema_name).
+models:
+  dbt_example:
+    +materialized: view
+    +persist_docs:
+      relation: true
+      columns: true
+
+    02_stg:
+      +schema: stg
+      +materialized: table
+      +tags: ["layer=stg"]
+
+    03_int:
+      +schema: int
+      +materialized: table
+      +tags: ["layer=int"]
+
+    04_mrt:
+      +schema: mrt
+      +materialized: table
+      +tags: ["layer=mrt"]
+
+    05_exp:
+      +schema: exp
+      +materialized: view
+      +tags: ["layer=exp"]
+
+  # Shared generic objects from the dbt_common package (calendar, time, environment dims).
+  dbt_common:
+    +enabled: true
+
+seeds:
+  dbt_example:
+    +schema: ref
+
+data_tests:
+  +store_failures: true
+  +schema: tmp
+
+# Run context at the start of every run (Snowflake account, database, links to the query history).
+on-run-start:
+  - "{{ dbt_common.log_run_info() }}"

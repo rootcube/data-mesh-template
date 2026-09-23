@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/environment.schema.json
+# Environment: Sandbox
+# ====================
+
+letter: "s"
+code: "sbx"
+name: "Sandbox Environment"
+desc: "Isolated playground for exploratory analysis and ad-hoc queries"
+sort: 900
+disabled: true
+required: false

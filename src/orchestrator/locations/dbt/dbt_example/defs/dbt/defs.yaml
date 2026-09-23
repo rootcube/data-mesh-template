@@ -1,0 +1,18 @@
+type: dagster_dbt.DbtProjectComponent
+
+attributes:
+  project:
+    project_dir: '{{ context.project_root }}/dbt/dbt_example'
+    # profiles.yml is shared by every project under dbt/ (DBT_PROFILES_DIR points there too).
+    profiles_dir: '{{ context.project_root }}/dbt'
+    # Re-parse on every code-location load so the manifest always matches the models on disk.
+    prepare_project_cli_args: ["parse", "--quiet"]
+  select: "*"
+
+  # Asset keys follow dagster-dbt's default, <layer>/<name> (e.g. stg/stg__knmi__climate_hourly,
+  # the +schema config plus the model name), the same in every environment. Sources take their key from
+  # `config.meta.dagster.asset_key` in sources/*.yml so they line up with the dlt assets.
+  # Groups follow the dbt package: dbt_example for this project's models, dbt_common for
+  # the shared generic models it builds.
+  translation:
+    group_name: '{{ node.package_name }}'

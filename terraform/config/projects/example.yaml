@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../_validation/schemas/project.schema.json
+# Project: Example
+# ================
+# The project the starter ships with: dlt loads KNMI weather into the source layer, dbt
+# builds staging, integration, mart and expose on top. Copy this file for a new project.
+
+team: "platform"
+code: "example"
+name: "Example Project"
+desc: "Starter project: weather observations from the KNMI API"
+
+environments:
+  - development
+  - production
+
+layers:
+  - source
+  - reference
+  - staging
+  - integration
+  - mart
+  - expose
+  - metadata
+  - temporary
+
+computes:
+  - default
+
+roles:
+  - ingest
+  - transform
+  - engineer
+  - analyst

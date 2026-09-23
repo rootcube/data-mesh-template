@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/environment.schema.json
+# Environment: Production
+# =======================
+
+letter: "p"
+code: "prd"
+name: "Production Environment"
+desc: "Live data products with stable contracts and strict governance"
+sort: 400
+disabled: false
+required: true

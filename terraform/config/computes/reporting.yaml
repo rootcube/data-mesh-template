@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../_validation/schemas/compute.schema.json
+# Compute: Reporting
+# ==================
+
+code: "rpt"
+name: "Reporting"
+desc: "Dedicated compute for BI and consumption workloads requiring stable performance"
+disabled: true
+required: false
+
+sizes:
+  - s
+  - m
+
+auto_suspend: 300
+auto_resume: true
+min_cluster_count: 1
+max_cluster_count: 2  # Multi-cluster for concurrency

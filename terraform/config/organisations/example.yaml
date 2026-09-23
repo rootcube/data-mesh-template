@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../_validation/schemas/organisation.schema.json
+# Organisation: Example
+# =====================
+
+code: "EXAMPLE"
+name: "Example Organisation"
+desc: "Replace with your organisation; the highest-level governance boundary"

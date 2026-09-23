@@ -1,0 +1,55 @@
+version: 2
+
+
+models:
+  - name: stg__seed__unknown
+    description: Collection of unknown/placeholder values used in dimensions to handle missing or undefined data
+
+    data_tests:
+      - has_data:
+          name: stg__seed__unknown__has_data
+
+      - rows_expected:
+          name: stg__seed__unknown__rows_expected
+          arguments:
+            value: 3
+
+    columns:
+      - name: unknown_id
+        description: Unique integer identifier for the unknown value
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: stg__seed__unknown__unknown_id__not_null
+
+          - unique:
+              name: stg__seed__unknown__unknown_id__unique
+
+      - name: unknown_code
+        description: Short code for the unknown value
+        data_type: varchar
+
+        data_tests:
+          - not_empty:
+              name: stg__seed__unknown__unknown_code__not_empty
+
+      - name: unknown_name
+        description: Display name for the unknown value
+        data_type: varchar
+
+        data_tests:
+          - not_empty:
+              name: stg__seed__unknown__unknown_name__not_empty
+
+      - name: unknown_desc
+        description: Description of when this unknown value should be used
+        data_type: varchar
+
+      - name: unknown_date
+        description: Default date value for the unknown entry
+        data_type: date
+
+      - name: unknown_sort
+        description: Sort order for display purposes
+        data_type: integer

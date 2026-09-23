@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../_validation/schemas/compute.schema.json
+# Compute: Default
+# ================
+
+code: "" # Default will not use code suffix
+name: "Default"
+desc: "General-purpose compute for light ad-hoc usage, development, and small tasks"
+disabled: false
+required: true
+
+sizes:
+  - xs
+
+auto_suspend: 60
+auto_resume: true
+min_cluster_count: 1
+max_cluster_count: 1

@@ -1,0 +1,45 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_environment
+    description: Contains all the trigger configuration for snapshots
+
+    config:
+      enabled: true
+      column_types:
+        environment_code: varchar(20)
+        environment_name: varchar(100)
+        environment_alias: varchar(100)
+        environment_desc: varchar(400)
+        environment_sort: integer
+
+    columns:
+      - name: environment_code
+        data_type: varchar(20)
+
+        data_tests:
+          - not_null:
+              name: seed_environment__environment_code__not_null
+
+          - unique:
+              name: seed_environment__environment_code__unique
+
+      - name: environment_name
+        data_type: varchar(100)
+
+        data_tests:
+          - not_null:
+              name: seed_environment__environment_name__not_null
+
+          - unique:
+              name: seed_environment__environment_name__unique
+
+      - name: environment_alias
+        data_type: varchar(100)
+
+      - name: environment_desc
+        data_type: varchar(400)
+
+      - name: environment_sort
+        data_type: integer

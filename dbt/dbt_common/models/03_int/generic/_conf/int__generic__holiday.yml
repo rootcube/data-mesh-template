@@ -1,0 +1,30 @@
+version: 2
+
+
+models:
+  - name: int__generic__holiday
+    description: Collection of Holidays
+
+    data_tests:
+      - has_data:
+          name: int__generic__holiday__has_data
+
+    columns:
+      - name: date
+        description: 'Date of the Holiday'
+        data_type: date
+
+        data_tests:
+          - not_null:
+              name: int__generic__holiday__date__not_null
+
+          - unique:
+              name: int__generic__holiday__date__unique
+
+      - name: holiday_name
+        description: 'Name of the Holiday'
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: int__generic__holiday__holiday_name__not_null

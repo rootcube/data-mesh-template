@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Integration
+# ==================
+
+code: "int"
+name: "Integration Layer"
+desc: "Reconciled and integrated entities (the 'business layer')"
+type: "processing"
+sort: 230
+disabled: false
+required: false

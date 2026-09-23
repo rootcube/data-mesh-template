@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../_validation/schemas/compute.schema.json
+# Compute: Analysis
+# =================
+
+code: "anl"
+name: "Analysis"
+desc: "Dedicated compute for exploratory analysis and interactive workloads"
+disabled: true
+required: false
+
+sizes:
+  - s
+  - m
+
+auto_suspend: 60
+auto_resume: true
+min_cluster_count: 1
+max_cluster_count: 2

@@ -1,0 +1,75 @@
+[sqlfluff]
+dialect = snowflake
+templater = dbt
+sql_file_exts = .sql
+max_line_length = 120
+ignore_templated_areas = True
+processes = -1
+; The rule set: explicit aliases, uppercase keywords, lowercase identifiers,
+; leading commas, CAST() over ::, CTEs over subqueries, LEFT JOIN over RIGHT JOIN.
+rules = AL01, AL02, AL03, AL04, AL08, AM01, AM02, AM03, AM04, AM05, AM06, AM07, CP01, CP02, CP03, CP04, CP05, CV01, CV02, CV04, CV05, CV07, CV08, CV10, CV11, JJ01, LT01, LT02, LT04, LT06, LT07, LT08, LT10, LT11, LT12, LT13, RF02, RF05, RF06, ST02, ST03, ST04, ST05, ST07, ST08, ST09
+
+; Shared by every project under dbt/. Run sqlfluff from inside a project directory
+; (`just sqlfluff lint models`): the dbt templater takes dbt_project.yml from the working
+; directory and profiles.yml from DBT_PROFILES_DIR (the justfile and .envrc point it at dbt/).
+[sqlfluff:templater:dbt]
+; Lint without Snowflake credentials: the dummy target is an in-memory DuckDB (profiles.yml).
+target = dummy
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 2
+indented_joins = True
+implicit_indents = allow
+indented_on_contents = False
+ignore_comment_lines = True
+
+[sqlfluff:layout:type:comma]
+spacing_before = touch
+line_position = leading:align-following
+
+[sqlfluff:layout:type:alias_expression]
+spacing_before = align
+align_within = select_clause
+align_scope = bracketed
+
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.expression]
+allow_scalar = True
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = upper
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.literals]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = upper
+
+[sqlfluff:rules:ambiguous.column_references]
+group_by_and_order_by_style = explicit
+
+[sqlfluff:rules:convention.count_rows]
+prefer_count_1 = True
+
+[sqlfluff:rules:convention.casting_style]
+preferred_type_casting_style = cast
+
+[sqlfluff:rules:convention.quoted_literals]
+preferred_quoted_literal_style = single_quotes
+force_enable = True
+
+[sqlfluff:rules:structure.join_condition_order]
+preferred_first_table_in_join_clause = later

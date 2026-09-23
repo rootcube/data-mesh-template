@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Metadata
+# ===============
+
+code: "mtd"
+name: "Metadata Layer"
+desc: "Run metadata and observability tables written by the tooling (dbt run results, freshness)"
+type: "operational"
+sort: 920
+disabled: false
+required: false

@@ -1,0 +1,138 @@
+version: 2
+
+
+models:
+  - name: int__generic__time
+    description: Collection of times of day at second-level granularity, used to support time dimensions
+
+    data_tests:
+      - has_data:
+          name: int__generic__time__has_data
+
+    columns:
+      - name: time
+        description: Time in HH:MM:SS format
+        data_type: time
+
+        data_tests:
+          - not_null:
+              name: int__generic__time__time__not_null
+
+          - unique:
+              name: int__generic__time__time__unique
+
+      - name: time_simple
+        description: Time represented as an integer in HHMMSS format
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__time_simple__not_negative
+
+      - name: time_hour
+        description: Time truncated to the hour (HH:00:00)
+        data_type: time
+
+      - name: time_minute
+        description: Time truncated to the minute (HH:MM:00)
+        data_type: time
+
+      - name: time_second
+        description: Time at second precision (HH:MM:SS, equal to `time`)
+        data_type: time
+
+      - name: hour_nr
+        description: Hour number (0-23)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__hour_nr__not_negative
+
+      - name: hour_code
+        description: Hour code in format HXX (e.g. H08)
+        data_type: char(3)
+
+      - name: hour_name
+        description: Hour name in format Hour XX
+        data_type: char(10)
+
+      - name: hour_sort
+        description: Sort order sequence for hours
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__hour_sort__not_negative
+
+      - name: minute_nr
+        description: Minute number (0-59)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__minute_nr__not_negative
+
+      - name: minute_code
+        description: Minute code in format MXX (e.g. M30)
+        data_type: char(3)
+
+      - name: minute_name
+        description: Minute name in format Minute XX
+        data_type: char(10)
+
+      - name: minute_sort
+        description: Sort order sequence for minutes within an hour
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__minute_sort__not_negative
+
+      - name: second_nr
+        description: Second number (0-59)
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__second_nr__not_negative
+
+      - name: second_code
+        description: Second code in format SXX (e.g. S45)
+        data_type: char(3)
+
+      - name: second_name
+        description: Second name in format Second XX
+        data_type: char(10)
+
+      - name: second_sort
+        description: Sort order sequence for seconds within a minute
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__second_sort__not_negative
+
+      - name: day_part
+        description: Part of the day (morning, afternoon, evening, night)
+        data_type: varchar
+
+      - name: day_part_sort
+        description: Sort order for part of the day
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__day_part_sort__not_negative
+
+      - name: day_part_alt
+        description: Detailed part of the day with early/late distinction
+        data_type: varchar
+
+      - name: day_part_alt_sort
+        description: Sort order for detailed part of the day
+        data_type: integer
+
+        data_tests:
+          - not_negative:
+              name: int__generic__time__day_part_alt_sort__not_negative

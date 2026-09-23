@@ -1,0 +1,52 @@
+version: 2
+
+
+models:
+  - name: stg__seed__month
+    description: Collection of calendar months (1-12) with codes and names
+
+    data_tests:
+      - has_data:
+          name: stg__seed__month__has_data
+
+      - rows_expected:
+          name: stg__seed__month__rows_expected
+          arguments:
+            value: 12
+
+    columns:
+      - name: month_nr
+        description: Month number (1 = January, 12 = December)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: stg__seed__month__month_nr__not_null
+
+          - unique:
+              name: stg__seed__month__month_nr__unique
+
+          - not_negative:
+              name: stg__seed__month__month_nr__not_negative
+
+      - name: month_code
+        description: Three-letter abbreviation of the month (e.g. Jan, Feb, Mar)
+        data_type: varchar(3)
+
+        data_tests:
+          - not_null:
+              name: stg__seed__month__month_code__not_null
+
+          - unique:
+              name: stg__seed__month__month_code__unique
+
+      - name: month_name
+        description: Full name of the month (e.g. January, February)
+        data_type: varchar(20)
+
+        data_tests:
+          - not_null:
+              name: stg__seed__month__month_name__not_null
+
+          - unique:
+              name: stg__seed__month__month_name__unique
