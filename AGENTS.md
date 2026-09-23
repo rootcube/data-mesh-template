@@ -126,6 +126,7 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 - **SQL (dbt):** sqlfluff (Snowflake dialect), leading commas, 2-space indent, uppercase keywords, lowercase identifiers, `CAST()` not `::`, `LEFT JOIN` never `RIGHT JOIN`, CTEs (`cte_` prefix) over subqueries. See [SQL style](docs/conventions/sql-style.md) and the [dbt style guide](docs/conventions/dbt-style-guide.md).
 - **Naming:** `stg__<source>__<entity>`, `int__<domain>__<entity>`, `(dim|fct|brg|agg)__<domain>__<entity>`, `exp__<domain>__<entity>`; seeds `seed_<name>`; sources `src_<source>.yml`; dlt tables `<source>__<entity>` in `_SRC`. See [Naming](docs/conventions/naming.md).
 - **Secrets:** never in files. `SNOWFLAKE_*` come from `.env`, written by `just snowflake setup`.
+- **Commits:** [conventional commits](docs/conventions/git-workflow.md#commit-messages); release-please derives the version, `CHANGELOG.md` and the GitHub release from them, so never bump the version by hand.
 
 ## Adding things
 
