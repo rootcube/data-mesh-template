@@ -184,8 +184,8 @@ def test_update_creates_missing_file(tmp_path: Path) -> None:
 The `dev` dependency group installs on every plain `uv sync` (`default-groups`): `ruff` >=0.13, `pytest` >=8.3, `pre-commit` >=4.0, `sqlfluff-templater-dbt` >=3.4, `dagster-dg-cli` >=1.13, `ty` >=0.0.1, `pyyaml` >=6.0 and `jsonschema` >=4.20 (for `validate_configs.py`), `dbt-duckdb` >=1.9 (the `dummy` dbt target). The `docs` group (`mkdocs-material` >=9.6) is pulled in by `just docs` with `--group docs`.
 
 ```bash
-just sync      # uv sync, after pulling dependency changes
-just upgrade   # uv lock --upgrade, rewrites uv.lock
+uv sync            # after pulling dependency changes
+uv lock --upgrade  # rewrites uv.lock
 ```
 
 Never edit `uv.lock` by hand.

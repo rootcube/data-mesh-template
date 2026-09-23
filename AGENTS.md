@@ -85,7 +85,7 @@ src/orchestrator/                 # Dagster package
 ├── resources/snowflake.py        #   SnowflakeSettings.from_env(): the only reader of SNOWFLAKE_* and ENVIRONMENT
 └── utils/dotenv.py               #   .env editing used by scripts/snowflake.py
 dlt_pipelines/                    # dlt package: pipelines/ingest/<source>/{constants,source,pipelines}.py + defs.yaml
-dbt/                              # profiles.yml (shared profile `default`: dev/tst/acc/prd = Snowflake key pair, dummy = in-memory DuckDB)
+dbt/                              # profiles.yml (shared profile `default`: dev, prd = Snowflake key pair, dummy = in-memory DuckDB)
 ├── .sqlfluff                     #   shared lint config (run sqlfluff from inside a project)
 ├── dbt_common/                   #   package: macros (schema naming, query tag, run logging, metadata upload), generic dims/seeds, generic tests
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, packages.yml (local dbt_common)

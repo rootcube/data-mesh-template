@@ -1,13 +1,11 @@
 # yaml-language-server: $schema=../_validation/schemas/user.schema.json
 # User: info@rootcube.com
 # =======================
-# One file per person or service. `create: false` for logins that already exist (SSO);
-# `create: true` creates the user with a one-time password (persons) or without a
-# password (services, register a key pair afterwards).
+# One file per person. `create: false` for logins that already exist (SSO); `create: true`
+# creates the user with a one-time password.
 
 login: "info@rootcube.com"
 name: "Mark Stellingwerff"
-type: "person"
 create: false
 roles:
   - project: example

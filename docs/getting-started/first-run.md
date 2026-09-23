@@ -82,8 +82,8 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 | `DBT_<NAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
 | `DBT_<NAME>_TMP` | dbt tests | stored test failures |
 
-`just snowflake check` lists the schemas. In `tst`, `acc` and `prd` the same objects live in
-the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../concepts/layer.md).
+`just snowflake check` lists the schemas. In `prd` (and `tst`, `acc` once enabled) the same
+objects live in the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../concepts/layer.md).
 
 ## Where things live locally
 

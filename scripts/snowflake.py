@@ -29,7 +29,6 @@ import re
 import shutil
 import stat
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +47,6 @@ PURPOSE_ORDER = ("ENG", "ANL", "TFM", "ING")
 ENV_FILE = ROOT / ".env"
 ENV_EXAMPLE = ROOT / ".env.example"
 KEY_DIR = Path.home() / ".snowflake" / "keys"
-VERIFY_ATTEMPTS = 5
 
 # --- console helpers ----------------------------------------------------------
 
@@ -86,7 +84,7 @@ def generate_key_pair(name: str, passphrase: str = "", key_dir: Path = KEY_DIR) 
     """Write <key_dir>/<name>.p8 (PKCS#8 PEM, owner-only permissions) and <name>.pub."""
     private_path, public_path = key_dir / f"{name}.p8", key_dir / f"{name}.pub"
     key_dir.mkdir(parents=True, exist_ok=True)
-    _chmod(key_dir, stat.S_IRWXU)
+    key_dir.chmod(stat.S_IRWXU)
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     encryption: serialization.KeySerializationEncryption = (
         serialization.BestAvailableEncryption(passphrase.encode()) if passphrase else serialization.NoEncryption()
@@ -94,18 +92,11 @@ def generate_key_pair(name: str, passphrase: str = "", key_dir: Path = KEY_DIR) 
     private_path.write_bytes(
         key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, encryption)
     )
-    _chmod(private_path, stat.S_IRUSR | stat.S_IWUSR)
+    private_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
     public_path.write_bytes(
         key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
     )
     return private_path, public_path
-
-
-def _chmod(path: Path, mode: int) -> None:
-    try:
-        path.chmod(mode)
-    except OSError:  # Windows: NTFS permissions are not POSIX modes
-        pass
 
 
 def public_key_body(public_path: Path) -> str:
@@ -128,21 +119,6 @@ def safe_name(value: str) -> str:
 # --- connections --------------------------------------------------------------
 
 
-def execute(conn: Any, sql: str) -> Any:
-    """Run one statement and return its cursor (the connector types it as optional)."""
-    cursor = conn.cursor().execute(sql)
-    if cursor is None:
-        raise RuntimeError(f"no cursor returned for: {sql}")
-    return cursor
-
-
-def fetch_row(conn: Any, sql: str) -> tuple[Any, ...]:
-    row = execute(conn, sql).fetchone()
-    if row is None:
-        raise RuntimeError(f"no row returned for: {sql}")
-    return tuple(row)
-
-
 CONTEXT_SQL = "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRENT_DATABASE()"
 
 
@@ -152,7 +128,7 @@ def quote_ident(name: str) -> str:
 
 def granted_project_roles(conn: Any, user: str) -> list[str]:
     """The RL_<PROJECT>_<ENV>__<PURPOSE> roles granted to a user (directly)."""
-    cursor = execute(conn, f"SHOW GRANTS TO USER {quote_ident(user)}")
+    cursor = conn.cursor().execute(f"SHOW GRANTS TO USER {quote_ident(user)}")
     columns = [d[0].lower() for d in cursor.description]
     roles: set[str] = set()
     for row in cursor.fetchall():
@@ -201,12 +177,7 @@ def choose_role(roles: list[str], wanted: str | None, interactive: bool) -> str 
     print("Project roles granted to you:")
     for index, role in enumerate(ordered, 1):
         print(f"  {index}. {role}")
-    while True:
-        answer = input(f"Pick one [1-{len(ordered)}, Enter = 1]: ").strip()
-        if not answer:
-            return ordered[0]
-        if answer.isdigit() and 1 <= int(answer) <= len(ordered):
-            return ordered[int(answer) - 1]
+    return ordered[int(ask(f"Pick one [1-{len(ordered)}]", "1")) - 1]
 
 
 def discover_context(
@@ -247,11 +218,11 @@ def interactive_connect(account: str, user: str, auth: str) -> Any:
     return snowflake.connector.connect(password=password, **common, **extra)
 
 
-def load_settings(require_context: bool = True) -> SnowflakeSettings:
+def load_settings(required: tuple[str, ...] = SnowflakeSettings.REQUIRED) -> SnowflakeSettings:
     """Settings from .env plus the process environment (the latter wins, as `just` loads .env too)."""
     file_values = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
     settings = SnowflakeSettings.from_env({**file_values, **os.environ})
-    missing = settings.missing() if require_context else settings.missing_credentials()
+    missing = settings.missing(required)
     if missing:
         sys.exit(f"Missing in .env: {', '.join(missing)}. Run `just snowflake setup` first.")
     if not settings.key_path().exists():
@@ -260,22 +231,18 @@ def load_settings(require_context: bool = True) -> SnowflakeSettings:
 
 
 def verify(settings: SnowflakeSettings) -> bool:
-    """Connect with the key pair; a freshly registered key can take a moment, so retry briefly."""
-    last_error: Exception | None = None
-    for attempt in range(1, VERIFY_ATTEMPTS + 1):
-        try:
-            with settings.connect() as conn:
-                user, role, warehouse, database, version = fetch_row(conn, f"{CONTEXT_SQL}, CURRENT_VERSION()")
-            print(f"Key-pair login OK: user={user} role={role} warehouse={warehouse} database={database}")
-            print(f"Snowflake version {version}")
-            return True
-        except Exception as exc:  # noqa: BLE001 - report whatever the connector raises
-            last_error = exc
-            if attempt < VERIFY_ATTEMPTS:
-                print(f"Attempt {attempt}/{VERIFY_ATTEMPTS} failed, retrying...")
-                time.sleep(2)
-    print(f"Key-pair login failed: {last_error}")
-    return False
+    """Connect with the key pair and print the resolved context."""
+    try:
+        with settings.connect() as conn:
+            user, role, warehouse, database, version = (
+                conn.cursor().execute(f"{CONTEXT_SQL}, CURRENT_VERSION()").fetchone()
+            )
+    except Exception as exc:  # noqa: BLE001 - report whatever the connector raises
+        print(f"Key-pair login failed: {exc}")
+        return False
+    print(f"Key-pair login OK: user={user} role={role} warehouse={warehouse} database={database}")
+    print(f"Snowflake version {version}")
+    return True
 
 
 def personal_prefix(user: str) -> str:
@@ -328,7 +295,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     step("1/4 One-time interactive login")
     conn = interactive_connect(account, user, args.auth)
     try:
-        exact_user, role, warehouse, database = fetch_row(conn, CONTEXT_SQL)
+        exact_user, role, warehouse, database = conn.cursor().execute(CONTEXT_SQL).fetchone()
         print(f"Logged in as {exact_user} (role {role or 'none'})")
 
         step("2/4 Key pair")
@@ -349,9 +316,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
         step("3/4 Registering the public key on your user")
         slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
-        quoted_user = '"' + exact_user.replace('"', '""') + '"'
         try:
-            execute(conn, f"ALTER USER {quoted_user} SET {slot} = '{public_key_body(public_path)}'")
+            conn.cursor().execute(f"ALTER USER {quote_ident(exact_user)} SET {slot} = '{public_key_body(public_path)}'")
         except Exception as exc:  # noqa: BLE001 - surface the Snowflake error with guidance
             print(f"Could not set {slot} on {exact_user}: {exc}")
             print(
@@ -388,7 +354,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 def cmd_context(args: argparse.Namespace) -> int:
     """Re-point .env at a project without logging in again (the key pair does the work)."""
-    settings = load_settings(require_context=False)
+    settings = load_settings(required=SnowflakeSettings.CREDENTIALS)
     with settings.connect(role=None, warehouse=None, database=None) as conn:
         settings = discover_context(conn, settings, args.role, interactive=not args.yes)
     if not args.yes:
@@ -404,17 +370,22 @@ def cmd_check(_args: argparse.Namespace) -> int:
     settings = load_settings()
     print(f"Private key: {settings.key_path()}")
     with settings.connect() as conn:
-        row = fetch_row(
-            conn,
-            "SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), CURRENT_USER(), CURRENT_ROLE(), "
-            "CURRENT_WAREHOUSE(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_VERSION()",
+        row = (
+            conn.cursor()
+            .execute(
+                "SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), CURRENT_USER(), CURRENT_ROLE(), "
+                "CURRENT_WAREHOUSE(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_VERSION()"
+            )
+            .fetchone()
         )
         labels = ("organization", "account", "user", "role", "warehouse", "database", "schema", "version")
         for label, value in zip(labels, row, strict=True):
             if label == "schema" and settings.is_personal:
                 value = f"{settings.schema} (personal prefix)"
             print(f"{label:<13} {value}")
-        schemas = [r[1] for r in execute(conn, f"SHOW TERSE SCHEMAS IN DATABASE {settings.database}").fetchall()]
+        schemas = [
+            r[1] for r in conn.cursor().execute(f"SHOW TERSE SCHEMAS IN DATABASE {settings.database}").fetchall()
+        ]
         print(f"schemas       {', '.join(schemas) if schemas else '(none yet)'}")
         layers = f"{settings.schema_for_layer('src')}, {settings.schema_for_layer('stg')}, ..."
         print(f"layer schemas {layers} ({settings.environment})")
@@ -424,13 +395,11 @@ def cmd_check(_args: argparse.Namespace) -> int:
 def cmd_query(args: argparse.Namespace) -> int:
     settings = load_settings()
     with settings.connect() as conn:
-        cursor = execute(conn, args.sql)
-        columns = [d[0] for d in cursor.description]
-        rows = [tuple(r) for r in cursor.fetchmany(args.limit)]
-    widths = [max(len(str(c)), *(len(str(r[i])) for r in rows)) if rows else len(str(c)) for i, c in enumerate(columns)]
-    print("  ".join(str(c).ljust(w) for c, w in zip(columns, widths, strict=True)))
+        cursor = conn.cursor().execute(args.sql)
+        print(*(d[0] for d in cursor.description), sep="\t")
+        rows = cursor.fetchmany(args.limit)
     for row in rows:
-        print("  ".join(str(v).ljust(w) for v, w in zip(row, widths, strict=True)))
+        print(*row, sep="\t")
     print(f"({len(rows)} row{'s' if len(rows) != 1 else ''}{', limited' if len(rows) == args.limit else ''})")
     return 0
 

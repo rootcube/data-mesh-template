@@ -60,7 +60,7 @@ it that way when you edit by hand.
 
 | Variable | Meaning |
 |----------|---------|
-| `ENVIRONMENT` | `dev`: you work in personal schemas. `tst`, `acc` and `prd` use the shared `_<LAYER>` schemas and are meant for deployed service users, not laptops. |
+| `ENVIRONMENT` | `dev`: you work in personal schemas. `prd` (and `tst`, `acc` once enabled) use the shared `_<LAYER>` schemas and are meant for deployed service users, not laptops. |
 | `SNOWFLAKE_ROLE` | Your engineer role, `RL_<PROJECT>_DEV__ENG`. |
 | `SNOWFLAKE_DATABASE` | The project's development database, `DB_<PROJECT>_DEV`, shared by every engineer. |
 | `SNOWFLAKE_WAREHOUSE` | The project's default warehouse, `WH_<PROJECT>_DEV`. |

@@ -17,7 +17,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 
 | Variable | Example | Meaning |
 |----------|---------|---------|
-| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `tst`, `acc`, `prd` (the shared `_<LAYER>` schemas, for deployed service users) |
+| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `prd` (the shared `_<LAYER>` schemas, for deployed service users; `tst` and `acc` need a profile target once enabled) |
 | `SNOWFLAKE_ACCOUNT` | `ROOTCUBE-PLATFORM` | Account identifier as `<organization>-<account>` |
 | `SNOWFLAKE_USER` | `ENGINEER@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
 | `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/you/.snowflake/keys/....p8` | Absolute path of the private key `just snowflake setup` wrote |

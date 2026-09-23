@@ -14,8 +14,6 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just init` | Install uv if missing, `uv sync`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
-| `just sync` | `uv sync` (after pulling dependency changes) |
-| `just upgrade` | `uv lock --upgrade` |
 
 ## Snowflake
 
@@ -30,7 +28,6 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just snowflake check` | Connect with the key pair and print your context plus the layer schemas |
 | `just snowflake query "SELECT 1"` | Run one statement (`--limit 50` rows by default) |
 | `just snowflake keygen <name>` | Key pair only, no login (service users, the Terraform user); `--force` overwrites |
-| `just sf ...` | Short form of `just snowflake ...` |
 
 ## Dagster
 

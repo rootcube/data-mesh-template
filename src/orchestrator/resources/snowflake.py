@@ -15,17 +15,12 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 from cryptography.hazmat.primitives import serialization
 
-if TYPE_CHECKING:
-    from dagster_snowflake import SnowflakeResource
-    from snowflake.connector import SnowflakeConnection
-
 ENV_PREFIX = "SNOWFLAKE_"
 APPLICATION = "DATA_MESH_STARTER"
-ENVIRONMENT_VAR = "ENVIRONMENT"
 PERSONAL_ENVIRONMENTS = ("dev", "dummy")
 
 
@@ -43,7 +38,8 @@ class SnowflakeSettings:
     schema: str = ""
     environment: str = "dev"
 
-    _REQUIRED: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path", "role", "warehouse", "database")
+    REQUIRED: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path", "role", "warehouse", "database")
+    CREDENTIALS: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path")
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> SnowflakeSettings:
@@ -56,7 +52,7 @@ class SnowflakeSettings:
             raw = source.get(f"{ENV_PREFIX}{field.name.upper()}", "")
             if raw and raw.strip():
                 values[field.name] = raw.strip()
-        environment = source.get(ENVIRONMENT_VAR, "").strip().lower()
+        environment = source.get("ENVIRONMENT", "").strip().lower()
         if environment:
             values["environment"] = environment
         return cls(**values)
@@ -73,18 +69,9 @@ class SnowflakeSettings:
             return f"{self.schema.upper()}_{layer}"
         return f"_{layer}"
 
-    def env_name(self, field_name: str) -> str:
-        return f"{ENV_PREFIX}{field_name.upper()}"
-
-    _CREDENTIALS: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path")
-
-    def missing(self) -> list[str]:
-        """Environment variable names that are required but not set."""
-        return [self.env_name(name) for name in self._REQUIRED if not getattr(self, name)]
-
-    def missing_credentials(self) -> list[str]:
-        """Only what is needed to connect at all (no role, warehouse or database)."""
-        return [self.env_name(name) for name in self._CREDENTIALS if not getattr(self, name)]
+    def missing(self, names: tuple[str, ...] = REQUIRED) -> list[str]:
+        """Environment variable names among `names` that are not set."""
+        return [f"{ENV_PREFIX}{name.upper()}" for name in names if not getattr(self, name)]
 
     def key_path(self) -> Path:
         return Path(self.private_key_path).expanduser()
@@ -114,7 +101,8 @@ class SnowflakeSettings:
         }
         return {k: v for k, v in kwargs.items() if v}
 
-    def connect(self, **overrides: Any) -> SnowflakeConnection:
+    def connect(self, **overrides: Any) -> Any:
+        """An open snowflake.connector connection (typed Any: the connector's stubs make every cursor optional)."""
         import snowflake.connector
 
         return snowflake.connector.connect(**{**self.connection_kwargs(), **overrides})
@@ -131,18 +119,3 @@ class SnowflakeSettings:
             "database": self.database,
         }
         return {k: v for k, v in creds.items() if v}
-
-    def dagster_resource(self) -> SnowflakeResource:
-        """A dagster_snowflake resource for Python assets that query Snowflake directly."""
-        from dagster_snowflake import SnowflakeResource
-
-        return SnowflakeResource(
-            account=self.account,
-            user=self.user,
-            private_key_path=str(self.key_path()),
-            private_key_password=self.private_key_passphrase or None,
-            role=self.role,
-            warehouse=self.warehouse,
-            database=self.database,
-            schema=None if self.is_personal else (self.schema or None),
-        )

@@ -105,7 +105,7 @@ dlt_pipelines/                    # dlt package
 ├── pipelines/ingest/knmi/        #   constants.py, source.py, pipelines.py, defs.yaml
 └── utils/destination.py          #   the Snowflake destination and the source-layer dataset
 dbt/
-├── profiles.yml                  #   shared profile `default`: dev/tst/acc/prd + dummy
+├── profiles.yml                  #   shared profile `default`: dev, prd + dummy
 ├── .sqlfluff                     #   shared lint config: dbt templater with the dummy target
 ├── dbt_common/                   #   package: macros, generic tests, seeds, generic dims
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "user.schema.json",
   "title": "User Configuration",
-  "description": "A person or service that assumes project roles. Roles are granted per project and environment; the login must exist in Snowflake unless create is true.",
+  "description": "A person who assumes project roles. Roles are granted per project and environment; the login must exist in Snowflake unless create is true.",
   "type": "object",
   "required": [
     "login",
@@ -25,18 +25,9 @@
       "description": "Email, only used when creating the user",
       "maxLength": 200
     },
-    "type": {
-      "type": "string",
-      "enum": [
-        "person",
-        "service"
-      ],
-      "description": "Actor type",
-      "default": "person"
-    },
     "create": {
       "type": "boolean",
-      "description": "Create the user in Snowflake (one-time password for persons); false when the login already exists (SSO)",
+      "description": "Create the user in Snowflake with a one-time password; false when the login already exists (SSO)",
       "default": false
     },
     "disabled": {

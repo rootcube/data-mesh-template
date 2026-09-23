@@ -19,8 +19,6 @@ def update_env_file(path: Path, updates: Mapping[str, str]) -> Path:
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key = stripped.split("=", 1)[0].strip()
-        if key.startswith("export "):
-            key = key.removeprefix("export ").strip()
         if key in pending:
             lines[index] = f"{key}={pending.pop(key)}"
     if pending:

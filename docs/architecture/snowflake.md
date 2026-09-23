@@ -95,12 +95,13 @@ People
     [Snowflake authentication](../getting-started/snowflake-auth.md).
 
 Service users
-:   The ingest and transform roles of a deployed environment are held by users of
-    `type: service` in `terraform/config/users/`, created by Terraform without a password. An
-    administrator generates their key pair with `just snowflake keygen <name>`, which prints
-    the public key body, and registers it with `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`.
-    The Terraform user itself is bootstrapped the same way: `just snowflake keygen terraform`,
-    then the key goes into `modules/snowflake/init.sql`.
+:   The ingest and transform roles of a deployed environment are held by service users. An
+    administrator creates the user by hand (`CREATE USER <login> TYPE = SERVICE`), generates its
+    key pair with `just snowflake keygen <name>`, which prints the public key body, registers it
+    with `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`, and grants the roles through a
+    `create: false` file in `terraform/config/users/`. The Terraform user itself is bootstrapped
+    the same way: `just snowflake keygen terraform`, then the key goes into
+    `modules/snowflake/init.sql`.
 
 What ends up in an engineer's `.env`:
 
@@ -118,8 +119,7 @@ SNOWFLAKE_SCHEMA=DBT_<NAME>
 
 No quotes around values: `just` passes them literally. `*.p8` and `*.pub` files are
 git-ignored, and so is `.env`. A deployed environment fills the same variables with the
-service user, its key, `RL_<PROJECT>_<ENV>__TFM` or `__ING`, and `ENVIRONMENT=prd` (or `tst`,
-`acc`).
+service user, its key, `RL_<PROJECT>_PRD__TFM` or `__ING`, and `ENVIRONMENT=prd`.
 
 ## One settings reader
 
@@ -134,7 +134,6 @@ needs:
 | `schema_for_layer(layer)` | `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` when `is_personal` (`dev`, `dummy`) | dlt's `source_dataset()`, `just snowflake check` |
 | `connection_kwargs()` / `connect()` | Arguments for `snowflake.connector.connect`, with the private key loaded as unencrypted PKCS#8 DER | `scripts/snowflake.py` (`check`, `query`) |
 | `dlt_credentials()` | The dict dlt's Snowflake destination expects | `dlt_pipelines/utils/destination.py` |
-| `dagster_resource()` | A `dagster_snowflake.SnowflakeResource` | Python assets that query Snowflake directly |
 
 dbt does not go through Python. `dbt/profiles.yml` reads the same variable names with
 `env_var()` for every target, which is why the list above and the profile never disagree.
@@ -143,7 +142,7 @@ dbt does not go through Python. `dbt/profiles.yml` reads the same variable names
 flowchart LR
     ENV[".env<br/>ENVIRONMENT, SNOWFLAKE_*"] --> S["SnowflakeSettings.from_env()"]
     S --> DLT["dlt destination + dataset"]
-    S --> DAG["Dagster SnowflakeResource"]
+    S --> PY["Python assets: connect()"]
     S --> SCR["scripts/snowflake.py"]
     ENV -- "env_var()" --> DBT["dbt/profiles.yml"]
 ```

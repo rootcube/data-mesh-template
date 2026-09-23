@@ -35,8 +35,8 @@ icon: material/lifebuoy
     to your prefix (`DBT_<NAME>`), the same value `just snowflake setup` proposes.
 
 **Everything lands in `_STG`, `_SRC`, ... while you expected personal schemas**
-:   `ENVIRONMENT` in `.env` is not `dev`. On a laptop it should be; `tst`, `acc` and `prd` are
-    for deployed service users.
+:   `ENVIRONMENT` in `.env` is not `dev`. On a laptop it should be; the other environments
+    are for deployed service users.
 
 **Quoted values in `.env`**
 :   `just` and Docker pass quotes literally, which breaks identifiers and file paths. Write

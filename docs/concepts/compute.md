@@ -88,8 +88,8 @@ The account-level `WH_PLATFORM_PROVISIONING` (X-Small, resource monitor
 ## In the repo
 
 `SNOWFLAKE_WAREHOUSE` in `.env` is the warehouse every tool uses: dbt through
-`dbt/profiles.yml`, dlt through `SnowflakeSettings.dlt_credentials()`, Dagster's Snowflake
-resource through `SnowflakeSettings.dagster_resource()`. For an engineer that is
+`dbt/profiles.yml`, dlt through `SnowflakeSettings.dlt_credentials()`, Python assets through
+`SnowflakeSettings.connect()`. For an engineer that is
 `WH_<PROJECT>_DEV`, written by `just snowflake setup`. There is no per-job warehouse selection
 yet; when a project adds the `transform` profile, pointing dbt at `WH_<PROJECT>_<ENV>__TFM_M`
 is a change of that one variable in the deployed environment.

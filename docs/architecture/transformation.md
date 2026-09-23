@@ -12,7 +12,7 @@ this page covers the structure.
 
 ```
 dbt/
-├── profiles.yml              # profile `default`: targets dev, tst, acc, prd + dummy; DBT_PROFILES_DIR points here
+├── profiles.yml              # profile `default`: targets dev, prd + dummy; DBT_PROFILES_DIR points here
 ├── .sqlfluff                 # shared lint config: dbt templater with the dummy target
 ├── dbt_common/               # package: macros, generic tests, seeds, generic models. Not runnable on its own
 │   ├── dbt_project.yml       #   layer config for its own models + the on-run-end hooks

@@ -3,8 +3,9 @@
 # -----------------------------------------------------------------------------
 # A user lists project roles per environment. The role must exist for that
 # project (see the project's `roles`), the environment must be one of the
-# project's environments. Users are created here only when `create: true`;
-# existing (SSO) logins just receive the grants.
+# project's environments. Persons are created here only when `create: true`;
+# existing (SSO) logins just receive the grants. Service users for the system
+# roles are created by hand with a key pair (see README.md).
 
 locals {
   enabled_users = { for key, user in local.users : key => user if !try(user.disabled, false) }
@@ -43,14 +44,14 @@ locals {
 }
 
 resource "random_password" "user" {
-  for_each = { for key, user in local.users_to_create : key => user if try(user.type, "person") == "person" }
+  for_each = local.users_to_create
 
   length  = 20
   special = false
 }
 
 resource "snowflake_user" "person" {
-  for_each = { for key, user in local.users_to_create : key => user if try(user.type, "person") == "person" }
+  for_each = local.users_to_create
 
   name                 = each.value.login
   email                = try(each.value.email, null)
@@ -62,24 +63,13 @@ resource "snowflake_user" "person" {
   default_namespace    = try(local.user_defaults[each.key].database_name, null)
 }
 
-resource "snowflake_service_user" "service" {
-  for_each = { for key, user in local.users_to_create : key => user if try(user.type, "person") == "service" }
-
-  name              = each.value.login
-  comment           = try(each.value.name, each.key)
-  default_role      = try(local.user_defaults[each.key].role_name, null)
-  default_warehouse = try(local.user_defaults[each.key].warehouse_name, null)
-  default_namespace = try(local.user_defaults[each.key].database_name, null)
-  # Register the public key afterwards: ALTER USER <login> SET RSA_PUBLIC_KEY = '...'
-}
-
 resource "snowflake_grant_account_role" "user" {
   for_each = local.user_role_grant_map
 
   role_name = each.value.role_name
   user_name = each.value.login
 
-  depends_on = [module.project_role, snowflake_user.person, snowflake_service_user.service]
+  depends_on = [module.project_role, snowflake_user.person]
 }
 
 output "user_role_grants" {

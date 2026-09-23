@@ -95,10 +95,10 @@ databases, schemas, roles and warehouses it adds.
    their `.env` with `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
    `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and a personal schema prefix such as `DBT_SOMEONE`.
 
-System users for deployed environments (the transform and ingest roles) are `type: service`
-with `create: true`; register their key pair afterwards with
-`ALTER USER <login> SET RSA_PUBLIC_KEY = '...'` and grant them `RL_<PROJECT>_<ENV>__TFM` or
-`__ING` through the same `roles` list.
+System users for deployed environments (the transform and ingest roles) are created by hand:
+`CREATE USER <login> TYPE = SERVICE`, then `just snowflake keygen <login>` and
+`ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`. Grant them `RL_<PROJECT>_<ENV>__TFM` or
+`__ING` through a `create: false` user file with the same `roles` list.
 
 !!! note "If a person cannot register their own key"
     `ALTER USER ... SET RSA_PUBLIC_KEY` on your own user is allowed by default. If an account

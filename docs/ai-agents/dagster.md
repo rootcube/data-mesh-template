@@ -94,7 +94,7 @@ There is no central resource registry. `SnowflakeSettings.from_env()` in `src/or
 
 - `dlt_credentials()` for the dlt destination (`dlt_pipelines/utils/destination.py`)
 - `schema_for_layer("src")` for the dlt dataset: `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in `dev`
-- `dagster_resource()` for a `dagster_snowflake.SnowflakeResource`, for Python assets that query Snowflake directly
+- `connect()` for Python assets that query Snowflake directly (open it inside the asset body)
 - `connect()` for a plain connector connection (used by `scripts/snowflake.py`)
 
 Where new asset code goes and how to wire a resource into it: [Adding Python assets](../development/adding-python-assets.md). The settings object itself: [Snowflake](snowflake.md).

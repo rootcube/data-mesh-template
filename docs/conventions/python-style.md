@@ -195,7 +195,7 @@ Before writing something new, check whether one of these already covers it:
 Snowflake settings
 :   `SnowflakeSettings.from_env()` in `src/orchestrator/resources/snowflake.py` is the only reader
     of the `SNOWFLAKE_*` variables and `ENVIRONMENT`. It hands out `connect()` for the Snowflake
-    connector, `dlt_credentials()` for dlt and `dagster_resource()` for Python assets. Never read
+    connector and `dlt_credentials()` for dlt. Never read
     `os.environ["SNOWFLAKE_..."]` yourself. See
     [environment variables](../reference/environment-variables.md).
 
@@ -239,7 +239,7 @@ If in doubt, use SQL.
 
 The local environment has no DataFrame library as a dependency. The only DataFrame code is the
 Snowpark model above, which runs inside Snowflake where pandas is provided. If a Python asset
-genuinely needs one, add it to `pyproject.toml` and run `just sync` first, and never mix
+genuinely needs one, add it to `pyproject.toml` and run `uv sync` first, and never mix
 DataFrame libraries in one function.
 
 ## Testing

@@ -62,23 +62,11 @@ init:
 info:
     uv run python scripts/info.py
 
-# sync Python dependencies into .venv (uv)
-sync:
-    uv sync
-
-# upgrade all dependencies and rewrite uv.lock
-upgrade:
-    uv lock --upgrade
-
 # --- Snowflake --------------------------------------------------------------
 
 # key-pair auth: `just snowflake setup` (one-time), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
 snowflake cmd *args:
     uv run python scripts/snowflake.py {{cmd}} {{args}}
-
-# alias for `snowflake`
-sf cmd *args:
-    @just snowflake {{cmd}} {{args}}
 
 # --- Dagster ----------------------------------------------------------------
 

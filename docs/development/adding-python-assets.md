@@ -39,14 +39,14 @@ instead; see the end of this page.
 ## Writing the asset
 
 The example depends on the staged KNMI model and records its row count and latest observation
-as asset metadata. Resources are typed function parameters; Dagster injects them by name from
-the `resources` dict of the location's `Definitions`. Every signature gets full annotations.
+as asset metadata. It opens its own connection with `SnowflakeSettings.from_env().connect()`;
+the repo has no Dagster resources yet, and one connection per asset is simpler than a resource
+dict until several assets share one. Every signature gets full annotations.
 
 ```python title="src/orchestrator/locations/dbt/dbt_example/assets.py"
 """Python assets of the dbt_example location."""
 
 from dagster import AssetExecutionContext, AssetKey, MaterializeResult, asset
-from dagster_snowflake import SnowflakeResource
 
 from orchestrator.resources.snowflake import SnowflakeSettings
 
@@ -59,9 +59,9 @@ STG_SCHEMA = SnowflakeSettings.from_env().schema_for_layer("stg")
     kinds={"python", "snowflake"},
     deps=[AssetKey(["stg", "stg__knmi__climate_hourly"])],
 )
-def knmi_freshness_report(context: AssetExecutionContext, snowflake: SnowflakeResource) -> MaterializeResult:
+def knmi_freshness_report(context: AssetExecutionContext) -> MaterializeResult:
     """Row count and latest observation of the staged KNMI data, as asset metadata."""
-    with snowflake.get_connection() as conn:
+    with SnowflakeSettings.from_env().connect() as conn:
         row_count, latest = conn.cursor().execute(
             f"SELECT COUNT(1), MAX(observed_at) FROM {STG_SCHEMA}.stg__knmi__climate_hourly"
         ).fetchone()
@@ -82,9 +82,10 @@ Points worth copying:
     the shared environments and `<SNOWFLAKE_SCHEMA>_STG` in dev, the same rule dbt and dlt use.
     The database is already the connection's default (`SNOWFLAKE_DATABASE`).
 
-`snowflake: SnowflakeResource`
-:   The parameter name is the resource key. The connection uses the same `.env` settings as
-    everything else; `get_connection()` yields a `snowflake.connector` connection.
+`SnowflakeSettings.from_env().connect()`
+:   The same `.env` settings as dbt and dlt, opened inside the asset body so the location still
+    loads without a `.env`. `connect()` returns a `snowflake.connector` connection; use it as a
+    context manager so it closes.
 
 `MaterializeResult(metadata=...)`
 :   Metadata shows up in the UI on every materialization. Return `None` when there is nothing
@@ -96,9 +97,8 @@ Points worth copying:
 
 ## Merging it into the location
 
-`definitions.py` currently returns `build_dbt_defs(...)` directly. Merge your assets and the
-Snowflake resource into it with `Definitions.merge`, the same call `build_dbt_defs` and the dlt
-location use for their jobs:
+`definitions.py` currently returns `build_dbt_defs(...)` directly. Merge your assets into it
+with `Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs:
 
 ```python title="src/orchestrator/locations/dbt/dbt_example/definitions.py"
 """Dagster code location for the dbt_example project (see locations/dbt/shared.py)."""
@@ -108,21 +108,17 @@ from dagster import Definitions
 from orchestrator.locations.dbt.dbt_example import defs as _defs_module
 from orchestrator.locations.dbt.dbt_example.assets import knmi_freshness_report
 from orchestrator.locations.dbt.shared import build_dbt_defs
-from orchestrator.resources.snowflake import SnowflakeSettings
 
 defs = Definitions.merge(
     build_dbt_defs("dbt_example", _defs_module),
-    Definitions(
-        assets=[knmi_freshness_report],
-        resources={"snowflake": SnowflakeSettings.from_env().dagster_resource()},
-    ),
+    Definitions(assets=[knmi_freshness_report]),
 )
 ```
 
-`SnowflakeSettings.from_env().dagster_resource()` builds a `dagster_snowflake.SnowflakeResource`
-from the `SNOWFLAKE_*` variables. Building it does not connect, so the location still loads
-without a `.env` (CI and `just validate` rely on that); the connection opens when the asset
-runs. One resource dict per location is enough; do not construct settings inside asset bodies.
+Nothing connects at import time, so the location still loads without a `.env` (CI and
+`just validate` rely on that); the connection opens when the asset runs. Once several assets
+share a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's
+`resources` dict; until then the inline `connect()` is the pattern.
 
 Because `job_dbt_example_build_all` selects `AssetSelection.all()`, the new asset joins that
 job as well.
@@ -154,12 +150,8 @@ If the asset is its own concern, give it its own location rather than growing `d
     from dagster import Definitions
 
     from orchestrator.locations.<name>.assets import my_asset
-    from orchestrator.resources.snowflake import SnowflakeSettings
 
-    defs = Definitions(
-        assets=[my_asset],
-        resources={"snowflake": SnowflakeSettings.from_env().dagster_resource()},
-    )
+    defs = Definitions(assets=[my_asset])
     ```
 
 2. Add it to `workspace.yaml`:

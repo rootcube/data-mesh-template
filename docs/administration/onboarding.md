@@ -131,21 +131,25 @@ write `.env`. Then:
 Deployed environments run dlt and dbt as system users: the `ingest` role
 (`RL_<PROJECT>_<ENV>__ING`) for dlt, the `transform` role (`RL_<PROJECT>_<ENV>__TFM`) for dbt.
 
-1. Describe it with `type: service` and `create: true`. The login is yours to choose:
+1. Create the user by hand, as `SECURITYADMIN` (Terraform only creates persons):
+
+    ```sql
+    CREATE USER example_prd_transform TYPE = SERVICE COMMENT = 'dbt in example production';
+    ```
+
+2. Grant its roles through a user file with `create: false`:
 
     ```yaml
     login: "example_prd_transform"
     name: "dbt in example production"
-    type: "service"
-    create: true
+    create: false
     roles:
       - project: example
         role: transform
         environments: [production]
     ```
 
-2. `just tf apply` creates the user without a password (`snowflake_service_user` in
-   `terraform/users.tf`).
+    then `just tf apply`.
 3. Generate a key pair and register it. `keygen` never logs in; it writes the pair under
    `~/.snowflake/keys/` and prints the public key body:
 

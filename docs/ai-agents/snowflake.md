@@ -63,7 +63,6 @@ Layer semantics and materialization defaults: [Layers in practice](../architectu
 |---|---|
 | `schema_for_layer(layer)` | The layer-to-schema rule above; `is_personal` is true for `dev` and `dummy` |
 | `dlt_credentials()` | The dlt destination, `dlt_pipelines/utils/destination.py` |
-| `dagster_resource()` | A `dagster_snowflake.SnowflakeResource` for Python assets |
 | `connect()` / `connection_kwargs()` | Plain `snowflake.connector` connections (`scripts/snowflake.py`); the connection carries `application = DATA_MESH_STARTER` |
 | `private_key_der()` | The PEM key as unencrypted PKCS#8 DER, the form the connector accepts |
 
@@ -76,7 +75,7 @@ Authentication is key pair only, no passwords in files:
 - `just snowflake query "SELECT 1"` runs one statement (`--limit 50` rows by default).
 - `just snowflake keygen <name>` creates a key pair without logging in and prints the public key body, for service users: `just snowflake keygen terraform` is step one of the administrator bootstrap; the ingest and transform system users of deployed environments get theirs the same way.
 
-`just sf` is a shorter spelling of `just snowflake`. The walkthrough: [Snowflake authentication](../getting-started/snowflake-auth.md); every variable: [Environment variables](../reference/environment-variables.md); onboarding people and system users: [Onboarding](../administration/onboarding.md).
+The walkthrough: [Snowflake authentication](../getting-started/snowflake-auth.md); every variable: [Environment variables](../reference/environment-variables.md); onboarding people and system users: [Onboarding](../administration/onboarding.md).
 
 !!! warning "No quotes in `.env`"
     `just` and Docker pass quoted values literally, which breaks identifiers and the key path. `just snowflake setup` writes the file unquoted; keep it that way when editing by hand.

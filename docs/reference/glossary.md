@@ -220,8 +220,8 @@ Required, disabled (configuration)
     when a project lists them. `just tf-validate-config` rejects an item that is both.
 
 Resource (Dagster)
-:   A configured object injected into assets by parameter name, such as the
-    `SnowflakeResource` from `SnowflakeSettings.dagster_resource()`.
+:   A configured object injected into assets by parameter name. This repo has none yet: Python
+    assets open a connection with `SnowflakeSettings.from_env().connect()` instead.
 
 Resource (dlt)
 :   A function decorated with `@dlt.resource` that yields the rows of one table
@@ -242,7 +242,7 @@ Seed (dbt)
 Service user
 :   A Snowflake user of `TYPE = SERVICE`, key pair only, for tooling: `TERRAFORM_USER` for
     provisioning, and the users deployed environments run dlt and dbt as (holding `__ING` or
-    `__TFM`). Declared with `type: service` in `terraform/config/users/`; see
+    `__TFM`). Created by hand, granted roles through `terraform/config/users/`; see
     [Onboarding](../administration/onboarding.md).
 
 `SnowflakeSettings`

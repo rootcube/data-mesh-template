@@ -1,7 +1,8 @@
 # Shared by every dbt project under dbt/ (DBT_PROFILES_DIR points here, set by the justfile
-# and .envrc). One profile, one target per environment; the target follows ENVIRONMENT (dev,
-# tst, acc, prd) unless DBT_TARGET overrides it. Every target reads the same SNOWFLAKE_*
-# variables: your personal key pair in dev, the transform system user's key pair elsewhere.
+# and .envrc). One profile, one target per environment; the target follows ENVIRONMENT unless
+# DBT_TARGET overrides it. Every target reads the same SNOWFLAKE_* variables: your personal key
+# pair in dev, the transform system user's key pair in prd. Add tst/acc here when Terraform
+# enables those environments (copy the prd block).
 default:
   target: "{{ env_var('DBT_TARGET', env_var('ENVIRONMENT', 'dev')) }}"
 
@@ -20,15 +21,7 @@ default:
       threads: 8
       client_session_keep_alive: false
 
-    # Shared environments: the layer schemas (_STG, _MRT, ...) of DB_<PROJECT>_<ENV>.
-    tst:
-      <<: *snowflake
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
-      threads: 16
-    acc:
-      <<: *snowflake
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
-      threads: 16
+    # Shared environment: the layer schemas (_STG, _MRT, ...) of DB_<PROJECT>_PRD.
     prd:
       <<: *snowflake
       schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
