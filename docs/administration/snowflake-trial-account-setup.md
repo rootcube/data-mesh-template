@@ -21,19 +21,19 @@ and sets up your own key pair. Budget about fifteen minutes, most of it waiting 
    TOTP app) at the first login. Finish that before running the bootstrap, which logs in with
    your password and then needs a passcode or a push from that app.
 
-## 2. Find the account identifier
+## 2. Find the organization and account name
 
-The bootstrap needs the identifier in the `<organization>-<account>` form. In Snowsight, open
-the account menu at the bottom left, hover over the account and click **Copy account
-identifier**, or run this in a worksheet:
+The bootstrap asks for the two parts of the account identifier separately, because Terraform's
+Snowflake provider takes them as two settings: the **organization name** and the **account
+name** within it. In Snowsight, open the account menu at the bottom left, hover over the
+account and click **Copy account identifier**; it looks like `ABCDEFG-XY12345`, organization
+before the dash, account after it. Or run this in a worksheet:
 
 ```sql
-SELECT CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME();
+SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME();
 ```
 
-It looks like `ABCDEFG-XY12345`. The locator form from the activation mail
-(`xy12345.eu-central-1`) works for the login too; the bootstrap reads the organisation and
-account name from Snowflake for Terraform either way.
+The locator from the activation mail (`xy12345.eu-central-1`) is not what you need here.
 
 ## 3. Install the tools
 
@@ -61,10 +61,10 @@ just setup
 ```
 
 `just setup` runs `just init` (uv, the virtual environment, `.env`, dbt packages) and then
-`just snowflake bootstrap`, which asks for the account identifier, your username, your
-password and an MFA passcode (leave it empty for a push notification), then:
+`just snowflake bootstrap`, which asks for the organization name, the account name, your
+username, your password and an MFA passcode (leave it empty for a push notification), then:
 
-1. switches to `ACCOUNTADMIN` and reads the organisation and account name;
+1. logs in to `<organization>-<account>` and switches to `ACCOUNTADMIN`;
 2. generates `~/.snowflake/keys/terraform.p8` and runs `terraform/modules/snowflake/init.sql`
    with its public key: `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`,
    `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor;

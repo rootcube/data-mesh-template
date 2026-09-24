@@ -30,7 +30,7 @@ variable "data_retention_time_in_days" {
   default     = null # null: 30 days in prd, 7 in acc, 1 elsewhere (see main.tf)
 
   validation {
-    condition     = var.data_retention_time_in_days == null || (var.data_retention_time_in_days >= 0 && var.data_retention_time_in_days <= 90)
+    condition     = var.data_retention_time_in_days == null ? true : (var.data_retention_time_in_days >= 0 && var.data_retention_time_in_days <= 90)
     error_message = "Data retention must be between 0 and 90 days."
   }
 }

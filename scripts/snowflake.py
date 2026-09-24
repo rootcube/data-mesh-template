@@ -413,7 +413,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
     if shutil.which("terraform") is None:
         sys.exit("terraform not found on PATH; install it first (https://developer.hashicorp.com/terraform/install)")
-    account = args.account or ask("Snowflake account (<organization>-<account>, e.g. MYORG-MYACCOUNT)")
+    organization = (args.organization or ask("Snowflake organization (e.g. MYORG)")).upper()
+    account_name = (args.account or ask("Snowflake account name within the organization (e.g. MYACCOUNT)")).upper()
+    account = f"{organization}-{account_name}"
     user = args.user or ask("Snowflake user (must hold ACCOUNTADMIN)")
     slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
 
@@ -421,12 +423,8 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     conn = interactive_connect(account, user, "password")
     try:
         conn.cursor().execute("USE ROLE ACCOUNTADMIN")
-        exact_user, organization, account_name = (
-            conn.cursor()
-            .execute("SELECT CURRENT_USER(), CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME()")
-            .fetchone()
-        )
-        print(f"Logged in as {exact_user} on {organization}-{account_name} (role ACCOUNTADMIN)")
+        exact_user = conn.cursor().execute("SELECT CURRENT_USER()").fetchone()[0]
+        print(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
 
         step("2/5 Terraform service user, provisioning role, warehouse and database (init.sql)")
         tf_private, tf_public = key_paths(TERRAFORM_KEY)
@@ -550,7 +548,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     bootstrap = sub.add_parser("bootstrap", help="fresh account: Terraform user, provisioning, your key pair, .env")
-    bootstrap.add_argument("--account", help="<organization>-<account>; asked interactively when omitted")
+    bootstrap.add_argument("--organization", help="organization name, the part before the dash; asked when omitted")
+    bootstrap.add_argument("--account", help="account name within the organization, after the dash; asked when omitted")
     bootstrap.add_argument("--user", help="Snowflake user holding ACCOUNTADMIN; asked interactively when omitted")
     bootstrap.add_argument("--key-name", help="file name under ~/.snowflake/keys (default: <account>__<user>)")
     bootstrap.add_argument("--passphrase", action="store_true", help="encrypt your private key with a passphrase")

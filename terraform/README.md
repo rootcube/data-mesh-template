@@ -24,7 +24,8 @@ other environments only use the provisioned `_<LAYER>` schemas.
 ## One-time bootstrap
 
 On a fresh account (a trial works) one command does everything below plus your own key pair
-and `.env`; it needs the account identifier and the password of a user holding `ACCOUNTADMIN`:
+and `.env`; it needs the organization name, the account name and the password of a user holding
+`ACCOUNTADMIN`:
 
 ```bash
 just setup            # = just init + just snowflake bootstrap
