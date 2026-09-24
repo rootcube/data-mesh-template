@@ -56,8 +56,9 @@ crash.log
 *_override.tf
 *_override.tf.json
 
-# --- MkDocs ---
+# --- Zensical (docs site and its build cache) ---
 site/
+.cache/
 
 # --- Claude Code ---
 .claude/

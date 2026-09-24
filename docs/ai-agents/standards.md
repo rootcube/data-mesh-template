@@ -61,7 +61,7 @@ Details agents trip over:
 | `python` | `uv sync`, `ruff format --check .`, `ruff check .`, `ty check`, `pytest` |
 | `dbt-and-dagster` | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` (with `DBT_TARGET=dummy`) |
 | `terraform` | `terraform fmt -check -recursive terraform`, `init -backend=false`, `validate`, then `validate_configs.py` through `uv` |
-| `docs` | `mkdocs build --strict` (a broken link fails the build) |
+| `docs` | `zensical build --strict` (a broken link fails the build) |
 
 `just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
 

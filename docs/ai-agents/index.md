@@ -120,7 +120,7 @@ Each guide covers one technology: concepts, the patterns in this repo, and the v
 
 ## Feeding these docs to an agent
 
-The site is plain MkDocs markdown under `docs/`. An agent working in a clone reads the pages directly; `AGENTS.md` links to them by path, so *"follow `docs/ai-agents/dbt.md`"* works without a running site. `just docs` serves the rendered site on port 8000 for humans.
+The site is plain Markdown under `docs/`, built by Zensical from `mkdocs.yml`. An agent working in a clone reads the pages directly; `AGENTS.md` links to them by path, so *"follow `docs/ai-agents/dbt.md`"* works without a running site. `just docs` serves the rendered site on port 8000 for humans.
 
 ## Tips for humans prompting agents
 

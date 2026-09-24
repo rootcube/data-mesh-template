@@ -1,310 +1,304 @@
-/* Custom styling for Modern Data Mesh Platform */
+/* rootcube theme for the docs: the same tokens as rootcube.com (light and dark), Inter for text
+   and Fira Code for code (theme.font in mkdocs.yml). Brand and surface values are copied from the
+   site's CSS variables; the --md-* lines map them onto the Material tokens Zensical uses. */
 
-:root {
-  /* Brand palette */
-  --rc-top: #000933;   /* header top */
-  --rc-tabs: #000F4B;  /* tabs */
-  --rc-bg-dark: #000414;  /* tabs */
-  --rc-accent: #007DFF;
-  --rc-accent-2: #00C8FF;
+:root,
+[data-md-color-scheme="default"] {
+  /* Brand */
+  --rc-navy: #080b17;
+  --rc-blue: #0068d6;
+  --rc-cyan: #0088ad;
+  --rc-pink: #d41173;
 
-  /* Neutral palette */
-  --rc-white: #FFFFFF;
-  --rc-black: #000000;
-  --rc-gray-100: #CCCCCC;
-  --rc-gray-200: #999999;
-  --rc-gray-300: #4D4D4D;
-  --rc-gray-400: #333333;
-
-  /* A couple of extra neutrals for borders/surfaces */
-  --rc-gray-050: #F5F5F5;
-  --rc-gray-450: #262626;
-
-  /* Map brand colors into MkDocs Material tokens (light mode defaults) */
-  --md-primary-fg-color: var(--rc-tabs);
-  --md-accent-fg-color: var(--rc-accent);
-
-  /* Readability (light mode) */
-  --md-default-fg-color: var(--rc-gray-400);
-  --md-default-fg-color--light: var(--rc-gray-300);
-  --md-default-fg-color--lighter: var(--rc-gray-200);
-  --md-default-fg-color--lightest: var(--rc-gray-100);
-
-  --md-default-bg-color: #EEEEEE;
-  --md-code-bg-color: var(--rc-gray-050);
+  /* Surfaces and text (light) */
+  --rc-bg: #ffffff;
+  --rc-fg: #020817;
+  --rc-muted: #f1f5f9;
+  --rc-muted-fg: #64748b;
+  --rc-subtle-fg: #94a3b8;
+  --rc-border: #e2e8f0;
+  --rc-card: #ffffff;
+  --rc-primary: #2563eb;
+  --rc-white: #ffffff;
+  --rc-radius: 0.5rem;
 }
 
-/* Dark mode readability overrides */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: var(--rc-tabs);
-  --md-accent-fg-color: var(--rc-accent-2);
+  --rc-blue: #007bff;
+  --rc-cyan: #00c8ff;
+  --rc-pink: #ff4da6;
 
-  /* Dimmed text + dark gray background (per request) */
-  --md-default-fg-color: var(--rc-gray-200);        /* #CCCCCC */
-  --md-default-fg-color--light: var(--rc-gray-300); /* #999999 */
-  --md-default-fg-color--lighter: rgba(153, 153, 153, 0.75);
-  /* Also the fill of mermaid subgraphs; keep it faint so their labels stay readable. */
-  --md-default-fg-color--lightest: rgba(153, 153, 153, 0.15);
-
-  --md-default-bg-color: var(--rc-bg-dark);        /* #333333 */
-  --md-code-bg-color: var(--rc-gray-450);           /* slightly darker */
-
-  /* Ensure links are readable in dark mode */
-  --md-typeset-a-color: var(--rc-accent);
-  --md-typeset-a-color--hover: var(--rc-white);
+  --rc-bg: #080b17;
+  --rc-fg: #f8fafc;
+  --rc-muted: #1b2132;
+  --rc-muted-fg: #a9b5c6;
+  --rc-subtle-fg: #6b7a94;
+  --rc-border: #242b42;
+  --rc-card: #0f1424;
+  --rc-primary: #007bff;
 }
 
+/* Material tokens, both schemes (the --rc-* values above switch with the scheme) */
+:root,
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"],
+[data-md-color-primary="custom"],
+[data-md-color-accent="custom"] {
+  --md-default-bg-color: var(--rc-bg);
+  --md-default-fg-color: var(--rc-fg);
+  --md-default-fg-color--light: var(--rc-muted-fg);
+  --md-default-fg-color--lighter: var(--rc-subtle-fg);
+  --md-default-fg-color--lightest: var(--rc-border);
+
+  /* Header and tabs take the page background, like the site's translucent header */
+  --md-primary-fg-color: var(--rc-bg);
+  --md-primary-fg-color--light: var(--rc-bg);
+  --md-primary-fg-color--dark: var(--rc-bg);
+  --md-primary-bg-color: var(--rc-fg);
+  --md-primary-bg-color--light: var(--rc-muted-fg);
+
+  --md-accent-fg-color: var(--rc-cyan);
+  --md-accent-fg-color--transparent: color-mix(in srgb, var(--rc-cyan) 12%, transparent);
+  --md-accent-bg-color: var(--rc-white);
+
+  --md-typeset-a-color: var(--rc-blue);
+  --md-typeset-table-color: var(--rc-border);
+  --md-typeset-table-color--light: color-mix(in srgb, var(--rc-muted) 60%, transparent);
+
+  --md-code-bg-color: var(--rc-muted);
+  --md-code-fg-color: var(--rc-fg);
+
+  --md-footer-bg-color: var(--rc-muted);
+  --md-footer-bg-color--dark: var(--rc-bg);
+  --md-footer-fg-color: var(--rc-fg);
+  --md-footer-fg-color--light: var(--rc-muted-fg);
+  --md-footer-fg-color--lighter: var(--rc-subtle-fg);
+}
+
+[data-md-color-scheme="slate"] {
+  color-scheme: dark;
+}
+
+/* Layout: the site's container width */
 .md-grid {
-  max-width: 1440px;
+  max-width: 80rem;
 }
 
+/* Header and tabs: one translucent, blurred bar with a hairline underneath */
 .md-header {
-  background-color: var(--rc-top);
+  background-color: color-mix(in srgb, var(--rc-bg) 80%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--rc-fg);
+  box-shadow: none;
+}
+
+.md-header--shadow {
+  box-shadow: none;
+}
+
+.md-header__button {
+  color: var(--rc-fg);
 }
 
 .md-tabs {
-  background-color: var(--rc-tabs);
+  background-color: color-mix(in srgb, var(--rc-bg) 80%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--rc-border);
 }
 
 .md-tabs__link {
-  color: var(--rc-white);
+  color: var(--rc-muted-fg);
+  font-weight: 500;
+  opacity: 1;
 }
 
-.md-tabs__link:hover,
+.md-tabs__link:hover {
+  color: var(--rc-fg);
+}
+
 .md-tabs__link--active,
 .md-tabs__item--active .md-tabs__link {
-  color: var(--rc-white);
+  color: var(--rc-cyan);
 }
 
-/* Primary color overrides (Material custom palette hook) */
-[data-md-color-primary="custom"] {
-  --md-primary-fg-color: var(--rc-tabs);
-  --md-primary-fg-color--light: var(--rc-tabs);
-  --md-primary-fg-color--dark: var(--rc-top);
+/* Search box in the header */
+.md-search__form {
+  background-color: var(--rc-muted);
+  border-radius: var(--rc-radius);
 }
 
-/* Accent color overrides */
-[data-md-color-accent="custom"] {
-  --md-accent-fg-color: var(--rc-accent);
+.md-search__input {
+  color: var(--rc-fg);
 }
 
-/* Header buttons */
-.md-header__button {
-  color: var(--rc-white);
+.md-search__input::placeholder,
+.md-search__input + .md-search__icon {
+  color: var(--rc-muted-fg);
 }
 
-/* Navigation sidebar styling */
+/* Typography */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  color: var(--rc-fg);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.md-typeset h3,
+.md-typeset h4 {
+  font-weight: 600;
+}
+
+.md-typeset a {
+  color: var(--rc-blue);
+}
+
+.md-typeset a:hover,
+.md-typeset a:focus {
+  color: var(--rc-cyan);
+}
+
+/* Sidebar navigation: muted, current page in cyan, like the site's nav */
 .md-nav__link {
-  color: var(--md-default-fg-color);
+  color: var(--rc-muted-fg);
 }
 
 .md-nav__link:hover {
-  color: var(--rc-accent);
+  color: var(--rc-fg);
 }
 
-.md-nav__link--active {
-  color: var(--rc-accent-2);
+.md-nav__link--active,
+.md-nav__item--active > .md-nav__link {
+  color: var(--rc-cyan);
 }
 
-/* Dark mode: sidebar navigation should be grayscale only */
-[data-md-color-scheme="slate"] .md-nav__link {
-  color: var(--rc-gray-100);
+.md-nav__title,
+.md-nav__item--section > .md-nav__link {
+  color: var(--rc-fg);
+  font-weight: 600;
 }
 
-[data-md-color-scheme="slate"] .md-nav__link:hover {
-  color: var(--rc-white);
-}
-
-[data-md-color-scheme="slate"] .md-nav__link--active {
-  color: var(--rc-white);
-}
-
-/* Dark mode: right-side table of contents should be grayscale only */
-[data-md-color-scheme="slate"] .md-sidebar--secondary .md-nav__link {
-  color: var(--rc-gray-100);
-}
-
-[data-md-color-scheme="slate"] .md-sidebar--secondary .md-nav__link:hover {
-  color: var(--rc-white);
-}
-
-[data-md-color-scheme="slate"] .md-sidebar--secondary .md-nav__link--active {
-  color: var(--rc-white);
-}
-
-/* Links styling */
-a {
-  color: var(--rc-accent);
-}
-
-/* Material content links */
-.md-typeset a {
-  color: var(--rc-accent);
-}
-
-/* Dark mode: normal links */
-[data-md-color-scheme="slate"] a,
-[data-md-color-scheme="slate"] .md-typeset a {
-  color: var(--rc-accent);
-}
-
-/* Active interaction state */
-a:hover,
-a:active,
-a:focus,
-.md-typeset a:hover,
-.md-typeset a:active,
-.md-typeset a:focus {
-  color: var(--rc-accent-2);
-}
-
-[data-md-color-scheme="slate"] a:hover,
-[data-md-color-scheme="slate"] a:active,
-[data-md-color-scheme="slate"] a:focus,
-[data-md-color-scheme="slate"] .md-typeset a:hover,
-[data-md-color-scheme="slate"] .md-typeset a:active,
-[data-md-color-scheme="slate"] .md-typeset a:focus {
-  color: var(--rc-accent-2);
-}
-
-/* Buttons. The selectors carry the scheme attribute so they beat the link colour rules
-   above, which otherwise paint the button text in the link blue. */
-.md-typeset .md-button,
-[data-md-color-scheme="slate"] .md-typeset .md-button {
-  border: 0.1rem solid var(--rc-accent);
+/* Buttons (site: rounded, primary filled, outline otherwise) */
+.md-typeset .md-button {
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius);
   background-color: transparent;
-  color: var(--rc-accent);
-}
-
-.md-typeset .md-button--primary,
-[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
-  background-color: var(--rc-accent);
-  color: var(--rc-white);
+  color: var(--rc-fg);
+  font-weight: 500;
 }
 
 .md-typeset .md-button:hover,
-.md-typeset .md-button:focus,
-[data-md-color-scheme="slate"] .md-typeset .md-button:hover,
-[data-md-color-scheme="slate"] .md-typeset .md-button:focus {
-  border-color: var(--rc-accent-2);
-  background-color: var(--rc-accent-2);
-  color: var(--rc-top);
+.md-typeset .md-button:focus {
+  border-color: var(--rc-border);
+  background-color: var(--rc-muted);
+  color: var(--rc-fg);
 }
 
-/* Code blocks */
-.codehilite,
-.highlight {
-  background-color: var(--md-code-bg-color);
-  border-left: 4px solid var(--rc-accent);
+.md-typeset .md-button--primary {
+  border-color: var(--rc-primary);
+  background-color: var(--rc-primary);
+  color: var(--rc-white);
 }
 
-/* Admonitions */
-.admonition {
-  border-left: 4px solid var(--rc-accent);
+.md-typeset .md-button--primary:hover,
+.md-typeset .md-button--primary:focus {
+  border-color: var(--rc-primary);
+  background-color: color-mix(in srgb, var(--rc-primary) 88%, var(--rc-bg));
+  color: var(--rc-white);
 }
 
-.admonition.note {
-  border-left-color: var(--rc-accent);
-  background-color: #f0f7ff;
+/* Code */
+.md-typeset code {
+  border-radius: 0.25rem;
 }
 
-[data-md-color-scheme="slate"] .admonition.note {
-  background-color: rgba(0, 200, 255, 0.08);
+.md-typeset pre > code {
+  border-radius: var(--rc-radius);
+}
+
+.md-typeset .highlight,
+.md-typeset .codehilite {
+  border-radius: var(--rc-radius);
+}
+
+/* Admonitions and content tabs: rounded like the site's cards */
+.md-typeset .admonition,
+.md-typeset details,
+.md-typeset .tabbed-set {
+  border-radius: var(--rc-radius);
+}
+
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--rc-blue);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: color-mix(in srgb, var(--rc-blue) 10%, transparent);
 }
 
 /* Tables */
-table {
-  border-collapse: collapse;
+.md-typeset table:not([class]) {
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius);
 }
 
-table th {
-  background-color: var(--rc-tabs);
-  color: var(--rc-white);
+.md-typeset table:not([class]) th {
+  background-color: var(--rc-muted);
+  color: var(--rc-fg);
+  font-weight: 600;
 }
 
-[data-md-color-scheme="slate"] table th {
-  background-color: var(--rc-top);
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: color-mix(in srgb, var(--rc-muted) 60%, transparent);
 }
 
-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+/* Footer */
+.md-footer {
+  border-top: 1px solid var(--rc-border);
 }
 
-[data-md-color-scheme="slate"] table tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.03);
+.md-footer__link {
+  color: var(--rc-fg);
 }
 
-table tr:hover {
-  background-color: #f0f7ff;
-}
-
-[data-md-color-scheme="slate"] table tr:hover {
-  background-color: rgba(0, 200, 255, 0.06);
-}
-
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--rc-tabs);
-}
-
-[data-md-color-scheme="slate"] h1,
-[data-md-color-scheme="slate"] h2,
-[data-md-color-scheme="slate"] h3,
-[data-md-color-scheme="slate"] h4,
-[data-md-color-scheme="slate"] h5,
-[data-md-color-scheme="slate"] h6 {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-/* Status badges */
+/* Status badges and page status (Material `status:` front matter) */
 .status-mandatory {
-  background-color: var(--rc-tabs);
+  background-color: var(--rc-primary);
   color: var(--rc-white);
   padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: bold;
+  border-radius: 0.25rem;
+  font-weight: 600;
 }
 
 .status-optional {
-  background-color: var(--rc-accent);
-  color: var(--rc-white);
+  background-color: var(--rc-cyan);
+  color: var(--rc-navy);
   padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: bold;
+  border-radius: 0.25rem;
+  font-weight: 600;
 }
 
-/* Page status badge tweaks (Material `status:` front matter) */
 .md-status--draft {
-  background-color: #fff3cd;
-  color: var(--rc-tabs);
-  border: 1px solid rgba(0, 15, 75, 0.2);
-}
-
-[data-md-color-scheme="slate"] .md-status--draft {
-  background-color: rgba(255, 243, 205, 0.12);
-  color: rgba(255, 255, 255, 0.92);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-/* Inline code */
-code {
-  background-color: var(--md-code-bg-color);
-  color: var(--rc-tabs);
-  padding: 2px 4px;
-  border-radius: 2px;
-}
-
-[data-md-color-scheme="slate"] code {
-  color: rgba(255, 255, 255, 0.92);
+  background-color: color-mix(in srgb, var(--rc-pink) 12%, transparent);
+  color: var(--rc-fg);
+  border: 1px solid color-mix(in srgb, var(--rc-pink) 40%, transparent);
+  border-radius: 0.25rem;
 }
 
 /* Mermaid diagrams */
 .mermaid {
   display: flex;
   justify-content: center;
-  background-color: var(--md-code-bg-color);
+  background-color: var(--rc-card);
+  border: 1px solid var(--rc-border);
+  border-radius: var(--rc-radius);
   padding: 20px;
-  border-radius: 4px;
   margin: 20px 0;
 }
 
@@ -313,76 +307,29 @@ code {
   height: auto;
 }
 
-.mermaid .flowchart-v2 .flowchart-label {
-  color: var(--rc-tabs);
-}
-
-[data-md-color-scheme="slate"] .mermaid .flowchart-v2 .flowchart-label {
-  color: rgba(255, 255, 255, 0.92);
-}
-
 .mermaid .node rect,
 .mermaid .node polygon,
 .mermaid .node circle,
 .mermaid .node ellipse {
-  fill: #f0f7ff;
-  stroke: var(--rc-accent);
+  fill: var(--rc-muted);
+  stroke: var(--rc-blue);
   stroke-width: 2px;
 }
 
-[data-md-color-scheme="slate"] .mermaid .node rect,
-[data-md-color-scheme="slate"] .mermaid .node polygon,
-[data-md-color-scheme="slate"] .mermaid .node circle,
-[data-md-color-scheme="slate"] .mermaid .node ellipse {
-  fill: rgba(0, 200, 255, 0.06);
-  stroke: var(--rc-accent-2);
-}
-
-.mermaid .node text {
-  color: var(--rc-tabs);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-
-[data-md-color-scheme="slate"] .mermaid .node text {
-  color: rgba(255, 255, 255, 0.92);
+.mermaid .node text,
+.mermaid .flowchart-v2 .flowchart-label {
+  color: var(--rc-fg);
+  fill: var(--rc-fg);
 }
 
 .mermaid .edgeLabel {
-  background-color: var(--rc-white);
-  color: var(--rc-tabs);
-}
-
-[data-md-color-scheme="slate"] .mermaid .edgeLabel {
-  background-color: rgba(11, 18, 32, 0.9);
-  color: rgba(255, 255, 255, 0.92);
+  background-color: var(--rc-card);
+  color: var(--rc-fg);
 }
 
 .mermaid .edgePath .path {
-  stroke: var(--rc-accent);
+  stroke: var(--rc-cyan);
   stroke-width: 2px;
-}
-
-[data-md-color-scheme="slate"] .mermaid .edgePath .path {
-  stroke: var(--rc-accent-2);
-}
-
-.md-footer {
-  background-color: var(--rc-tabs);
-  color: var(--rc-white);
-}
-
-.md-footer__link {
-  color: var(--rc-white);
-}
-
-/* Bottom footer strip */
-.md-footer-meta {
-  background-color: var(--rc-top);
-}
-
-/* Some Material versions use a nested element for the bottom row */
-.md-footer-meta__inner {
-  background-color: var(--rc-top);
 }
 
 /* Component page header/logo helpers */

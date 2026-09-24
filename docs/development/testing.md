@@ -71,6 +71,11 @@ parse, and missing dbt packages (the dbt locations run `dbt parse` on load). Run
 change to `src/`, `dlt_pipelines/`, `dbt/` or `workspace.yaml`. If it fails, `just start` will
 fail the same way.
 
+Dagster's CLI marks `dagster definitions validate` as superseded by `dg check defs`, which
+only loads the project's `defs_module` from `pyproject.toml` and ignores `workspace.yaml`. The
+recipe, the pre-commit hook and CI keep the old command and silence that one warning through
+`PYTHONWARNINGS`.
+
 ## `just check`
 
 Everything CI runs, in one recipe:
@@ -122,7 +127,7 @@ parallel:
 | Python | `uv sync`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
 | dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
-| Docs | `mkdocs build --strict` |
+| Docs | `zensical build --strict` |
 
 CI has no Snowflake credentials. Everything it does works with the `dummy` target and an empty
 `DAGSTER_HOME`; that is the design constraint behind the `dummy` target and the lazy credential

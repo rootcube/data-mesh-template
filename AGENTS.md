@@ -93,6 +93,7 @@ terraform/                        # administrators: YAML config (organisations, 
 scripts/                          # snowflake.py (key-pair setup/check/query/keygen), info.py, dbt_all.py
 tests/                            # pytest, offline only
 docs/ + mkdocs.yml                # the documentation site
+overrides/                        # Zensical template overrides (page icons in the tabs)
 ```
 
 Locations load in their own subprocess and never import each other; cross-location lineage

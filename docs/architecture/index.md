@@ -119,6 +119,7 @@ tests/                            # pytest, offline only
 .dagster/dagster.yaml             # DAGSTER_HOME (state is git-ignored, this file is not)
 .dlt/config.toml                  # dlt runtime settings (no credentials)
 docs/ + mkdocs.yml                # this site
+overrides/                        # Zensical template overrides (page icons in the tabs)
 ```
 
 ## How the pieces connect

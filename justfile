@@ -140,9 +140,12 @@ stop:
 dagster *args:
     uv run dagster {{args}}
 
+# `dagster definitions validate` is superseded by `dg check defs`, which does not read workspace.yaml;
+# PYTHONWARNINGS drops that one nag (the same filter sits in .pre-commit-config.yaml and ci.yml).
+
 # load every code location exactly like `just start` does, without the UI
 validate:
-    uv run dagster definitions validate -w workspace.yaml
+    PYTHONWARNINGS='ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
 
 # --- dlt --------------------------------------------------------------------
 
@@ -178,7 +181,7 @@ tf-validate-config:
 
 # serve the docs on http://localhost:8000 (`just docs build` for a static site/)
 docs cmd="serve" *args:
-    uv run --group docs mkdocs {{cmd}} {{args}}
+    uv run --group docs zensical {{cmd}} {{args}}
 
 # --- Quality ----------------------------------------------------------------
 
@@ -205,7 +208,7 @@ test:
 # everything CI runs: lint, typecheck, tests, dbt parse, Dagster definitions
 check: lint typecheck test
     uv run python scripts/dbt_all.py parse --target dummy --quiet
-    uv run dagster definitions validate -w workspace.yaml
+    just validate
     uv run python terraform/config/_validation/validate_configs.py
 
 # run all pre-commit hooks on all files

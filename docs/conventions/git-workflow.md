@@ -143,7 +143,7 @@ CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`:
 | `python` | `ruff format --check`, `ruff check`, `ty check`, `pytest` |
 | `dbt-and-dagster` | `dbt deps` + `dbt parse` in every project (`dummy` target), `sqlfluff lint models`, `dagster definitions validate` |
 | `terraform` | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
-| `docs` | `mkdocs build --strict` (a broken link fails the build) |
+| `docs` | `zensical build --strict` (a broken link fails the build) |
 
 `just check` runs the first two locally plus the YAML validation of the third;
 `just docs build --strict` covers the last one.
