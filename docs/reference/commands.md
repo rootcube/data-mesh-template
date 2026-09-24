@@ -12,7 +12,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just setup` | Fresh account: `just init`, then `just sf bootstrap` (arguments pass through) |
+| `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup` |
 | `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
 | `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, or `all` (the default); `gh` is available too but optional, nothing in the repo needs it |
