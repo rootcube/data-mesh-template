@@ -1,4 +1,4 @@
-# Documentation site (MkDocs Material). Local: `just docs` (http://localhost:8000).
+# Documentation site, built by Zensical from this MkDocs-format config. Local: `just docs` (http://localhost:8000).
 site_name: Data Mesh Platform Starter
 site_description: A runnable starter for a data mesh platform on Snowflake with Dagster, dlt and dbt.
 repo_url: https://github.com/rootcube/data-mesh-template
@@ -8,7 +8,13 @@ copyright: rootcube
 
 theme:
   name: material
+  # Template overrides (partials/tabs-item.html puts the page icons back in the tabs)
+  custom_dir: overrides
   language: en
+  # The rootcube.com faces; the colors live in stylesheets/extra.css
+  font:
+    text: Inter
+    code: Fira Code
   logo: assets/icon-rootcube.svg
   favicon: assets/icon-rootcube.svg
   icon:

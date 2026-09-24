@@ -36,9 +36,9 @@ dev = [
     "jsonschema>=4.20",
     "dbt-duckdb>=1.9",
 ]
-# Documentation site: `just docs` runs mkdocs with this group.
+# Documentation site: `just docs` runs Zensical with this group (it reads mkdocs.yml as is).
 docs = [
-    "mkdocs-material>=9.6",
+    "zensical>=0.0.64",
 ]
 
 [tool.uv]

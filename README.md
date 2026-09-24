@@ -7,7 +7,7 @@ Environment, Layer, Role, Compute) in one small repository that runs on a laptop
 multi-project mesh: one dbt project and one Dagster code location per project, a shared
 `dbt_common` package, and YAML-driven Snowflake provisioning.
 
-> Full documentation lives in `docs/` and is served with `just docs` (MkDocs Material). This
+> Full documentation lives in `docs/` and is served with `just docs` (Zensical). This
 > README is the quickstart and a map.
 
 ## Quickstart (engineer)
@@ -66,6 +66,7 @@ dbt/                         profiles.yml (shared) + dbt_common (package) + dbt_
 terraform/                   Snowflake provisioning from terraform/config (administrators)
 scripts/                     snowflake.py (bootstrap, key-pair setup, check, query), info.py, dbt_all.py
 docs/ + mkdocs.yml           the documentation site
+overrides/                   Zensical template overrides (page icons in the tabs)
 .github/                     CI, release-please, Dependabot, the exported `main` ruleset
 ```
 

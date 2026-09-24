@@ -108,7 +108,7 @@ The design philosophy, straight from `AGENTS.md`:
 | Dagster definitions | `workspace.yaml` | pre-commit (`dagster definitions validate`), CI `dbt-and-dagster` job |
 | Terraform formatting | `terraform/` | pre-commit (`terraform fmt`), CI `terraform` job |
 | Terraform YAML | `terraform/config/_validation/schemas/*.json` | pre-commit (`validate-configs`), CI `terraform` job, `just check` |
-| Docs | `mkdocs.yml` | CI `docs` job (`mkdocs build --strict`) |
+| Docs | `mkdocs.yml` | CI `docs` job (`zensical build --strict`) |
 
 `just check` runs the Python, dbt, Dagster and Terraform YAML part of that list locally (lint,
 typecheck, test, dbt parse, Dagster validate, config validation); `just pre-commit` runs every
