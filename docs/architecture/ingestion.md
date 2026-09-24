@@ -86,6 +86,15 @@ by 29 days; merge upserts on the key and the table stays free of duplicates. dlt
 bookkeeping columns of its own, among them `_dlt_load_id`, the load package that wrote the
 row.
 
+A merge needs a table to merge from, so dlt first `COPY`s each batch from the stage into a
+staging table and then runs `MERGE` into the source table. By default dlt puts those staging
+tables in a schema of its own, `<dataset>_staging`, which nobody provisions and the ingest role
+may not create. `snowflake_destination()` sets `staging_dataset_name_layout` to the temporary
+layer instead: `_TMP` in the shared environments, your personal `<SNOWFLAKE_SCHEMA>_TMP` in
+`dev`. The ingest role holds `CREATE TABLE` and the table privileges there
+(`terraform/config/roles/ingest.yaml`); the tables carry the source table's name and are
+overwritten on the next load.
+
 To start over, drop the source's tables and state in the destination before loading:
 
 ```bash
