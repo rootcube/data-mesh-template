@@ -33,12 +33,12 @@ default:
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [unix]
 init: _init
-    @echo ""; echo "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+    @echo ""; echo "Done. Next: just setup"
 
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [windows]
 init: _init
-    @Write-Host ""; Write-Host "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+    @Write-Host ""; Write-Host "Done. Next: just setup"
 
 [unix]
 [private]

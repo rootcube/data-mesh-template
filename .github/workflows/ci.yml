@@ -4,6 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow dispatches CI on release-please's branch: GitHub runs no workflows for
+  # pull requests opened with GITHUB_TOKEN, except through workflow_dispatch.
+  workflow_dispatch:
+
+# Read-only token: the jobs only check out and test. Dependabot and fork pull requests get the same.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the run still going for the previous one.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python:

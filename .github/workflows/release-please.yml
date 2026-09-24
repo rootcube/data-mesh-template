@@ -3,6 +3,10 @@
 # uv.lock, writes CHANGELOG.md, tags vX.Y.Z and creates the GitHub release.
 # Tags created with the default GITHUB_TOKEN do not trigger other workflows: anything that
 # must run on a release is chained off this job's outputs (release_created, tag_name).
+# The same rule hits the release pull request itself: opened with GITHUB_TOKEN, it gets no CI
+# run, and the `main` ruleset requires the CI checks. workflow_dispatch is the exception to that
+# rule, so the last step dispatches CI on the release branch; the check runs land on the pull
+# request's head commit under the same job names and satisfy the ruleset. No token needed.
 name: Release
 
 on:
@@ -13,6 +17,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # dispatch CI on the release branch
 
 jobs:
   release-please:
@@ -25,3 +30,9 @@ jobs:
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@v5
+
+      - name: Run CI on the release pull request
+        if: steps.release.outputs.pr
+        run: gh workflow run ci.yml --ref "${{ fromJSON(steps.release.outputs.pr).headBranchName }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

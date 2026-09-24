@@ -65,6 +65,8 @@ Details agents trip over:
 
 `just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
 
+Dependency bumps come from Dependabot (`.github/dependabot.yml`: `uv.lock`, GitHub Actions, Terraform providers, weekly and grouped). Review them like any pull request; CI runs on them. dbt packages in `packages.yml` and the pre-commit hook revisions are bumped by hand.
+
 !!! danger "Never bypass hooks"
     `--no-verify` is forbidden. Agents never run `git commit` at all (humans own git, see [Git workflow](../conventions/git-workflow.md)), but the rule extends to advice: when a hook fails, fix the cause; never suggest bypassing it. CI runs the same checks and fails the pull request anyway.
 
