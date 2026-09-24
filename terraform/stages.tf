@@ -20,6 +20,12 @@ resource "snowflake_stage_internal" "dlt" {
   schema   = module.schema[each.key].schema_name
   name     = local.dlt_stage_name
   comment  = "Internal stage for dlt load files (PUT, then COPY INTO the source tables)"
+
+  # Directory table: SELECT * FROM DIRECTORY(@_SRC.ST_DLT) lists the files. Internal stages do not
+  # auto-refresh it (that is an external-stage feature); ALTER STAGE ... REFRESH updates it.
+  directory {
+    enable = true
+  }
 }
 
 output "stage_names" {

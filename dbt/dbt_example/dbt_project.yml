@@ -76,6 +76,8 @@ data_tests:
   +store_failures: true
   +schema: tmp
 
-# Run context at the start of every run (Snowflake account, database, links to the query history).
+# Run context at the start of every run (Snowflake account, database, links to the query history),
+# then the directory table of the dlt load stage (_SRC.ST_DLT), which internal stages never refresh by themselves.
 on-run-start:
   - "{{ dbt_common.log_run_info() }}"
+  - "{{ dbt_common.refresh_stages() }}"

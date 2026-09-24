@@ -79,6 +79,7 @@ It contributes four things.
 | `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` (and `dummy`); no `+schema` means `target.schema`. Overrides dbt's default |
 | `set_query_tag` | Tags every Snowflake query with `dbt_invocation_id:<id>`, so a run is one filter in the query history |
 | `log_run_info` | The banner at the start of a run: invocation id, target, organization, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history |
+| `refresh_stages` | `ALTER STAGE _SRC.ST_DLT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
 | `log_run_summary` | The summary at the end: models, tests and seeds by status, failed and warned tests, failed models, the five slowest models, total runtime |
 | `upload_results` and `macros/dbt_artifacts/` | The run-metadata upload into the metadata layer (vendored from `dbt_artifacts` v2.10.0, Snowflake only, self-creating tables) |
 | `utc_now`, `utc_today` | `SYSDATE()`-based timestamps that ignore the session timezone |
@@ -140,6 +141,7 @@ Two hooks bracket every run. `dbt_example` opens with the run-info banner:
 ```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
 on-run-start:
   - "{{ dbt_common.log_run_info() }}"
+  - "{{ dbt_common.refresh_stages() }}"
 ```
 
 `dbt_common` closes with the metadata upload and the summary. Package-level `on-run-end` hooks

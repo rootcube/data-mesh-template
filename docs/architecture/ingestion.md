@@ -132,7 +132,10 @@ dlt creates it on first load.
 only the tables move to your personal schema. The ingest role holds `READ` and `WRITE` on it
 (`READ ON STAGES`, `WRITE ON STAGES` in `terraform/config/roles/ingest.yaml`), and the engineer
 role inherits that in `dev`. dlt keeps the files after a successful `COPY INTO`
-(`keep_staged_files`, its default); `LIST @_SRC.ST_DLT` shows them, `REMOVE` cleans up.
+(`keep_staged_files`, its default); `LIST @_SRC.ST_DLT` shows them, `REMOVE` cleans up. The
+stage has a directory table, so `SELECT * FROM DIRECTORY(@_SRC.ST_DLT)` works too. Internal
+stages do not refresh it automatically; `dbt_common.refresh_stages()` runs
+`ALTER STAGE _SRC.ST_DLT REFRESH` at the start of every `dbt run` and `dbt build`.
 
 Credentials are only validated when a pipeline runs, so importing the pipelines (which Dagster
 does on every code-location load) works without a `.env`. In `dev` the pipeline runs as your
