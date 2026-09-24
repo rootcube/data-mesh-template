@@ -19,9 +19,9 @@ bootstrap the `example` project and try everything; see [Prerequisites](docs/get
 ```bash
 git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
 just init              # uv, .venv (Python 3.13), .env, dbt packages
-just snowflake setup   # one-time login, key pair registered on your user, .env filled in
+just sf setup   # one-time login, key pair registered on your user, .env filled in
 just setup             # fresh account instead of the two lines above: also bootstraps Terraform and provisions the project
-just snowflake check   # proves key-pair login works (`just snowflake context` re-points .env at a project later)
+just sf check   # proves key-pair login works (`just sf context` re-points .env at a project later)
 just start             # Dagster UI on http://localhost:3000
 ```
 

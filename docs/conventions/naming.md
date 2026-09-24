@@ -157,7 +157,7 @@ environment:
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
 `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
-prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just snowflake setup` proposes `DBT_` plus the first part
+prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just sf setup` proposes `DBT_` plus the first part
 of your login.
 
 Schemas inside a project database:

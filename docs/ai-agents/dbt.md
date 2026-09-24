@@ -266,7 +266,7 @@ just dbt build --select +stg__knmi__climate_hourly+  # with upstream and downstr
 just dbt build                                       # seeds, models, tests, everything
 ```
 
-In `dev` builds go into your personal schemas (`<SNOWFLAKE_SCHEMA>_STG`, ...) of the shared `DB_EXAMPLE_DEV`, so there is nothing to break for anyone else. Check the result with `just snowflake query "SELECT COUNT(1) FROM dbt_username_stg.stg__knmi__climate_hourly"`, with your own prefix instead of `dbt_username`. Materializing from the Dagster UI runs the same `dbt build` under the hood.
+In `dev` builds go into your personal schemas (`<SNOWFLAKE_SCHEMA>_STG`, ...) of the shared `DB_EXAMPLE_DEV`, so there is nothing to break for anyone else. Check the result with `just sf query "SELECT COUNT(1) FROM dbt_username_stg.stg__knmi__climate_hourly"`, with your own prefix instead of `dbt_username`. Materializing from the Dagster UI runs the same `dbt build` under the hood.
 
 ### 5. Full suite
 

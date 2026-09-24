@@ -21,7 +21,7 @@ just init
 5. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
 6. Runs `direnv allow` when direnv is installed.
 
-It ends with `Done. Next: just snowflake setup`.
+It ends with `Done. Next: just sf setup`.
 
 ## Verify
 

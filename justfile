@@ -6,7 +6,7 @@
 # OS-specific bodies carry [unix] / [windows] attributes; the rest is identical on
 # all platforms. Run bare `just` to list the recipes.
 
-# Load .env into every recipe (Snowflake settings written by `just snowflake setup`).
+# Load .env into every recipe (Snowflake settings written by `just sf setup`).
 set dotenv-load := true
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
@@ -53,7 +53,7 @@ init:
     uv run python scripts/dbt_all.py deps --quiet
     if command -v direnv >/dev/null 2>&1; then direnv allow . >/dev/null 2>&1 || true; fi
     echo ""
-    echo "Done. Next: just snowflake setup"
+    echo "Done. Next: just sf setup"
 
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [windows]
@@ -65,7 +65,7 @@ init:
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
-    Write-Host ""; Write-Host "Done. Next: just snowflake setup"
+    Write-Host ""; Write-Host "Done. Next: just sf setup"
 
 # fresh Snowflake account: `just init`, then bootstrap it (Terraform user, provisioning, your key pair, .env)
 setup *args: init
@@ -75,10 +75,35 @@ setup *args: init
 info:
     uv run python scripts/info.py
 
+# install a tool uv does not manage: all | uv | tfenv | terraform | direnv | gh (Homebrew on macOS/Linux)
+[unix]
+install tool="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    brew_install() { if command -v brew >/dev/null 2>&1; then brew list "$1" >/dev/null 2>&1 && echo "$1 already installed" || brew install "$1"; else echo "Homebrew not found; install $1 by hand: $2"; fi; }
+    case "{{tool}}" in
+        uv)        command -v uv >/dev/null 2>&1 && echo "uv already installed" || curl -LsSf https://astral.sh/uv/install.sh | sh ;;
+        tfenv)     brew_install tfenv https://github.com/tfutils/tfenv ;;
+        tf|terraform)
+                   command -v tfenv >/dev/null 2>&1 || brew_install tfenv https://github.com/tfutils/tfenv
+                   tfenv install latest && tfenv use latest ;;
+        direnv)    brew_install direnv https://direnv.net/docs/installation.html
+                   echo 'then add to ~/.zshrc (or ~/.bashrc): eval "$(direnv hook zsh)"' ;;
+        gh)        brew_install gh https://cli.github.com/
+                   echo "then: gh auth login" ;;
+        all)       for t in uv terraform direnv gh; do just install "$t"; done ;;
+        *)         echo "usage: just install [all|uv|tfenv|terraform|direnv|gh]"; exit 1 ;;
+    esac
+
+# install a tool uv does not manage: all | uv | terraform | direnv | gh (winget)
+[windows]
+install tool="all":
+    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { winget install --id Hashicorp.Terraform -e } "direnv" { winget install --id direnv.direnv -e; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { winget install --id GitHub.cli -e; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv; just install gh } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
+
 # --- Snowflake --------------------------------------------------------------
 
-# key-pair auth: `just snowflake setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
-snowflake cmd *args:
+# key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+sf cmd *args:
     uv run python scripts/snowflake.py {{cmd}} {{args}}
 
 # --- Dagster ----------------------------------------------------------------

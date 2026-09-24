@@ -65,7 +65,7 @@ Distilled from `AGENTS.md`. These are hard rules, not suggestions.
 :   Solve the problem at hand. No speculative abstractions, no helper extraction after three repeats in the same file, no class where a function will do.
 
 **Never hardcode credentials**
-:   `SNOWFLAKE_*` comes from `.env`, written by `just snowflake setup`. See [environment variables](../reference/environment-variables.md).
+:   `SNOWFLAKE_*` comes from `.env`, written by `just sf setup`. See [environment variables](../reference/environment-variables.md).
 
 **Challenge, don't comply**
 :   Push back when an approach is suboptimal, ask why before implementing something that seems wrong, suggest alternatives, flag risks. Honest disagreement beats agreeable debt.
@@ -135,4 +135,4 @@ Agents load `AGENTS.md` automatically (through `CLAUDE.md`), but targeted prompt
 - **Say which environment.** The default is `dev` with personal schemas. If a change is about `tst`, `acc` or `prd` behavior (the `_<LAYER>` schemas, the system users), say so; the agent cannot see those from a laptop.
 
 !!! note "First time setting up?"
-    An agent can only run the validation loop if the project is installed: [installation](../getting-started/installation.md) (`just init`) covers the offline part. Anything that touches Snowflake (`just dbt build`, `just dlt run knmi`, `just snowflake check`) needs the `.env` written by [`just snowflake setup`](../getting-started/snowflake-auth.md), which requires a human at the keyboard for the one-time login. Without a filled `.env`, set `DBT_TARGET=dummy` (the line is ready to uncomment in `.env.example`) so `just validate` parses dbt against an in-memory DuckDB, exactly as CI does.
+    An agent can only run the validation loop if the project is installed: [installation](../getting-started/installation.md) (`just init`) covers the offline part. Anything that touches Snowflake (`just dbt build`, `just dlt run knmi`, `just sf check`) needs the `.env` written by [`just sf setup`](../getting-started/snowflake-auth.md), which requires a human at the keyboard for the one-time login. Without a filled `.env`, set `DBT_TARGET=dummy` (the line is ready to uncomment in `.env.example`) so `just validate` parses dbt against an in-memory DuckDB, exactly as CI does.

@@ -6,7 +6,7 @@ icon: material/variable
 
 All local configuration lives in `.env` (git-ignored, copied from `.env.example` by
 `just init`). `just` loads it into every recipe; `.envrc` loads it for direnv users.
-`just snowflake setup` writes the Snowflake block for you.
+`just sf setup` writes the Snowflake block for you.
 
 !!! warning "No quotes"
     Write `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, never `"RL_EXAMPLE_DEV__ENG"`. python-dotenv
@@ -20,7 +20,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 | `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `prd` (the shared `_<LAYER>` schemas, for deployed service users; `tst` and `acc` need a profile target once enabled) |
 | `SNOWFLAKE_ACCOUNT` | `MYORG-MYACCOUNT` | Account identifier as `<organization>-<account>` |
 | `SNOWFLAKE_USER` | `USERNAME@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
-| `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/username/.snowflake/keys/....p8` | Absolute path of the private key `just snowflake setup` wrote |
+| `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/username/.snowflake/keys/....p8` | Absolute path of the private key `just sf setup` wrote |
 | `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | empty | Only set when you chose `--passphrase` |
 | `SNOWFLAKE_ROLE` | `RL_EXAMPLE_DEV__ENG` | Your engineer role in the project |
 | `SNOWFLAKE_WAREHOUSE` | `WH_EXAMPLE_DEV` | The project's warehouse |
@@ -29,7 +29,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 
 `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PRIVATE_KEY_PATH`, `SNOWFLAKE_ROLE`,
 `SNOWFLAKE_WAREHOUSE` and `SNOWFLAKE_DATABASE` are required; `just info` and
-`just snowflake check` report which are missing. The single reader is
+`just sf check` report which are missing. The single reader is
 `SnowflakeSettings.from_env()` in `src/orchestrator/resources/snowflake.py`; `dbt/profiles.yml`
 reads the same names with `env_var()`, and `dbt/dbt_example/sources/src_knmi.yml` reads
 `SNOWFLAKE_SCHEMA` and `ENVIRONMENT` to find the source layer.
@@ -80,5 +80,5 @@ Terraform reads its provider settings from `TF_VAR_*` variables, kept in the sam
 | `TF_VAR_SNOWFLAKE_USER` | `TERRAFORM_USER` | Service user created by `terraform/modules/snowflake/init.sql` |
 | `TF_VAR_SNOWFLAKE_PROVISIONING_ROLE` | `RL_PLATFORM_PROVISIONING` | Role Terraform provisions with |
 | `TF_VAR_SNOWFLAKE_WAREHOUSE` | `WH_PLATFORM_PROVISIONING` | Warehouse for the provider's own queries |
-| `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH` | `~/.snowflake/keys/terraform.p8` | Private key of the service user (`just snowflake keygen terraform`) |
+| `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH` | `~/.snowflake/keys/terraform.p8` | Private key of the service user (`just sf keygen terraform`) |
 | `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | unset | Only when that key is encrypted |

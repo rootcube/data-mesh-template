@@ -50,7 +50,7 @@ variable "SNOWFLAKE_WAREHOUSE" {
 
 # Mapped to TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH environment variable
 variable "SNOWFLAKE_PRIVATE_KEY_PATH" {
-  description = "Private key of the service user (generate with `just snowflake keygen terraform`)"
+  description = "Private key of the service user (generate with `just sf keygen terraform`)"
   type        = string
   default     = "~/.snowflake/keys/terraform.p8"
 }

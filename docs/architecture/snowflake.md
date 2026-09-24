@@ -70,7 +70,7 @@ personal prefix in `.env`:
 SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 ```
 
-`just snowflake setup` proposes `DBT_` plus the part of your login before the `@`, uppercased
+`just sf setup` proposes `DBT_` plus the part of your login before the `@`, uppercased
 (`DBT_USERNAME` for `username@example.com`). From then on dlt loads into `DBT_USERNAME_SRC`, dbt builds
 `DBT_USERNAME_STG`, `DBT_USERNAME_INT`, ... and the metadata upload writes `DBT_USERNAME_MTD`, all created on
 first use. The provisioned `_<LAYER>` schemas of `DB_EXAMPLE_DEV` stay untouched by local runs.
@@ -86,7 +86,7 @@ No passwords in files, no MFA prompt on every run. Every connection from this re
 person's or a service user's, uses an RSA key pair.
 
 People
-:   `just snowflake setup` (`scripts/snowflake.py`) logs you in once interactively (browser,
+:   `just sf setup` (`scripts/snowflake.py`) logs you in once interactively (browser,
     or `--auth password` for password plus MFA), generates an RSA 2048 key pair under
     `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key on your own
     user with `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies a key-pair connection, and writes
@@ -97,10 +97,10 @@ People
 Service users
 :   The ingest and transform roles of a deployed environment are held by service users. An
     administrator creates the user by hand (`CREATE USER <login> TYPE = SERVICE`), generates its
-    key pair with `just snowflake keygen <name>`, which prints the public key body, registers it
+    key pair with `just sf keygen <name>`, which prints the public key body, registers it
     with `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`, and grants the roles through a
     `create: false` file in `terraform/config/users/`. The Terraform user itself is bootstrapped
-    the same way: `just snowflake keygen terraform`, then the key goes into
+    the same way: `just sf keygen terraform`, then the key goes into
     `modules/snowflake/init.sql`.
 
 What ends up in an engineer's `.env`:
@@ -131,7 +131,7 @@ needs:
 
 | Method | Returns | Used by |
 |--------|---------|---------|
-| `schema_for_layer(layer)` | `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` when `is_personal` (`dev`, `dummy`) | dlt's `source_dataset()`, `just snowflake check` |
+| `schema_for_layer(layer)` | `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` when `is_personal` (`dev`, `dummy`) | dlt's `source_dataset()`, `just sf check` |
 | `connection_kwargs()` / `connect()` | Arguments for `snowflake.connector.connect`, with the private key loaded as unencrypted PKCS#8 DER | `scripts/snowflake.py` (`check`, `query`) |
 | `dlt_credentials()` | The dict dlt's Snowflake destination expects | `dlt_pipelines/utils/destination.py` |
 
@@ -153,8 +153,8 @@ tag their queries with `dbt_invocation_id:<id>`, so the Snowsight query history 
 ## Checking your connection
 
 ```bash
-just snowflake check                                    # who am I, which schemas exist
-just snowflake query "SELECT CURRENT_ROLE(), CURRENT_DATABASE()"
+just sf check                                    # who am I, which schemas exist
+just sf query "SELECT CURRENT_ROLE(), CURRENT_DATABASE()"
 just info                                               # .env and key status without connecting
 ```
 

@@ -7,7 +7,9 @@ icon: material/clipboard-check
 ## Tools
 
 You install two things yourself; `just init` takes care of the rest (uv, Python 3.13, the
-virtual environment, the dbt packages).
+virtual environment, the dbt packages). Tools that uv does not manage have `just install`:
+`just install direnv`, `just install terraform`, `just install gh` or `just install all`
+(Homebrew on macOS and Linux, winget on Windows). Engineers need none of them.
 
 === "macOS / Linux"
 
@@ -29,8 +31,9 @@ virtual environment, the dbt packages).
     `.python-version`) inside the project's `.venv`. You never activate it by hand: every
     command runs through `uv run`.
 
-[direnv](https://direnv.net/) is optional. The repo ships an `.envrc` that activates `.venv`
-and loads `.env` when you `cd` into it, but `just` does the same for its own recipes.
+[direnv](https://direnv.net/) is optional (`just install direnv`). The repo ships an `.envrc`
+that activates `.venv` and loads `.env` when you `cd` into it, but `just` does the same for its
+own recipes.
 
 ## Access to Snowflake
 
@@ -61,7 +64,8 @@ anyone else's tables.
 
 ## Terraform
 
-Not needed for engineers. Only platform administrators run Terraform (1.5 or newer, see
+Not needed for engineers. Only platform administrators run Terraform (1.5 or newer,
+`just install terraform`, see
 [Snowflake provisioning](../administration/snowflake-provisioning.md)).
 
 Next: [Installation](installation.md).

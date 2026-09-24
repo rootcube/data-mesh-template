@@ -49,7 +49,7 @@ implementation of this boundary: one account, one Organisation. It is identified
 
 | Where | Variable |
 |-------|----------|
-| Engineers, in `.env` | `SNOWFLAKE_ACCOUNT` (written by `just snowflake setup`) |
+| Engineers, in `.env` | `SNOWFLAKE_ACCOUNT` (written by `just sf setup`) |
 | Administrators, for the Terraform provider | `TF_VAR_SNOWFLAKE_ORGANIZATION` and `TF_VAR_SNOWFLAKE_ACCOUNT` |
 
 The bootstrap objects that let Terraform manage the account (`TERRAFORM_USER`,

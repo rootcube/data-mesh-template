@@ -145,8 +145,8 @@ The starter ships one organisation (`example`), one team (`platform`) and one pr
     ```bash
     git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
     just init              # uv, .venv, .env, dbt packages
-    just snowflake setup   # one-time login, key pair registered on your user, .env filled in
+    just sf setup   # one-time login, key pair registered on your user, .env filled in
     just setup             # fresh account instead of the two lines above: also bootstraps Terraform and provisions the project
-    just snowflake check   # proves key-pair login works
+    just sf check   # proves key-pair login works
     just start             # Dagster UI on http://localhost:3000
     ```

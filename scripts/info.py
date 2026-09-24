@@ -56,9 +56,9 @@ def main() -> int:
             print(
                 f"  context     {settings.database} as {settings.role} on {settings.warehouse} ({settings.environment})"
             )
-        print(f"  next        {'just snowflake setup' if missing else 'just snowflake check, then just start'}")
+        print(f"  next        {'just sf setup' if missing else 'just sf check, then just start'}")
     else:
-        print("  .env        missing (run `just init`, then `just snowflake setup`)")
+        print("  .env        missing (run `just init`, then `just sf setup`)")
     for name in (".dagster", ".dlt/data", "dbt/dbt_example/packages"):
         print(f"  {name:<11} {'present' if (ROOT / name).exists() else 'missing'}")
     return 0

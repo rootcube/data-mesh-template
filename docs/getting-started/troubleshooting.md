@@ -11,28 +11,28 @@ icon: material/lifebuoy
 :   The installer puts it in `~/.local/bin`. Open a new shell, or add that directory to your
     `PATH`, and run `just init` again.
 
-**The browser does not open during `just snowflake setup`**
+**The browser does not open during `just sf setup`**
 :   Copy the URL the connector prints into a browser yourself, or use
-    `just snowflake setup --auth password`.
+    `just sf setup --auth password`.
 
 **`Insufficient privileges` when registering the key**
 :   Your account does not let users set their own key. Send `~/.snowflake/keys/<account>__<user>.pub`
     to your platform administrator and fill in `.env` by hand; see
     [Snowflake authentication](snowflake-auth.md#when-registration-is-not-allowed).
 
-**`JWT token is invalid` on `just snowflake check`**
-:   The key in `.env` does not match the key registered on the user. Run `just snowflake setup`
+**`JWT token is invalid` on `just sf check`**
+:   The key in `.env` does not match the key registered on the user. Run `just sf setup`
     again and let it re-register the existing key.
 
 **`Object does not exist, or operation cannot be performed` in dbt or dlt**
 :   Usually a wrong role or database in `.env`, or a role you have not been granted.
-    `just snowflake check` shows what you are connected as; the values should be
+    `just sf check` shows what you are connected as; the values should be
     `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your administrator can list your grants
     with `just tf output -json user_role_grants`.
 
 **dbt builds into `DBT_STG` instead of `DBT_<USERNAME>_STG`**
 :   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`. Set it
-    to your prefix (`DBT_<USERNAME>`), the same value `just snowflake setup` proposes.
+    to your prefix (`DBT_<USERNAME>`), the same value `just sf setup` proposes.
 
 **`FileNotFoundError: .../.venv/bin/dbt` (or "bad interpreter") although the file exists**
 :   The checkout was moved or renamed after `.venv` was created; the scripts in it still name

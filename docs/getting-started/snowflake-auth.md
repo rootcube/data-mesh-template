@@ -9,7 +9,7 @@ a **key pair**: no passwords in files, no MFA prompts on every run. Setting that
 interactive login.
 
 ```bash
-just snowflake setup
+just sf setup
 ```
 
 ## What happens
@@ -19,7 +19,7 @@ walks through four steps:
 
 1. **One-time interactive login.** Your browser opens on the Snowflake login page (SSO if the
    account has it, otherwise username, password and MFA). Prefer the terminal? Use
-   `just snowflake setup --auth password`, which asks for your password and an MFA passcode
+   `just sf setup --auth password`, which asks for your password and an MFA passcode
    (or sends a push notification when you leave it empty).
 2. **Key pair.** An RSA 2048 key pair is written to `~/.snowflake/keys/<account>__<user>.p8`
    (private, owner-only permissions) and `<account>__<user>.pub`. Add `--passphrase` to encrypt
@@ -54,7 +54,7 @@ it that way when you edit by hand.
 !!! tip "Fewer questions"
     `--account` and `--user` skip the first two prompts, `--yes` skips the context confirmation.
     Use `--yes` only when your user's defaults in Snowflake are already the right role,
-    warehouse and database; `just snowflake check` shows what was written.
+    warehouse and database; `just sf check` shows what was written.
 
 ## What the values mean
 
@@ -74,9 +74,9 @@ personal schema prefix `DBT_<USERNAME>`. When a project is provisioned later, or
 another one, rerun only that part; it connects with your key pair, so there is no login:
 
 ```bash
-just snowflake context            # lists your project roles, asks, verifies, writes .env
-just snowflake context --yes      # takes the defaults without asking
-just snowflake context --role RL_OTHER_DEV__ENG
+just sf context            # lists your project roles, asks, verifies, writes .env
+just sf context --yes      # takes the defaults without asking
+just sf context --role RL_OTHER_DEV__ENG
 ```
 
 Restart `just start` afterwards: Dagster reads `.env` when it launches and injects those values
@@ -85,7 +85,7 @@ into every run, so values exported in your shell never reach a run.
 ## Check it
 
 ```bash
-just snowflake check
+just sf check
 ```
 
 connects with the key pair and prints your organization, account, user, role, warehouse,
@@ -94,7 +94,7 @@ you will write to (`DBT_USERNAME_SRC, DBT_USERNAME_STG, ... (dev)`). Ad-hoc SQL 
 way:
 
 ```bash
-just snowflake query "SELECT CURRENT_USER(), CURRENT_ROLE()"
+just sf query "SELECT CURRENT_USER(), CURRENT_ROLE()"
 ```
 
 ## Rotating or re-running
@@ -113,6 +113,6 @@ setting their own key. The script stops there and does not write `.env`. Then:
 2. Fill in the Snowflake block of `.env` by hand: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` (exactly
    as `CURRENT_USER()` returns it), `SNOWFLAKE_PRIVATE_KEY_PATH` (the absolute path of the
    `.p8` file), your role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`.
-3. Run `just snowflake check`.
+3. Run `just sf check`.
 
 Next: [First run](first-run.md).

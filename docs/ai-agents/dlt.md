@@ -123,7 +123,7 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 
 `dlt_pipelines/utils/destination.py` builds `dlt.destinations.snowflake(...)` from `SnowflakeSettings.from_env().dlt_credentials()`: the same `SNOWFLAKE_*` variables dbt and Dagster use, key-pair authentication only. Credentials are validated when a pipeline *runs*, not when the module is imported, so `just validate` and the Dagster code location work without a `.env`.
 
-Load files go through a named internal stage, not the implicit table stage: `stage_name=load_stage(settings)` is `DB_<PROJECT>_<ENV>._SRC.ST_DLT`, created by Terraform in the provisioned source layer (`terraform/stages.tf`) and the same in every environment, `dev` included. dlt `PUT`s the JSONL files there under a folder per load id and runs `COPY INTO` from it; the ingest role has `READ` and `WRITE` on the stage, engineers inherit that in `dev`. Files stay after the load (dlt's `keep_staged_files` default); `just snowflake query "LIST @_SRC.ST_DLT"` shows them.
+Load files go through a named internal stage, not the implicit table stage: `stage_name=load_stage(settings)` is `DB_<PROJECT>_<ENV>._SRC.ST_DLT`, created by Terraform in the provisioned source layer (`terraform/stages.tf`) and the same in every environment, `dev` included. dlt `PUT`s the JSONL files there under a folder per load id and runs `COPY INTO` from it; the ingest role has `READ` and `WRITE` on the stage, engineers inherit that in `dev`. Files stay after the load (dlt's `keep_staged_files` default); `just sf query "LIST @_SRC.ST_DLT"` shows them.
 
 ## Running a pipeline
 
@@ -141,7 +141,7 @@ Load files go through a named internal stage, not the implicit table stage: `sta
 
     `just start`, then materialize `dlt/ingest/knmi/climate_hourly` in the UI, or launch `job_dlt_ingest_all`. Same `source` and `pipeline` objects, so the two paths cannot drift.
 
-Check the result either way with `just snowflake query "SELECT COUNT(1) FROM dbt_username_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_username` (`just snowflake check` prints the layer schemas it resolved).
+Check the result either way with `just sf query "SELECT COUNT(1) FROM dbt_username_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_username` (`just sf check` prints the layer schemas it resolved).
 
 ## Runtime configuration
 

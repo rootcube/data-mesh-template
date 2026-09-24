@@ -34,7 +34,7 @@ last 30 days, hourly).
 3. Check:
 
     ```bash
-    just snowflake query "SELECT COUNT(*) FROM DBT_<USERNAME>_SRC.knmi__climate_hourly"
+    just sf query "SELECT COUNT(*) FROM DBT_<USERNAME>_SRC.knmi__climate_hourly"
     ```
 
 The same pipeline runs without Dagster, which is handy while developing a source:
@@ -82,7 +82,7 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 | `DBT_<USERNAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
 | `DBT_<USERNAME>_TMP` | dbt tests | stored test failures |
 
-`just snowflake check` lists the schemas. In `prd` (and `tst`, `acc` once enabled) the same
+`just sf check` lists the schemas. In `prd` (and `tst`, `acc` once enabled) the same
 objects live in the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../concepts/layer.md).
 
 ## Where things live locally
