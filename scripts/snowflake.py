@@ -37,6 +37,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import dotenv_values
@@ -74,6 +75,10 @@ def step(title: str) -> None:
 
 def ok(message: str) -> None:
     print(style(GREEN, "✔ ") + message)
+
+
+def warn(message: str) -> None:
+    print(style(YELLOW, "! ") + message)
 
 
 def done(message: str) -> None:
@@ -149,6 +154,13 @@ CONTEXT_SQL = "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRE
 
 def quote_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
+
+
+def account_users(conn: Any) -> set[str]:
+    """Upper-cased names of the users in the account (SHOW USERS; the bootstrap runs it as ACCOUNTADMIN)."""
+    cursor = conn.cursor().execute("SHOW USERS")
+    name = [d[0].lower() for d in cursor.description].index("name")
+    return {str(row[name]).upper() for row in cursor.fetchall()}
 
 
 def granted_project_roles(conn: Any, user: str) -> list[str]:
@@ -353,13 +365,29 @@ def provisioning_sql(public_key: str, slot: str) -> str:
     return sql
 
 
-def ensure_user_config(login: str) -> None:
-    """Write terraform/config/users/<login>.yaml (engineer in dev on every project) unless a file lists the login."""
+def ensure_user_config(login: str, account_users: set[str]) -> None:
+    """Write terraform/config/users/<login>.yaml (engineer in dev on every project) unless a file lists the login.
+
+    Warns about every enabled `create: false` file whose login is not in `account_users` (upper-cased names
+    from SHOW USERS): Terraform fails with "object does not exist or not authorized" on its grants.
+    """
     users_dir, projects_dir = TF_DIR / "config" / "users", TF_DIR / "config" / "projects"
-    for existing in users_dir.glob("*.yaml"):
-        if re.search(rf'^login:\s*"?{re.escape(login)}"?\s*$', existing.read_text(), flags=re.M | re.I):
+    listed = False
+    for existing in sorted(users_dir.glob("*.yaml")):
+        user = yaml.safe_load(existing.read_text()) or {}
+        other = str(user.get("login", ""))
+        if user.get("disabled") or not other:
+            continue
+        if other.upper() == login.upper():
             print(f"{existing} already lists {login}")
-            return
+            listed = True
+        elif other.upper() not in account_users and not user.get("create"):
+            warn(
+                f"{existing} lists {other}, which does not exist in this account: Terraform will fail on its "
+                "grants. Delete the file or set `disabled: true`."
+            )
+    if listed:
+        return
     roles = "".join(
         f"  - project: {project.stem}\n    role: engineer\n    environments:\n      - development\n"
         for project in sorted(projects_dir.glob("*.yaml"))
@@ -477,11 +505,12 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         if registered is None:
             return 1
         private_path, passphrase = registered
+        existing_users = account_users(conn)
     finally:
         conn.close()
 
     step("4/5 Provisioning the projects with Terraform")
-    ensure_user_config(exact_user)
+    ensure_user_config(exact_user, existing_users)
     tf_vars = {
         "SNOWFLAKE_ORGANIZATION": organization,
         "SNOWFLAKE_ACCOUNT": account_name,
