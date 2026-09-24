@@ -35,5 +35,6 @@ privileges:
         - SELECT ON VIEWS
         - USAGE ON FUNCTIONS
         - USAGE ON PROCEDURES
-        - USAGE ON STAGES
+        - READ ON STAGES
+        - WRITE ON STAGES
         - USAGE ON FILE FORMATS

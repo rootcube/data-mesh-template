@@ -100,10 +100,16 @@ Every pipeline gets its destination and its dataset from two functions:
 
 ```python title="dlt_pipelines/utils/destination.py"
 SOURCE_LAYER = "src"
+STAGE = "ST_DLT"
 
 
 def snowflake_destination() -> Destination:
-    return dlt.destinations.snowflake(credentials=SnowflakeSettings.from_env().dlt_credentials())
+    settings = SnowflakeSettings.from_env()
+    return dlt.destinations.snowflake(credentials=settings.dlt_credentials(), stage_name=load_stage(settings))
+
+
+def load_stage(settings: SnowflakeSettings) -> str:
+    return f"{settings.database}._{SOURCE_LAYER.upper()}.{STAGE}"
 
 
 def source_dataset() -> str:
@@ -116,6 +122,17 @@ identifier, user name, private key path and passphrase, role, warehouse and data
 `schema_for_layer("src")` applies the platform's schema rule: the dataset is `_SRC` in the
 shared environments and `<SNOWFLAKE_SCHEMA>_SRC` (for example `DBT_USERNAME_SRC`) in `dev`, where
 dlt creates it on first load.
+
+`stage_name` is where the load files go. dlt writes each load as JSONL files under
+`.dlt/data/`, uploads them with `PUT` and loads the table with `COPY INTO`. Without a
+`stage_name` it would use the table's implicit stage; here it uses the internal stage
+`ST_DLT` that Terraform creates in the provisioned source layer of every project database
+(`terraform/stages.tf`), so the files of every load are in one place per environment:
+`DB_EXAMPLE_DEV._SRC.ST_DLT`, with a folder per load id. It is the same stage in `dev`, where
+only the tables move to your personal schema. The ingest role holds `READ` and `WRITE` on it
+(`READ ON STAGES`, `WRITE ON STAGES` in `terraform/config/roles/ingest.yaml`), and the engineer
+role inherits that in `dev`. dlt keeps the files after a successful `COPY INTO`
+(`keep_staged_files`, its default); `LIST @_SRC.ST_DLT` shows them, `REMOVE` cleans up.
 
 Credentials are only validated when a pipeline runs, so importing the pipelines (which Dagster
 does on every code-location load) works without a `.env`. In `dev` the pipeline runs as your

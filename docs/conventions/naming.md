@@ -152,6 +152,7 @@ environment:
 | Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
+| dlt load stage | `_SRC.ST_DLT`, one internal stage per source layer | `DB_EXAMPLE_DEV._SRC.ST_DLT` |
 | Provisioning (bootstrap) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,

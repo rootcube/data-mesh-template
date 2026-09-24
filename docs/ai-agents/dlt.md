@@ -19,12 +19,12 @@ One top-level package, `dlt_pipelines/`, backs the single `dlt` code location. O
 | `dlt_pipelines/pipelines/ingest/<source>/source.py` | The fetch logic: plain functions that yield dicts |
 | `dlt_pipelines/pipelines/ingest/<source>/pipelines.py` | The `@dlt.source`, its resources, and the module-level `source` and `pipeline` objects |
 | `dlt_pipelines/pipelines/ingest/<source>/defs.yaml` | `dagster_dlt.DltLoadCollectionComponent`: turns `source` and `pipeline` into Dagster assets |
-| `dlt_pipelines/utils/destination.py` | `snowflake_destination()` and `source_dataset()`: the one Snowflake destination and the source-layer schema every pipeline loads into |
+| `dlt_pipelines/utils/destination.py` | `snowflake_destination()`, `load_stage()` and `source_dataset()`: the one Snowflake destination, the internal stage its load files go through and the source-layer schema every pipeline loads into |
 | `dlt_pipelines/__main__.py` | The standalone runner behind `just dlt list` / `just dlt run <source>` |
 | `src/orchestrator/locations/dlt/definitions.py` | The code location: loads the component tree and adds `job_dlt_ingest_all` |
 | `.dlt/config.toml` | Runtime tuning (see below) |
 
-The only source today is `knmi`: hourly weather observations from the public KNMI `uurgegevens` endpoint, no authentication, seven stations, the last 30 days fetched in 10-day chunks (`constants.py`).
+The only source today is `knmi`: hourly weather observations from the public KNMI `uurgegevens` endpoint, no authentication, seven stations, the last 30 days and never anything before `START_DATE` (2026-01-01), fetched in 10-day chunks (`constants.py`).
 
 ## Where the data lands
 
@@ -122,6 +122,8 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 ## The destination
 
 `dlt_pipelines/utils/destination.py` builds `dlt.destinations.snowflake(...)` from `SnowflakeSettings.from_env().dlt_credentials()`: the same `SNOWFLAKE_*` variables dbt and Dagster use, key-pair authentication only. Credentials are validated when a pipeline *runs*, not when the module is imported, so `just validate` and the Dagster code location work without a `.env`.
+
+Load files go through a named internal stage, not the implicit table stage: `stage_name=load_stage(settings)` is `DB_<PROJECT>_<ENV>._SRC.ST_DLT`, created by Terraform in the provisioned source layer (`terraform/stages.tf`) and the same in every environment, `dev` included. dlt `PUT`s the JSONL files there under a folder per load id and runs `COPY INTO` from it; the ingest role has `READ` and `WRITE` on the stage, engineers inherit that in `dev`. Files stay after the load (dlt's `keep_staged_files` default); `just snowflake query "LIST @_SRC.ST_DLT"` shows them.
 
 ## Running a pipeline
 

@@ -15,6 +15,7 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_REF`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
+| dlt load files | internal stage `ST_DLT` in the source layer schema (`stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DLT` |
 | User | role grants (and optionally the user itself) | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
 
 Development is shared: engineers hold `CREATE SCHEMA` on `DB_<PROJECT>_DEV` and work in personal
