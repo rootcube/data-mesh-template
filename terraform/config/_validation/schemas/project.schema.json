@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "project.schema.json",
+  "title": "Project Configuration",
+  "description": "Long-lived technical and data ownership boundaries within the data mesh. Each project is owned by exactly one team. The 'roles' property is the authoritative source for which roles are created for this project. All references use keys (e.g., 'development', 'source') not codes.",
+  "type": "object",
+  "required": ["team", "name", "code"],
+  "additionalProperties": false,
+  "properties": {
+    "team": {
+      "type": "string",
+      "description": "The team key that owns this project",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the project",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "code": {
+      "type": "string",
+      "description": "Short code identifier for the project, used in naming conventions",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 2,
+      "maxLength": 20
+    },
+    "desc": {
+      "type": "string",
+      "description": "Description of the project's purpose",
+      "maxLength": 500
+    },
+    "alias": {
+      "type": "string",
+      "description": "Alternative name or abbreviation for the project",
+      "maxLength": 50
+    },
+    "environments": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "*",
+          "description": "Wildcard to include all enabled environments"
+        },
+        {
+          "type": "array",
+          "description": "Environment keys this project is deployed to (e.g., 'development', 'production')",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ]
+    },
+    "layers": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "*",
+          "description": "Wildcard to include all enabled layers"
+        },
+        {
+          "type": "array",
+          "description": "Layer keys for schemas in this project (e.g., 'source', 'staging', 'mart')",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ]
+    },
+    "computes": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "*",
+          "description": "Wildcard to include all enabled compute profiles"
+        },
+        {
+          "type": "array",
+          "description": "Compute profile keys assigned to this project (e.g., 'default', 'ingest', 'transform')",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "uniqueItems": true
+        }
+      ]
+    },
+    "roles": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "*",
+          "description": "Wildcard to include all enabled project-level roles"
+        },
+        {
+          "type": "array",
+          "description": "Role keys assigned to this project (e.g., 'analyst', 'engineer'). This is the authoritative source for role creation - only roles listed here (plus mandatory roles) will be created.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z]+$"
+          },
+          "uniqueItems": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,196 @@
+# =============================================================================
+# Privilege Bundles Configuration
+# =============================================================================
+# These bundles simplify privilege configuration for roles by grouping
+# related grants into logical units.
+#
+# Bundle Naming Convention:
+#   {scope}_{access_level}
+#   - Scope: account, database, schema, warehouse, objects
+#   - Access Level: read, write, full, usage, operate, monitor
+#
+# Snowflake Privileges Reference:
+# -----------------------------------------------------------------------------
+# Account:    CREATE DATABASE, CREATE WAREHOUSE, CREATE ROLE, MANAGE GRANTS, etc.
+# Database:   USAGE, MONITOR, CREATE SCHEMA, MODIFY, REFERENCE_USAGE
+# Schema:     USAGE, MONITOR, CREATE TABLE/VIEW/FUNCTION/etc., MODIFY
+# Warehouse:  USAGE, OPERATE, MONITOR, MODIFY
+# -----------------------------------------------------------------------------
+# Schema Objects:
+# - Tables: SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES
+# - Dynamic Tables: SELECT, OPERATE, MONITOR
+# - Views/Materialized Views: SELECT, REFERENCES
+# - Functions/Procedures: USAGE
+# - Stages: READ, WRITE
+# - Streams: SELECT
+# - Tasks/Pipes/Alerts: OPERATE, MONITOR
+# - File Formats/Sequences: USAGE
+# - Secrets: READ, USAGE
+# - Tags: READ, APPLY
+
+snowflake:
+
+  # ===========================================================================
+  # Global Bundles
+  # ===========================================================================
+
+  account_ops:
+    account:
+      - MONITOR USAGE
+      - MONITOR SECURITY
+
+  user_create:
+    account:
+      - CREATE USER
+
+  role_create:
+    account:
+      - CREATE ROLE
+
+  warehouse_create:
+    account:
+      - CREATE WAREHOUSE
+
+  database_create:
+    account:
+      - CREATE DATABASE
+
+  # ===========================================================================
+  # Account Object Bundles
+  # ===========================================================================
+
+  warehouse_use:
+    warehouse:
+      - USAGE
+
+  warehouse_ops:
+    warehouse:
+      - USAGE
+      - MONITOR
+      - OPERATE
+
+  warehouse_full:
+    warehouse:
+      - USAGE
+      - MONITOR
+      - OPERATE
+      - MODIFY
+
+  database_use:
+    database:
+      - USAGE
+
+  database_ops:
+    database:
+      - USAGE
+      - MONITOR
+      - CREATE SCHEMA
+
+  database_full:
+    database:
+      - USAGE
+      - MONITOR
+      - MODIFY
+      - CREATE SCHEMA
+
+  user_manage:
+    user:
+      - MONITOR
+      - MODIFY PROGRAMMATIC AUTHENTICATION METHODS
+
+  user_impersonate:
+    user:
+      - IMPERSONATE
+
+  # ===========================================================================
+  # Schema Bundles
+  # ===========================================================================
+
+  schema_use:
+    schema:
+      - USAGE
+      - MONITOR
+
+  schema_ops:
+    schema:
+      - USAGE
+      - MONITOR
+      - CREATE SEQUENCE
+      - CREATE TABLE
+      - CREATE HYBRID TABLE
+      - CREATE VIEW
+      - CREATE MATERIALIZED VIEW
+      - CREATE FUNCTION
+      - CREATE PROCEDURE
+
+  schema_full:
+    schema:
+      - USAGE
+      - MONITOR
+      - MODIFY
+      - CREATE TABLE
+      - CREATE EXTERNAL TABLE
+      - CREATE ICEBERG TABLE
+      - CREATE DYNAMIC TABLE
+      - CREATE EVENT TABLE
+      - CREATE HYBRID TABLE
+      - CREATE VIEW
+      - CREATE MATERIALIZED VIEW
+      - CREATE SEQUENCE
+      - CREATE FUNCTION
+      - CREATE PROCEDURE
+      - CREATE FILE FORMAT
+      - CREATE STAGE
+      - CREATE PIPE
+      - CREATE STREAM
+      - CREATE TASK
+      - CREATE ALERT
+      - CREATE SECRET
+      - CREATE TAG
+
+  # ===========================================================================
+  # Schema Object Bundles
+  # ===========================================================================
+
+  # Read - query and reference objects
+  objects_read:
+    tables: [SELECT, REFERENCES]
+    dynamic_tables: [SELECT]
+    hybrid_tables: [SELECT, REFERENCES]
+    iceberg_tables: [SELECT, REFERENCES]
+    external_tables: [SELECT, REFERENCES]
+    event_tables: [SELECT]
+    views: [SELECT, REFERENCES]
+    materialized_views: [SELECT, REFERENCES]
+    functions: [USAGE]
+    procedures: [USAGE]
+    streams: [SELECT]
+    stages: [READ]
+    file_formats: [USAGE]
+    sequences: [USAGE]
+    secrets: [READ]
+    tags: [READ]
+
+  # Write - data modification (use with objects_read for full DML access)
+  objects_write:
+    tables: [INSERT, UPDATE, DELETE, TRUNCATE]
+    hybrid_tables: [INSERT, UPDATE, DELETE, TRUNCATE]
+    iceberg_tables: [INSERT, UPDATE, DELETE, TRUNCATE]
+    event_tables: [INSERT]
+    stages: [WRITE]
+    secrets: [USAGE]
+    tags: [APPLY]
+
+  # Operate - run orchestration objects
+  objects_operate:
+    dynamic_tables: [OPERATE, MONITOR]
+    tasks: [OPERATE, MONITOR]
+    pipes: [OPERATE, MONITOR]
+    alerts: [OPERATE, MONITOR]
+
+  # Monitor - read-only observability (subset of operate)
+  objects_monitor:
+    dynamic_tables: [MONITOR]
+    tasks: [MONITOR]
+    pipes: [MONITOR]
+    alerts: [MONITOR]

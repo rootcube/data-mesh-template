@@ -1,0 +1,15 @@
+type: dagster_dlt.DltLoadCollectionComponent
+
+attributes:
+  loads:
+    - pipeline: .pipelines.pipeline
+      source: .pipelines.source
+      translation:
+        key: '{{ resource.name | lower }}'
+        key_prefix: '{{ ["dlt", "ingest", "knmi"] }}'
+        group_name: dlt/ingest/knmi
+        kinds:
+          - dlt
+          - snowflake
+        # The API is the start of the graph: no placeholder upstream asset per resource.
+        deps: []

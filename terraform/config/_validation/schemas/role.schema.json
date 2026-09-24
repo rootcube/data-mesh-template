@@ -1,0 +1,237 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "role.schema.json",
+  "title": "Role Configuration",
+  "description": "Security and responsibility boundaries defining what actors may do. Roles are scoped to Project \u00d7 Environment.",
+  "type": "object",
+  "required": [
+    "code",
+    "name",
+    "type",
+    "level"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Short lowercase code for the role (3 characters)",
+      "pattern": "^[a-z]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the role",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of actor that uses this role",
+      "enum": [
+        "person",
+        "system",
+        "hybrid"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "description": "Scope level of the role",
+      "enum": [
+        "platform",
+        "project"
+      ]
+    },
+    "desc": {
+      "type": "string",
+      "description": "Description of the role's purpose and permissions",
+      "maxLength": 500
+    },
+    "alias": {
+      "type": "string",
+      "description": "Alternative name or abbreviation for the role",
+      "maxLength": 50
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Whether this role is disabled and unavailable for use",
+      "default": false
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Whether this role must be created for every project",
+      "default": false
+    },
+    "privileges": {
+      "$ref": "#/$defs/privileges"
+    }
+  },
+  "$defs": {
+    "privileges": {
+      "type": "object",
+      "description": "Privileges for this role across different platform concepts",
+      "additionalProperties": false,
+      "properties": {
+        "computes": {
+          "type": "object",
+          "description": "Warehouse/compute privileges per compute profile",
+          "additionalProperties": {
+            "$ref": "#/$defs/computePrivilegesByEnvironment"
+          }
+        },
+        "layers": {
+          "type": "object",
+          "description": "Schema/layer privileges per layer",
+          "additionalProperties": {
+            "$ref": "#/$defs/layerPrivilegesByEnvironment"
+          }
+        },
+        "roles": {
+          "type": "object",
+          "description": "Role inheritance - parent roles to inherit from",
+          "additionalProperties": {
+            "$ref": "#/$defs/roleEnvironments"
+          }
+        },
+        "database": {
+          "$ref": "#/$defs/databasePrivilegesByEnvironment"
+        }
+      }
+    },
+    "computePrivilegesByEnvironment": {
+      "type": "object",
+      "description": "Compute privileges by environment. Use 'all' for all environments or specific environment codes (dev, tst, acc, prd)",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "USAGE",
+            "OPERATE",
+            "MONITOR",
+            "MODIFY"
+          ]
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    },
+    "layerPrivilegesByEnvironment": {
+      "type": "object",
+      "description": "Layer privileges by environment. Use 'all' for all environments or specific environment codes.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "USAGE",
+            "MONITOR",
+            "MODIFY",
+            "CREATE TABLE",
+            "CREATE EXTERNAL TABLE",
+            "CREATE VIEW",
+            "CREATE MATERIALIZED VIEW",
+            "CREATE DYNAMIC TABLE",
+            "CREATE ICEBERG TABLE",
+            "CREATE EVENT TABLE",
+            "CREATE STAGE",
+            "CREATE FILE FORMAT",
+            "CREATE SEQUENCE",
+            "CREATE FUNCTION",
+            "CREATE PROCEDURE",
+            "CREATE STREAM",
+            "CREATE TASK",
+            "CREATE PIPE",
+            "CREATE ALERT",
+            "CREATE SNOWFLAKE.ML.ANOMALY_DETECTION",
+            "CREATE SNOWFLAKE.ML.FORECAST",
+            "CREATE SNOWFLAKE.ML.CLASSIFICATION",
+            "CREATE SECRET",
+            "CREATE NETWORK RULE",
+            "CREATE PACKAGES POLICY",
+            "CREATE PASSWORD POLICY",
+            "CREATE SESSION POLICY",
+            "CREATE MASKING POLICY",
+            "CREATE ROW ACCESS POLICY",
+            "CREATE TAG",
+            "ADD SEARCH OPTIMIZATION",
+            "SELECT ON TABLES",
+            "INSERT ON TABLES",
+            "UPDATE ON TABLES",
+            "DELETE ON TABLES",
+            "TRUNCATE ON TABLES",
+            "REFERENCES ON TABLES",
+            "EVOLVE SCHEMA ON TABLES",
+            "SELECT ON EXTERNAL TABLES",
+            "REFERENCES ON EXTERNAL TABLES",
+            "SELECT ON VIEWS",
+            "REFERENCES ON VIEWS",
+            "SELECT ON MATERIALIZED VIEWS",
+            "REFERENCES ON MATERIALIZED VIEWS",
+            "SELECT ON DYNAMIC TABLES",
+            "MONITOR ON DYNAMIC TABLES",
+            "OPERATE ON DYNAMIC TABLES",
+            "SELECT ON ICEBERG TABLES",
+            "INSERT ON ICEBERG TABLES",
+            "UPDATE ON ICEBERG TABLES",
+            "DELETE ON ICEBERG TABLES",
+            "TRUNCATE ON ICEBERG TABLES",
+            "REFERENCES ON ICEBERG TABLES",
+            "SELECT ON EVENT TABLES",
+            "INSERT ON EVENT TABLES",
+            "USAGE ON FUNCTIONS",
+            "USAGE ON PROCEDURES",
+            "USAGE ON SEQUENCES",
+            "USAGE ON STAGES",
+            "READ ON STAGES",
+            "WRITE ON STAGES",
+            "USAGE ON FILE FORMATS",
+            "USAGE ON SECRETS",
+            "READ ON SECRETS",
+            "MONITOR ON STREAMS",
+            "MONITOR ON TASKS",
+            "OPERATE ON TASKS",
+            "MONITOR ON PIPES",
+            "OPERATE ON PIPES",
+            "MONITOR ON ALERTS",
+            "OPERATE ON ALERTS",
+            "APPLY ON MASKING POLICIES",
+            "APPLY ON ROW ACCESS POLICIES",
+            "APPLY ON PASSWORD POLICIES",
+            "APPLY ON SESSION POLICIES",
+            "APPLY ON TAGS",
+            "READ ON TAGS"
+          ]
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    },
+    "roleEnvironments": {
+      "type": "array",
+      "description": "List of environments where this role inheritance applies. Use 'all' for all environments or specific environment codes.",
+      "items": {
+        "type": "string",
+        "pattern": "^(all|dev|tst|acc|prd|sbx)$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "databasePrivilegesByEnvironment": {
+      "type": "object",
+      "description": "Database privileges by environment on top of the implicit USAGE. Use 'all' for all environments or specific environment codes.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "USAGE",
+            "MONITOR",
+            "CREATE SCHEMA",
+            "MODIFY"
+          ]
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      }
+    }
+  }
+}

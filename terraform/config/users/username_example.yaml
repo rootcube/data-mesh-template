@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../_validation/schemas/user.schema.json
+# User: username@example.com
+# =========================
+# One file per person, to copy from. `create: false` for logins that already exist (SSO);
+# `create: true` creates the user with a one-time password. This example is `disabled` so
+# Terraform never tries to grant a role to a login that does not exist in your account.
+
+login: "username@example.com"
+name: "Username"
+create: false
+disabled: true
+roles:
+  - project: example
+    role: engineer
+    environments:
+      - development

@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# Role: Reporting
+# ===============
+
+code: "rpt"
+name: "Reporting"
+type: "hybrid"
+level: "project"
+desc: "Used by reporting systems to read curated data (hybrid: system or person)"
+disabled: false
+required: false
+
+privileges:
+  computes:
+    default:
+      all: [USAGE]
+  layers:
+    mart:
+      all:
+        - USAGE
+        - SELECT ON TABLES
+        - REFERENCES ON TABLES
+        - SELECT ON VIEWS
+        - REFERENCES ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+    expose:
+      all:
+        - USAGE
+        - SELECT ON TABLES
+        - REFERENCES ON TABLES
+        - SELECT ON VIEWS
+        - REFERENCES ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES

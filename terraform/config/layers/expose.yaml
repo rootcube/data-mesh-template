@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Expose
+# =============
+
+code: "exp"
+name: "Expose Layer"
+desc: "Published outputs and cross-project contracts"
+type: "output"
+sort: 310
+disabled: false
+required: true

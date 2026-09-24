@@ -1,0 +1,27 @@
+# Release flow (docs/conventions/git-workflow.md): release-please keeps a release PR up
+# to date from the conventional commits on main. Merging that PR bumps pyproject.toml and
+# uv.lock, writes CHANGELOG.md, tags vX.Y.Z and creates the GitHub release.
+# Tags created with the default GITHUB_TOKEN do not trigger other workflows: anything that
+# must run on a release is chained off this job's outputs (release_created, tag_name).
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release PR / tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v5

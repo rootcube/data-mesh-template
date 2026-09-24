@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/environment.schema.json
+# Environment: Acceptance
+# =======================
+
+letter: "a"
+code: "acc"
+name: "Acceptance Environment"
+desc: "Business validation and sign-off in near-production setup"
+sort: 300
+disabled: false
+required: false

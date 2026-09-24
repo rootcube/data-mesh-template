@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Temporary
+# ================
+
+code: "tmp"
+name: "Temporary Layer"
+desc: "Short-lived datasets for operations and intermediate work"
+type: "operational"
+sort: 910
+disabled: false
+required: false

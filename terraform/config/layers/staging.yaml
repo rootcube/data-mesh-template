@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Staging
+# ==============
+
+code: "stg"
+name: "Staging Layer"
+desc: "Mandatory landing layer for standardising and cleaning inputs"
+type: "processing"
+sort: 220
+disabled: false
+required: true

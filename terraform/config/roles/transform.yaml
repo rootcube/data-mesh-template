@@ -1,0 +1,130 @@
+# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# Role: Transform
+# ===============
+
+code: "tfm"
+name: "Transform"
+type: "system"
+level: "project"
+desc: "Used by transformation tooling (e.g. dbt) to read and write across layers"
+disabled: false
+required: true
+
+privileges:
+  computes:
+    default:
+      all: [USAGE, OPERATE]
+    transform:
+      all: [USAGE, OPERATE]
+  layers:
+    source:
+      all:
+        - USAGE
+        - SELECT ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+        - USAGE ON STAGES
+        - USAGE ON FILE FORMATS
+    staging:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - CREATE MATERIALIZED VIEW
+        - CREATE FUNCTION
+        - CREATE PROCEDURE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+    integration:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - CREATE MATERIALIZED VIEW
+        - CREATE FUNCTION
+        - CREATE PROCEDURE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+    mart:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - CREATE MATERIALIZED VIEW
+        - CREATE FUNCTION
+        - CREATE PROCEDURE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+    expose:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - CREATE MATERIALIZED VIEW
+        - CREATE FUNCTION
+        - CREATE PROCEDURE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+    metadata:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+    reference:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    temporary:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS

@@ -1,0 +1,788 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "privilege.schema.json",
+  "title": "Snowflake Privilege Bundles Configuration",
+  "description": "Defines reusable privilege bundles that group related Snowflake grants into logical units for role assignments.",
+  "type": "object",
+  "required": ["snowflake"],
+  "additionalProperties": false,
+  "properties": {
+    "snowflake": {
+      "type": "object",
+      "description": "Map of privilege bundle names to their privilege definitions",
+      "additionalProperties": {
+        "$ref": "#/$defs/privilegeBundle"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "description": "Bundle names must be lowercase alphanumeric with underscores"
+      }
+    }
+  },
+  "$defs": {
+    "privilegeBundle": {
+      "type": "object",
+      "description": "A bundle of privileges grouped by object type",
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "$ref": "#/$defs/accountPrivileges"
+        },
+        "warehouse": {
+          "$ref": "#/$defs/warehousePrivileges"
+        },
+        "database": {
+          "$ref": "#/$defs/databasePrivileges"
+        },
+        "schema": {
+          "$ref": "#/$defs/schemaPrivileges"
+        },
+        "user": {
+          "$ref": "#/$defs/userPrivileges"
+        },
+        "role": {
+          "$ref": "#/$defs/rolePrivileges"
+        },
+        "tables": {
+          "$ref": "#/$defs/tablePrivileges"
+        },
+        "dynamic_tables": {
+          "$ref": "#/$defs/dynamicTablePrivileges"
+        },
+        "hybrid_tables": {
+          "$ref": "#/$defs/hybridTablePrivileges"
+        },
+        "iceberg_tables": {
+          "$ref": "#/$defs/icebergTablePrivileges"
+        },
+        "external_tables": {
+          "$ref": "#/$defs/externalTablePrivileges"
+        },
+        "event_tables": {
+          "$ref": "#/$defs/eventTablePrivileges"
+        },
+        "views": {
+          "$ref": "#/$defs/viewPrivileges"
+        },
+        "materialized_views": {
+          "$ref": "#/$defs/materializedViewPrivileges"
+        },
+        "functions": {
+          "$ref": "#/$defs/functionPrivileges"
+        },
+        "procedures": {
+          "$ref": "#/$defs/procedurePrivileges"
+        },
+        "streams": {
+          "$ref": "#/$defs/streamPrivileges"
+        },
+        "stages": {
+          "$ref": "#/$defs/stagePrivileges"
+        },
+        "file_formats": {
+          "$ref": "#/$defs/fileFormatPrivileges"
+        },
+        "sequences": {
+          "$ref": "#/$defs/sequencePrivileges"
+        },
+        "secrets": {
+          "$ref": "#/$defs/secretPrivileges"
+        },
+        "tags": {
+          "$ref": "#/$defs/tagPrivileges"
+        },
+        "tasks": {
+          "$ref": "#/$defs/taskPrivileges"
+        },
+        "pipes": {
+          "$ref": "#/$defs/pipePrivileges"
+        },
+        "alerts": {
+          "$ref": "#/$defs/alertPrivileges"
+        },
+        "network_rules": {
+          "$ref": "#/$defs/networkRulePrivileges"
+        },
+        "integrations": {
+          "$ref": "#/$defs/integrationPrivileges"
+        },
+        "connections": {
+          "$ref": "#/$defs/connectionPrivileges"
+        },
+        "notebooks": {
+          "$ref": "#/$defs/notebookPrivileges"
+        },
+        "services": {
+          "$ref": "#/$defs/servicePrivileges"
+        },
+        "compute_pools": {
+          "$ref": "#/$defs/computePoolPrivileges"
+        },
+        "image_repositories": {
+          "$ref": "#/$defs/imageRepositoryPrivileges"
+        },
+        "models": {
+          "$ref": "#/$defs/modelPrivileges"
+        },
+        "git_repositories": {
+          "$ref": "#/$defs/gitRepositoryPrivileges"
+        },
+        "masking_policies": {
+          "$ref": "#/$defs/maskingPolicyPrivileges"
+        },
+        "row_access_policies": {
+          "$ref": "#/$defs/rowAccessPolicyPrivileges"
+        },
+        "password_policies": {
+          "$ref": "#/$defs/passwordPolicyPrivileges"
+        },
+        "session_policies": {
+          "$ref": "#/$defs/sessionPolicyPrivileges"
+        },
+        "aggregation_policies": {
+          "$ref": "#/$defs/aggregationPolicyPrivileges"
+        },
+        "projection_policies": {
+          "$ref": "#/$defs/projectionPolicyPrivileges"
+        },
+        "authentication_policies": {
+          "$ref": "#/$defs/authenticationPolicyPrivileges"
+        },
+        "packages_policies": {
+          "$ref": "#/$defs/packagesPolicyPrivileges"
+        },
+        "data_metric_functions": {
+          "$ref": "#/$defs/dataMetricFunctionPrivileges"
+        }
+      }
+    },
+    "accountPrivileges": {
+      "type": "array",
+      "description": "Account-level privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY MASKING POLICY",
+          "APPLY PASSWORD POLICY",
+          "APPLY ROW ACCESS POLICY",
+          "APPLY SESSION POLICY",
+          "APPLY AUTHENTICATION POLICY",
+          "APPLY PACKAGES POLICY",
+          "APPLY AGGREGATION POLICY",
+          "APPLY PROJECTION POLICY",
+          "APPLY TAG",
+          "ATTACH POLICY",
+          "AUDIT",
+          "BIND SERVICE ENDPOINT",
+          "CREATE ACCOUNT",
+          "CREATE APPLICATION",
+          "CREATE APPLICATION PACKAGE",
+          "CREATE COMPUTE POOL",
+          "CREATE CONNECTION",
+          "CREATE DATA EXCHANGE LISTING",
+          "CREATE DATABASE",
+          "CREATE EXTERNAL VOLUME",
+          "CREATE FAILOVER GROUP",
+          "CREATE INTEGRATION",
+          "CREATE NETWORK POLICY",
+          "CREATE REPLICATION GROUP",
+          "CREATE ROLE",
+          "CREATE SHARE",
+          "CREATE USER",
+          "CREATE WAREHOUSE",
+          "EXECUTE ALERT",
+          "EXECUTE DATA METRIC FUNCTION",
+          "EXECUTE MANAGED ALERT",
+          "EXECUTE MANAGED TASK",
+          "EXECUTE TASK",
+          "IMPORT SHARE",
+          "MANAGE ACCOUNT SUPPORT CASES",
+          "MANAGE GRANTS",
+          "MANAGE USER SUPPORT CASES",
+          "MANAGE WAREHOUSES",
+          "MODIFY LOG LEVEL",
+          "MODIFY METRIC LEVEL",
+          "MODIFY SESSION LOG LEVEL",
+          "MODIFY SESSION METRIC LEVEL",
+          "MODIFY SESSION TRACE LEVEL",
+          "MODIFY TRACE LEVEL",
+          "MONITOR",
+          "MONITOR EXECUTION",
+          "MONITOR SECURITY",
+          "MONITOR USAGE",
+          "OVERRIDE SHARE RESTRICTIONS",
+          "PURCHASE DATA EXCHANGE LISTING",
+          "RESOLVE ALL",
+          "READ SESSION"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "warehousePrivileges": {
+      "type": "array",
+      "description": "Warehouse privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "MODIFY",
+          "MONITOR",
+          "OPERATE",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "databasePrivileges": {
+      "type": "array",
+      "description": "Database privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "CREATE DATABASE ROLE",
+          "CREATE SCHEMA",
+          "IMPORTED PRIVILEGES",
+          "MODIFY",
+          "MONITOR",
+          "REFERENCE_USAGE",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "schemaPrivileges": {
+      "type": "array",
+      "description": "Schema privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ADD SEARCH OPTIMIZATION",
+          "APPLYBUDGET",
+          "CREATE AGGREGATION POLICY",
+          "CREATE ALERT",
+          "CREATE AUTHENTICATION POLICY",
+          "CREATE CORTEX SEARCH SERVICE",
+          "CREATE DATA METRIC FUNCTION",
+          "CREATE DATASET",
+          "CREATE DOCUMENT AI INTEGRATION",
+          "CREATE DYNAMIC TABLE",
+          "CREATE EVENT TABLE",
+          "CREATE EXTERNAL TABLE",
+          "CREATE FILE FORMAT",
+          "CREATE FUNCTION",
+          "CREATE GIT REPOSITORY",
+          "CREATE HYBRID TABLE",
+          "CREATE ICEBERG TABLE",
+          "CREATE IMAGE REPOSITORY",
+          "CREATE MASKING POLICY",
+          "CREATE MATERIALIZED VIEW",
+          "CREATE MODEL",
+          "CREATE NETWORK RULE",
+          "CREATE NOTEBOOK",
+          "CREATE PACKAGES POLICY",
+          "CREATE PASSWORD POLICY",
+          "CREATE PIPE",
+          "CREATE PROCEDURE",
+          "CREATE PROJECTION POLICY",
+          "CREATE ROW ACCESS POLICY",
+          "CREATE SECRET",
+          "CREATE SEQUENCE",
+          "CREATE SERVICE",
+          "CREATE SESSION POLICY",
+          "CREATE SNAPSHOT",
+          "CREATE STAGE",
+          "CREATE STREAM",
+          "CREATE STREAMLIT",
+          "CREATE TABLE",
+          "CREATE TAG",
+          "CREATE TASK",
+          "CREATE VIEW",
+          "CREATE SNOWFLAKE.CORE.BUDGET",
+          "CREATE SNOWFLAKE.ML.ANOMALY_DETECTION",
+          "CREATE SNOWFLAKE.ML.CLASSIFICATION",
+          "CREATE SNOWFLAKE.ML.FORECAST",
+          "CREATE SNOWFLAKE.ML.TOP_INSIGHTS",
+          "MODIFY",
+          "MONITOR",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "userPrivileges": {
+      "type": "array",
+      "description": "User object privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "IMPERSONATE",
+          "MONITOR",
+          "MODIFY PROGRAMMATIC AUTHENTICATION METHODS"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "rolePrivileges": {
+      "type": "array",
+      "description": "Role object privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "tablePrivileges": {
+      "type": "array",
+      "description": "Table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "DELETE",
+          "EVOLVE SCHEMA",
+          "INSERT",
+          "REFERENCES",
+          "SELECT",
+          "TRUNCATE",
+          "UPDATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "dynamicTablePrivileges": {
+      "type": "array",
+      "description": "Dynamic table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "MONITOR",
+          "OPERATE",
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "hybridTablePrivileges": {
+      "type": "array",
+      "description": "Hybrid table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "DELETE",
+          "INSERT",
+          "REFERENCES",
+          "SELECT",
+          "TRUNCATE",
+          "UPDATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "icebergTablePrivileges": {
+      "type": "array",
+      "description": "Iceberg table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "DELETE",
+          "INSERT",
+          "REFERENCES",
+          "SELECT",
+          "TRUNCATE",
+          "UPDATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "externalTablePrivileges": {
+      "type": "array",
+      "description": "External table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "REFERENCES",
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "eventTablePrivileges": {
+      "type": "array",
+      "description": "Event table privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "INSERT",
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "viewPrivileges": {
+      "type": "array",
+      "description": "View privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "REFERENCES",
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "materializedViewPrivileges": {
+      "type": "array",
+      "description": "Materialized view privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "REFERENCES",
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "functionPrivileges": {
+      "type": "array",
+      "description": "User-defined function privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "procedurePrivileges": {
+      "type": "array",
+      "description": "Stored procedure privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "streamPrivileges": {
+      "type": "array",
+      "description": "Stream privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "SELECT"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "stagePrivileges": {
+      "type": "array",
+      "description": "Stage privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "READ",
+          "WRITE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "fileFormatPrivileges": {
+      "type": "array",
+      "description": "File format privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "sequencePrivileges": {
+      "type": "array",
+      "description": "Sequence privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "secretPrivileges": {
+      "type": "array",
+      "description": "Secret privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "READ",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "tagPrivileges": {
+      "type": "array",
+      "description": "Tag privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY",
+          "READ"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "taskPrivileges": {
+      "type": "array",
+      "description": "Task privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "MONITOR",
+          "OPERATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "pipePrivileges": {
+      "type": "array",
+      "description": "Pipe privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "MONITOR",
+          "OPERATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "alertPrivileges": {
+      "type": "array",
+      "description": "Alert privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MONITOR",
+          "OPERATE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "networkRulePrivileges": {
+      "type": "array",
+      "description": "Network rule privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "integrationPrivileges": {
+      "type": "array",
+      "description": "Integration privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE",
+          "USE_ANY_ROLE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "connectionPrivileges": {
+      "type": "array",
+      "description": "Connection privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "FAILOVER"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "notebookPrivileges": {
+      "type": "array",
+      "description": "Notebook privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLYBUDGET",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "servicePrivileges": {
+      "type": "array",
+      "description": "Snowpark Container Services privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MONITOR",
+          "OPERATE",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "computePoolPrivileges": {
+      "type": "array",
+      "description": "Compute pool privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MODIFY",
+          "MONITOR",
+          "OPERATE",
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "imageRepositoryPrivileges": {
+      "type": "array",
+      "description": "Image repository privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "READ",
+          "WRITE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "modelPrivileges": {
+      "type": "array",
+      "description": "ML model privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "gitRepositoryPrivileges": {
+      "type": "array",
+      "description": "Git repository privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "READ"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "maskingPolicyPrivileges": {
+      "type": "array",
+      "description": "Masking policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "rowAccessPolicyPrivileges": {
+      "type": "array",
+      "description": "Row access policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "passwordPolicyPrivileges": {
+      "type": "array",
+      "description": "Password policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "sessionPolicyPrivileges": {
+      "type": "array",
+      "description": "Session policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "aggregationPolicyPrivileges": {
+      "type": "array",
+      "description": "Aggregation policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "projectionPolicyPrivileges": {
+      "type": "array",
+      "description": "Projection policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "authenticationPolicyPrivileges": {
+      "type": "array",
+      "description": "Authentication policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "packagesPolicyPrivileges": {
+      "type": "array",
+      "description": "Packages policy privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "APPLY"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "dataMetricFunctionPrivileges": {
+      "type": "array",
+      "description": "Data metric function privileges",
+      "items": {
+        "type": "string",
+        "enum": [
+          "USAGE"
+        ]
+      },
+      "uniqueItems": true
+    }
+  }
+}

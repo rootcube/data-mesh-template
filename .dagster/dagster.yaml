@@ -1,0 +1,20 @@
+# Dagster instance configuration for local development.
+# DAGSTER_HOME points here (set by the justfile and .envrc), so run history, event logs
+# and schedules land in this directory; everything but this file is git-ignored.
+
+telemetry:
+  enabled: false
+
+# Runs start immediately in a subprocess; no daemon queue needed for local development.
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: DefaultRunCoordinator
+
+run_launcher:
+  module: dagster.core.launcher
+  class: DefaultRunLauncher
+
+# Keep runs from piling up on a laptop.
+concurrency:
+  runs:
+    max_concurrent_runs: 4

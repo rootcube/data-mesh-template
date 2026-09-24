@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: knmi
+    description: >
+      KNMI hourly weather observations, loaded into the source layer by the dlt pipeline
+      `ingest_knmi` (dlt_pipelines/pipelines/ingest/knmi). Field names are the KNMI API codes,
+      lowercased by dlt.
+    # The source layer: _SRC, or <SNOWFLAKE_SCHEMA>_SRC in dev (same rule as dbt_common's
+    # generate_schema_name; source YAML can only use env_var, not macros).
+    schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+    tables:
+      - name: climate_hourly
+        identifier: knmi__climate_hourly
+        description: One row per station per hour (hour 1..24 = the hour ending at that time).
+        config:
+          meta:
+            dagster:
+              # Same key as the dlt asset, so the Dagster lineage runs dlt -> dbt.
+              asset_key: ["dlt", "ingest", "knmi", "climate_hourly"]
+        columns:
+          - name: station_code
+            description: KNMI station number (260 = De Bilt, 370 = Eindhoven, ...).
+          - name: date
+            description: Observation date.
+          - name: hour
+            description: Hour of the day, 1..24.
+          - name: t
+            description: Temperature at 1.50 m in 0.1 degrees Celsius.
+          - name: fh
+            description: Hourly mean wind speed in 0.1 m/s.
+          - name: rh
+            description: Hourly precipitation in 0.1 mm (-1 means less than 0.05 mm).
+          - name: q
+            description: Global radiation in J/cm2.
+          - name: u
+            description: Relative humidity in percent.
+          - name: _dlt_load_id
+            description: dlt load package that wrote the row.

@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Application
+# ==================
+
+code: "app"
+name: "Application Layer"
+desc: "Application-owned datasets that support products and apps"
+type: "output"
+sort: 320
+disabled: true
+required: false

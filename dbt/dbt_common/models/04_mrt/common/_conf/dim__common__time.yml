@@ -1,0 +1,147 @@
+version: 2
+
+
+models:
+  - name: dim__common__time
+    description: A common dimension table with clock/time related attributes
+
+    data_tests:
+      - has_data:
+          name: dim__common__time__has_data
+
+    columns:
+      - name: id_dim__common__time
+        description: Surrogate key for the time dimension, based on the simple time integer
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__id_dim__common__time__not_null
+
+          - unique:
+              name: dim__common__time__id_dim__common__time__unique
+
+      - name: time
+        description: The time value (HH:MM:SS)
+        data_type: time
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__time__not_null
+
+          - unique:
+              name: dim__common__time__time__unique
+
+      - name: time_simple
+        description: The time represented as an integer in HHMMSS format
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__time_simple__not_null
+
+      - name: time_hour
+        description: The time truncated to the hour (HH:00:00)
+        data_type: time
+
+      - name: time_minute
+        description: The time truncated to the minute (HH:MM:00)
+        data_type: time
+
+      - name: time_second
+        description: The time at second precision (HH:MM:SS, equal to `time`)
+        data_type: time
+
+      - name: hour_nr
+        description: The hour number (0-23)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__hour_nr__not_null
+
+          - not_negative:
+              name: dim__common__time__hour_nr__not_negative
+
+      - name: hour_code
+        description: Code representation of the hour
+        data_type: varchar
+
+      - name: hour_name
+        description: Display name of the hour
+        data_type: varchar
+
+      - name: hour_sort
+        description: Sort order for the hour
+        data_type: integer
+
+      - name: minute_nr
+        description: The minute number (0-59)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__minute_nr__not_null
+
+          - not_negative:
+              name: dim__common__time__minute_nr__not_negative
+
+      - name: minute_code
+        description: Code representation of the minute
+        data_type: varchar
+
+      - name: minute_name
+        description: Display name of the minute
+        data_type: varchar
+
+      - name: minute_sort
+        description: Sort order for the minute
+        data_type: integer
+
+      - name: second_nr
+        description: The second number (0-59)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__second_nr__not_null
+
+          - not_negative:
+              name: dim__common__time__second_nr__not_negative
+
+      - name: second_code
+        description: Code representation of the second
+        data_type: varchar
+
+      - name: second_name
+        description: Display name of the second
+        data_type: varchar
+
+      - name: second_sort
+        description: Sort order for the second
+        data_type: integer
+
+      - name: day_part
+        description: Part of the day (e.g. Morning, Afternoon, Evening, Night)
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: dim__common__time__day_part__not_null
+
+      - name: day_part_sort
+        description: Sort order for the part of the day
+        data_type: integer
+
+      - name: day_part_alt
+        description: Alternative classification of the part of the day
+        data_type: varchar
+
+      - name: day_part_alt_sort
+        description: Sort order for the alternative part of the day
+        data_type: integer
+
+    constraints:
+      - columns:
+          - id_dim__common__time
+        type: primary_key

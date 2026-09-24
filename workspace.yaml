@@ -1,0 +1,17 @@
+# Dagster code locations loaded by `just start` (dagster dev -w workspace.yaml).
+# One location per concern: the dlt ingestion package, and one per dbt project. Locations
+# load in their own subprocess and never import each other; cross-location lineage resolves
+# through shared asset keys.
+load_from:
+  - python_module:
+      module_name: orchestrator.locations.dlt.definitions
+      location_name: "dlt"
+
+  - python_module:
+      module_name: orchestrator.locations.dbt.dbt_example.definitions
+      location_name: "dbt_example"
+
+  # A second project (see docs: Development > Adding a project) is one more block:
+  # - python_module:
+  #     module_name: orchestrator.locations.dbt.dbt_<project>.definitions
+  #     location_name: "dbt_<project>"

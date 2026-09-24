@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "user.schema.json",
+  "title": "User Configuration",
+  "description": "A person who assumes project roles. Roles are granted per project and environment; the login must exist in Snowflake unless create is true.",
+  "type": "object",
+  "required": [
+    "login",
+    "roles"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "login": {
+      "type": "string",
+      "description": "Snowflake login name (exact, as CURRENT_USER() returns it)",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name",
+      "maxLength": 100
+    },
+    "email": {
+      "type": "string",
+      "description": "Email, only used when creating the user",
+      "maxLength": 200
+    },
+    "create": {
+      "type": "boolean",
+      "description": "Create the user in Snowflake with a one-time password; false when the login already exists (SSO)",
+      "default": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "roles": {
+      "type": "array",
+      "description": "Project roles this user may assume",
+      "items": {
+        "type": "object",
+        "required": [
+          "project",
+          "role"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Project key (file name under config/projects)",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "description": "Role key (file name under config/roles)",
+            "minLength": 1
+          },
+          "environments": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "*"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z]+$"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            ],
+            "description": "Environment keys, or '*' for every environment of the project"
+          }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

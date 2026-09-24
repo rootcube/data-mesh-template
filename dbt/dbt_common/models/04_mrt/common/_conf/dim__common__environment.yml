@@ -1,0 +1,68 @@
+version: 2
+
+
+models:
+  - name: dim__common__environment
+    description: Environment dimension containing DTAP environment definitions
+
+    data_tests:
+      - has_data:
+          name: dim__common__environment__has_data
+
+    columns:
+      - name: id_dim__common__environment
+        description: A hashed surrogate key for the environment dimension
+        data_type: varchar(40)
+
+        data_tests:
+          - not_null:
+              name: dim__common__environment__id_dim__common__environment__not_null
+
+          - unique:
+              name: dim__common__environment__id_dim__common__environment__unique
+
+      - name: environment_code
+        description: Short code identifying the environment (e.g. DEV, TST, ACC, PRD)
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: dim__common__environment__environment_code__not_null
+
+          - unique:
+              name: dim__common__environment__environment_code__unique
+
+          - not_empty:
+              name: dim__common__environment__environment_code__not_empty
+
+      - name: environment_name
+        description: Full name of the environment (e.g. Development, Test, Acceptance, Production)
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: dim__common__environment__environment_name__not_null
+
+          - not_empty:
+              name: dim__common__environment__environment_name__not_empty
+
+      - name: environment_alias
+        description: Alternative name or alias for the environment
+        data_type: varchar
+
+      - name: environment_desc
+        description: Description of the environment
+        data_type: varchar
+
+      - name: environment_sort
+        description: Sort order for displaying environments
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: dim__common__environment__environment_sort__not_null
+
+    constraints:
+      - columns:
+          - id_dim__common__environment
+        type: primary_key

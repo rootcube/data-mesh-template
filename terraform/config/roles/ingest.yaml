@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# Role: Ingest
+# ============
+
+code: "ing"
+name: "Ingest"
+type: "system"
+level: "project"
+desc: "Used by ingestion tooling (e.g. dlt) to load data into the SRC layer"
+disabled: false
+required: true
+
+privileges:
+  computes:
+    default:
+      all: [USAGE, OPERATE]
+    ingest:
+      all: [USAGE, OPERATE]
+  layers:
+    source:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - CREATE STAGE
+        - CREATE FILE FORMAT
+        - CREATE FUNCTION
+        - CREATE PROCEDURE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+        - USAGE ON FUNCTIONS
+        - USAGE ON PROCEDURES
+        - READ ON STAGES
+        - WRITE ON STAGES
+        - USAGE ON FILE FORMATS

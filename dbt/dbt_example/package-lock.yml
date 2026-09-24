@@ -1,0 +1,7 @@
+packages:
+  - local: ../dbt_common
+    name: dbt_common
+  - name: dbt_utils
+    package: dbt-labs/dbt_utils
+    version: 1.4.1
+sha1_hash: ffbdbc169345ae4eb4bb4c9453e277b6b5a51444

@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Import
+# =============
+
+code: "imp"
+name: "Import Layer"
+desc: "Received data contracts from other Projects' EXP outputs"
+type: "input"
+sort: 120
+disabled: false
+required: false

@@ -1,0 +1,71 @@
+name: "dbt_common"
+version: "1.0.0"
+config-version: 2
+
+profile: "default"
+
+require-dbt-version: [">=1.11.0", "<2.0.0"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+model-paths: ["models", "sources"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
+
+packages-install-path: "packages"
+
+clean-targets:
+  - "target"
+  - "packages"
+
+# dbt_common is installed as a local package by every domain project (packages.yml:
+# `- local: ../dbt_common`). It carries the shared macros (schema naming, query tag, run
+# logging, run-metadata upload) and the shared objects (calendar/time/environment
+# dims, the unknown-member seed and their upstream chain), so every project can ref() them
+# without cross-project sources. Each installing project builds its own copy; a project can
+# opt out with `models: dbt_common: +enabled: false` in its dbt_project.yml.
+models:
+  dbt_common:
+    +persist_docs:
+      relation: true
+      columns: true
+
+    +materialized: view
+
+    02_stg:
+      +schema: stg
+      +materialized: table
+      +tags: ["layer=stg"]
+
+    03_int:
+      +schema: int
+      +materialized: view
+      +tags: ["layer=int"]
+      common:
+        int__common__holiday:
+          # Country whose public holidays the calendar carries, as an ISO 3166-1 alpha-2 code.
+          # Installing projects set `holiday_country` under `vars:` in their dbt_project.yml.
+          +holiday_country: "{{ var('holiday_country', 'NL') }}"
+
+    04_mrt:
+      +schema: mrt
+      +materialized: table
+      +tags: ["layer=mrt"]
+
+seeds:
+  dbt_common:
+    +schema: ref
+    +full_refresh: true
+
+# Runs after every dbt command in EVERY project that installs dbt_common: package-level
+# on-run-end hooks execute in the parent project's runs. This uploads the run metadata
+# (models, tests, executions, ...) into the pre__dbt__* tables in the metadata layer (_MTD)
+# of the project database (see macros/dbt_artifacts/README.md). The tables are created on
+# demand by the upload itself. The dummy target never connects, so it is skipped.
+on-run-end:
+  - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed', 'freshness'] and target.name | trim | lower != 'dummy' %}{{ dbt_common.upload_results(results) }}{% endif %}"
+  - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed'] %}{{ dbt_common.log_run_summary(results) }}{% endif %}"

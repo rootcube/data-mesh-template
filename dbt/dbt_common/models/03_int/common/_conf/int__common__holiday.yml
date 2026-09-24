@@ -1,0 +1,30 @@
+version: 2
+
+
+models:
+  - name: int__common__holiday
+    description: Public holidays of the country set by the `holiday_country` var (ISO 3166-1 alpha-2, `NL` by default), one row per holiday date, from the `holidays` package
+
+    data_tests:
+      - has_data:
+          name: int__common__holiday__has_data
+
+    columns:
+      - name: date
+        description: 'Date of the Holiday'
+        data_type: date
+
+        data_tests:
+          - not_null:
+              name: int__common__holiday__date__not_null
+
+          - unique:
+              name: int__common__holiday__date__unique
+
+      - name: holiday_name
+        description: 'Name of the Holiday'
+        data_type: varchar
+
+        data_tests:
+          - not_null:
+              name: int__common__holiday__holiday_name__not_null

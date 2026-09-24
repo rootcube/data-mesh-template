@@ -1,0 +1,52 @@
+version: 2
+
+
+models:
+  - name: stg__seed__weekday
+    description: Collection of weekdays (1-7) with codes and names
+
+    data_tests:
+      - has_data:
+          name: stg__seed__weekday__has_data
+
+      - rows_expected:
+          name: stg__seed__weekday__rows_expected
+          arguments:
+            value: 7
+
+    columns:
+      - name: weekday_nr
+        description: Weekday number (1 = Monday, 7 = Sunday)
+        data_type: integer
+
+        data_tests:
+          - not_null:
+              name: stg__seed__weekday__weekday_nr__not_null
+
+          - unique:
+              name: stg__seed__weekday__weekday_nr__unique
+
+          - not_negative:
+              name: stg__seed__weekday__weekday_nr__not_negative
+
+      - name: weekday_code
+        description: Three-letter abbreviation of the weekday (e.g. Mon, Tue, Wed)
+        data_type: varchar(3)
+
+        data_tests:
+          - not_null:
+              name: stg__seed__weekday__weekday_code__not_null
+
+          - unique:
+              name: stg__seed__weekday__weekday_code__unique
+
+      - name: weekday_name
+        description: Full name of the weekday (e.g. Monday, Tuesday)
+        data_type: varchar(20)
+
+        data_tests:
+          - not_null:
+              name: stg__seed__weekday__weekday_name__not_null
+
+          - unique:
+              name: stg__seed__weekday__weekday_name__unique

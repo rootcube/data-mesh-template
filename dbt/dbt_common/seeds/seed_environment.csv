@@ -1,0 +1,6 @@
+environment_code,environment_name,environment_alias,environment_desc,environment_sort
+"all","All",,"all environment","0"
+"dev","Development",,"development environment","1"
+"tst","Test",,"test environment","2"
+"acc","Acceptance",,"acceptance environment","3"
+"prd","Production",,"production environment","4"

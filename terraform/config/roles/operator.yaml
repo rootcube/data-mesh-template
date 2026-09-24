@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# Role: Operator
+# ==============
+
+code: "opr"
+name: "Operator"
+type: "person"
+level: "project"
+desc: "Elevated access for project-level operational support and incident response"
+disabled: true
+required: false
+
+privileges:
+  computes:
+    default:
+      all: [USAGE, OPERATE, MONITOR]
+    ingest:
+      all: [USAGE, OPERATE, MONITOR]
+    transform:
+      all: [USAGE, OPERATE, MONITOR]
+  layers:
+    source:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    staging:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    integration:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    mart:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    expose:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+    temporary:
+      all:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+  roles:
+    transform: [all]
+    ingest: [all]
+    engineer: [all]
+    analyst: [all]
+    reporting: [all]

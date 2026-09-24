@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Reference
+# ================
+
+code: "ref"
+name: "Reference Layer"
+desc: "Curated reference and lookup datasets used across models"
+type: "input"
+sort: 130
+disabled: false
+required: false

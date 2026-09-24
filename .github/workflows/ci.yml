@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: Python (ruff, ty, pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run ty check
+      - run: uv run pytest
+
+  dbt-and-dagster:
+    name: dbt parse + Dagster definitions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python scripts/dbt_all.py deps --quiet
+      - run: uv run python scripts/dbt_all.py parse --target dummy --quiet
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+      - run: cd dbt/dbt_example && uv run sqlfluff lint models
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+      - run: uv run dagster definitions validate -w workspace.yaml
+        env:
+          DBT_TARGET: dummy
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+          DAGSTER_HOME: ${{ github.workspace }}/.dagster
+
+  terraform:
+    name: Terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive terraform
+      - run: terraform -chdir=terraform init -backend=false
+      - run: terraform -chdir=terraform validate
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python terraform/config/_validation/validate_configs.py
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group docs
+      - run: uv run --group docs mkdocs build --strict

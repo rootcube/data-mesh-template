@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Preparation
+# ==================
+
+code: "prp"
+name: "Preparation Layer"
+desc: "Initial cleansing and harmonisation of raw inputs"
+type: "processing"
+sort: 210
+disabled: false
+required: false

@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../_validation/schemas/layer.schema.json
+# Layer: Mart
+# ===========
+
+code: "mrt"
+name: "Mart Layer"
+desc: "Analytics-ready models optimised for specific use-cases"
+type: "processing"
+sort: 240
+disabled: false
+required: false

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "environment.schema.json",
+  "title": "Environment Configuration",
+  "description": "Lifecycle isolation stages for validating and operating changes.",
+  "type": "object",
+  "required": ["letter", "code", "name"],
+  "additionalProperties": false,
+  "properties": {
+    "letter": {
+      "type": "string",
+      "description": "Single letter code for the environment",
+      "pattern": "^[a-z]$"
+    },
+    "code": {
+      "type": "string",
+      "description": "Short code for the environment (3 letters)",
+      "pattern": "^[a-z]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the environment",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "desc": {
+      "type": "string",
+      "description": "Description of the environment's purpose",
+      "maxLength": 500
+    },
+    "sort": {
+      "type": "integer",
+      "description": "Sort order for the environment",
+      "minimum": 0
+    },
+    "alias": {
+      "type": "string",
+      "description": "Alternative name or abbreviation for the environment",
+      "maxLength": 50
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "Whether this environment is disabled and unavailable for use",
+      "default": false
+    },
+    "required": {
+      "type": "boolean",
+      "description": "Whether this environment must exist for every project",
+      "default": false
+    }
+  }
+}

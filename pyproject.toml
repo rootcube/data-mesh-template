@@ -1,0 +1,80 @@
+[project]
+name = "datamesh-starter"
+version = "0.1.0"
+description = "Starter template for a data mesh platform: Dagster, dlt and dbt on Snowflake."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # Orchestration
+    "dagster>=1.13",
+    "dagster-webserver>=1.13",
+    "dagster-dbt>=0.29",
+    "dagster-dlt>=0.29",
+    "dagster-snowflake>=0.29",
+    # Ingestion
+    "dlt[snowflake]>=1.30",
+    "requests>=2.32",
+    # Transformation
+    "dbt-core>=1.11",
+    "dbt-snowflake>=1.11",
+    # Snowflake access + key-pair setup (scripts/snowflake.py)
+    "snowflake-connector-python>=3.12",
+    "cryptography>=43",
+    "python-dotenv>=1.1",
+]
+
+[dependency-groups]
+# Installed on every plain `uv sync` (default group below).
+dev = [
+    "ruff>=0.13",
+    "pytest>=8.3",
+    "pre-commit>=4.0",
+    "sqlfluff-templater-dbt>=3.4",
+    "dagster-dg-cli>=1.13",
+    "ty>=0.0.1",
+    "pyyaml>=6.0",
+    "jsonschema>=4.20",
+    "dbt-duckdb>=1.9",
+]
+# Documentation site: `just docs` runs mkdocs with this group.
+docs = [
+    "mkdocs-material>=9.6",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/orchestrator", "dlt_pipelines"]
+
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "orchestrator"
+# Code locations are declared in workspace.yaml; this points at an empty package so
+# Dagster's component cache lands in one shared `.local_defs_state/`.
+defs_module = "orchestrator.defs"
+
+[tool.ruff]
+line-length = 120
+# docs/ holds Markdown with illustrative Python fences; ruff would format those too.
+extend-exclude = ["dbt", "terraform", "site", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ty.src]
+# Only code that runs in this project's venv; dbt/ holds Snowpark models for Snowflake's runtime.
+include = ["src", "dlt_pipelines", "scripts", "tests"]
+
+[tool.ty.environment]
+python-version = "3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

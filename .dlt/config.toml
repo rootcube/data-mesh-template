@@ -1,0 +1,16 @@
+# dlt configuration (read from DLT_PROJECT_DIR/.dlt, set by the justfile and .envrc).
+# Credentials never live here: the Snowflake destination is built from SNOWFLAKE_* env vars
+# in dlt_pipelines/utils/destination.py.
+
+[runtime]
+dlthub_telemetry = false
+log_level = "WARNING"  # RUNTIME__LOG_LEVEL in .env overrides this for local runs
+
+[extract]
+workers = 4
+
+[normalize]
+workers = 2
+
+[load]
+workers = 2

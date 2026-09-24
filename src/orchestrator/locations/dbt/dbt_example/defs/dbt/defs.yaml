@@ -1,0 +1,16 @@
+type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
+
+attributes:
+  project:
+    project_dir: '{{ context.project_root }}/dbt/dbt_example'
+    # profiles.yml is shared by every project under dbt/ (DBT_PROFILES_DIR points there too).
+    profiles_dir: '{{ context.project_root }}/dbt'
+    # Re-parse on every code-location load so the manifest always matches the models on disk.
+    prepare_project_cli_args: ["parse", "--quiet"]
+  select: "*"
+
+  # Asset keys, groups and kinds come from DataMeshDbtTranslator in shared.py: the key follows
+  # the file path (dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly, or
+  # dbt_example/packages/dbt_common/... for package nodes) and the group is the key without
+  # its last segment, so the UI nests assets by project, package, layer and domain. Sources take
+  # their key from `config.meta.dagster.asset_key` in sources/*.yml so they line up with the dlt assets.
