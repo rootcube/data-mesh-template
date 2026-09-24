@@ -1,6 +1,6 @@
 [project]
 name = "datamesh-starter"
-version = "0.1.1"
+version = "0.1.2"
 description = "Starter template for a data mesh platform: Dagster, dlt and dbt on Snowflake."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
