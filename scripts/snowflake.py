@@ -1,5 +1,7 @@
 """Snowflake key-pair authentication for the platform.
 
+    just setup                 everything: `just init`, then this wizard, which asks whether the account is
+                               fresh (-> bootstrap) or already provisioned (-> setup)
     just sf bootstrap          fresh account, as ACCOUNTADMIN: Terraform service user, provisioning
                                       (init.sql + terraform apply), your own key pair and .env, in one go
     just sf setup              one-time: log in interactively, create + register a key pair, write .env
@@ -35,6 +37,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import dotenv_values
@@ -56,15 +59,36 @@ TERRAFORM_KEY = "terraform"
 
 # --- console helpers ----------------------------------------------------------
 
+# ANSI styling, off when not writing to a terminal or when NO_COLOR is set (FORCE_COLOR overrides).
+COLOR = bool(os.environ.get("FORCE_COLOR")) or (sys.stdout.isatty() and not os.environ.get("NO_COLOR"))
+BOLD, DIM, CYAN, GREEN, YELLOW = "1", "2", "36", "32", "33"
+
+
+def style(code: str, text: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if COLOR else text
+
 
 def step(title: str) -> None:
-    print(f"\n== {title}")
+    rule = style(CYAN, "━" * 78)
+    print(f"\n{rule}\n{style(f'{BOLD};{CYAN}', '  ' + title)}\n{rule}")
+
+
+def ok(message: str) -> None:
+    print(style(GREEN, "✔ ") + message)
+
+
+def warn(message: str) -> None:
+    print(style(YELLOW, "! ") + message)
+
+
+def done(message: str) -> None:
+    print(f"\n{style(f'{BOLD};{GREEN}', 'Done.')} {message}")
 
 
 def ask(label: str, default: str | None = None) -> str:
-    suffix = f" [{default}]" if default else ""
+    suffix = style(DIM, f" [{default}]") if default else ""
     while True:
-        value = input(f"{label}{suffix}: ").strip()
+        value = input(f"{style(YELLOW, '?')} {style(BOLD, label)}{suffix}: ").strip()
         if value:
             return value
         if default:
@@ -73,7 +97,7 @@ def ask(label: str, default: str | None = None) -> str:
 
 def confirm(label: str, default: bool = True) -> bool:
     hint = "Y/n" if default else "y/N"
-    value = input(f"{label} [{hint}]: ").strip().lower()
+    value = input(f"{style(YELLOW, '?')} {style(BOLD, label)} {style(DIM, f'[{hint}]')}: ").strip().lower()
     if not value:
         return default
     return value in ("y", "yes")
@@ -130,6 +154,13 @@ CONTEXT_SQL = "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRE
 
 def quote_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
+
+
+def account_users(conn: Any) -> set[str]:
+    """Upper-cased names of the users in the account (SHOW USERS; the bootstrap runs it as ACCOUNTADMIN)."""
+    cursor = conn.cursor().execute("SHOW USERS")
+    name = [d[0].lower() for d in cursor.description].index("name")
+    return {str(row[name]).upper() for row in cursor.fetchall()}
 
 
 def granted_project_roles(conn: Any, user: str) -> list[str]:
@@ -246,7 +277,7 @@ def verify(settings: SnowflakeSettings) -> bool:
     except Exception as exc:  # noqa: BLE001 - report whatever the connector raises
         print(f"Key-pair login failed: {exc}")
         return False
-    print(f"Key-pair login OK: user={user} role={role} warehouse={warehouse} database={database}")
+    ok(f"Key-pair login OK: user={user} role={role} warehouse={warehouse} database={database}")
     print(f"Snowflake version {version}")
     return True
 
@@ -285,7 +316,7 @@ def write_settings(settings: SnowflakeSettings) -> None:
             "ENVIRONMENT": settings.environment,
         },
     )
-    print(f"Wrote {ENV_FILE}")
+    ok(f"Wrote {ENV_FILE}")
 
 
 # --- setup steps --------------------------------------------------------------
@@ -304,13 +335,13 @@ def register_key_pair(conn: Any, user: str, key_name: str, slot: str, ask_passph
             if passphrase and passphrase != getpass.getpass("Repeat passphrase: "):
                 sys.exit("Passphrases differ, aborting.")
         generate_key_pair(key_name, passphrase)
-        print(f"Wrote {private_path} and {public_path}")
+        ok(f"Wrote {private_path} and {public_path}")
     try:
         conn.cursor().execute(f"ALTER USER {quote_ident(user)} SET {slot} = '{public_key_body(public_path)}'")
     except Exception as exc:  # noqa: BLE001 - surface the Snowflake error with guidance
         print(f"Could not set {slot} on {user}: {exc}")
         return None
-    print(f"{slot} set on {user}")
+    ok(f"{slot} set on {user}")
     return private_path, passphrase
 
 
@@ -334,13 +365,29 @@ def provisioning_sql(public_key: str, slot: str) -> str:
     return sql
 
 
-def ensure_user_config(login: str) -> None:
-    """Write terraform/config/users/<login>.yaml (engineer in dev on every project) unless a file lists the login."""
+def ensure_user_config(login: str, account_users: set[str]) -> None:
+    """Write terraform/config/users/<login>.yaml (engineer in dev on every project) unless a file lists the login.
+
+    Warns about every enabled `create: false` file whose login is not in `account_users` (upper-cased names
+    from SHOW USERS): Terraform fails with "object does not exist or not authorized" on its grants.
+    """
     users_dir, projects_dir = TF_DIR / "config" / "users", TF_DIR / "config" / "projects"
-    for existing in users_dir.glob("*.yaml"):
-        if re.search(rf'^login:\s*"?{re.escape(login)}"?\s*$', existing.read_text(), flags=re.M | re.I):
+    listed = False
+    for existing in sorted(users_dir.glob("*.yaml")):
+        user = yaml.safe_load(existing.read_text()) or {}
+        other = str(user.get("login", ""))
+        if user.get("disabled") or not other:
+            continue
+        if other.upper() == login.upper():
             print(f"{existing} already lists {login}")
-            return
+            listed = True
+        elif other.upper() not in account_users and not user.get("create"):
+            warn(
+                f"{existing} lists {other}, which does not exist in this account: Terraform will fail on its "
+                "grants. Delete the file or set `disabled: true`."
+            )
+    if listed:
+        return
     roles = "".join(
         f"  - project: {project.stem}\n    role: engineer\n    environments:\n      - development\n"
         for project in sorted(projects_dir.glob("*.yaml"))
@@ -351,7 +398,7 @@ def ensure_user_config(login: str) -> None:
         f"# Written by `just sf bootstrap` for {login}.\n\n"
         f'login: "{login}"\ncreate: false\nroles:\n{roles}'
     )
-    print(f"Wrote {path}")
+    ok(f"Wrote {path}")
 
 
 def terraform(tf_vars: dict[str, str], auto_approve: bool) -> None:
@@ -376,7 +423,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     conn = interactive_connect(account, user, args.auth)
     try:
         exact_user, role, warehouse, database = conn.cursor().execute(CONTEXT_SQL).fetchone()
-        print(f"Logged in as {exact_user} (role {role or 'none'})")
+        ok(f"Logged in as {exact_user} (role {role or 'none'})")
 
         step("2/3 Key pair, registered on your user")
         key_name = args.key_name or f"{safe_name(account)}__{safe_name(exact_user)}"
@@ -405,14 +452,17 @@ def cmd_setup(args: argparse.Namespace) -> int:
     )
     if finish_settings(settings, args):
         return 1
-    print("\nDone. Next: `just sf check`, then `just start` for the Dagster UI.")
+    done("Next: `just sf check`, then `just start` for the Dagster UI.")
     return 0
 
 
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
     if shutil.which("terraform") is None:
-        sys.exit("terraform not found on PATH; install it first (https://developer.hashicorp.com/terraform/install)")
+        step("Installing Terraform (just install terraform)")
+        subprocess.run(["just", "install", "terraform"], cwd=ROOT, check=True)
+        if shutil.which("terraform") is None:
+            sys.exit("terraform still not on PATH; open a new shell or install it by hand, then rerun `just setup`")
     # A rerun offers what the previous run wrote to .env as defaults (Enter keeps them).
     current = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
     previous_org, _, previous_account = current.get("SNOWFLAKE_ACCOUNT", "").partition("-")
@@ -438,16 +488,16 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     try:
         conn.cursor().execute("USE ROLE ACCOUNTADMIN")
         exact_user = conn.cursor().execute("SELECT CURRENT_USER()").fetchone()[0]
-        print(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
+        ok(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
 
         step("2/5 Terraform service user, provisioning role, warehouse and database (init.sql)")
         tf_private, tf_public = key_paths(TERRAFORM_KEY)
         if not tf_private.exists():
             generate_key_pair(TERRAFORM_KEY)
-            print(f"Wrote {tf_private} and {tf_public}")
+            ok(f"Wrote {tf_private} and {tf_public}")
         for cursor in conn.execute_string(provisioning_sql(public_key_body(tf_public), slot)):
             cursor.close()
-        print(f"TERRAFORM_USER ready, {slot} set from {tf_public}")
+        ok(f"TERRAFORM_USER ready, {slot} set from {tf_public}")
 
         step("3/5 Your own key pair")
         key_name = args.key_name or f"{safe_name(account)}__{safe_name(exact_user)}"
@@ -455,11 +505,12 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         if registered is None:
             return 1
         private_path, passphrase = registered
+        existing_users = account_users(conn)
     finally:
         conn.close()
 
     step("4/5 Provisioning the projects with Terraform")
-    ensure_user_config(exact_user)
+    ensure_user_config(exact_user, existing_users)
     tf_vars = {
         "SNOWFLAKE_ORGANIZATION": organization,
         "SNOWFLAKE_ACCOUNT": account_name,
@@ -481,8 +532,23 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     )
     if finish_settings(settings, args):
         return 1
-    print("\nDone. Next: `just sf check`, then `just start` for the Dagster UI.")
+    done("Next: `just sf check`, then `just start` for the Dagster UI.")
     return 0
+
+
+def cmd_wizard(_args: argparse.Namespace) -> int:
+    """`just setup`: one question, then either the fresh-account bootstrap or the key-pair setup."""
+    step("Snowflake setup")
+    fresh = style(f"{BOLD};{CYAN}", "Fresh account")
+    provisioned = style(f"{BOLD};{CYAN}", "Provisioned account")
+    print(f"  {style(BOLD, '1')}  {fresh}: nothing provisioned yet, you hold ACCOUNTADMIN (a trial, for example).")
+    print(style(DIM, "     Installs Terraform if missing, bootstraps the service user, provisions the projects,"))
+    print(style(DIM, "     registers your key pair and writes .env."))
+    print(f"  {style(BOLD, '2')}  {provisioned}: an administrator ran Terraform and granted you a project role.")
+    print(style(DIM, "     Registers your key pair and writes .env."))
+    print()
+    choice = ask("Which one is this? (1/2)", "1")
+    return main(["bootstrap"] if choice.strip() == "1" else ["setup"])
 
 
 def cmd_context(args: argparse.Namespace) -> int:
@@ -495,7 +561,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     if not verify(settings):
         return 1
     write_settings(settings)
-    print("\nDone. Next: `just sf check`, then restart `just start` so Dagster reads the new .env.")
+    done("Next: `just sf check`, then restart `just start` so Dagster reads the new .env.")
     return 0
 
 
@@ -560,6 +626,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="just sf", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    wizard = sub.add_parser("wizard", help="`just setup`: asks fresh or provisioned account, then bootstrap or setup")
+    wizard.set_defaults(func=cmd_wizard)
 
     bootstrap = sub.add_parser("bootstrap", help="fresh account: Terraform user, provisioning, your key pair, .env")
     bootstrap.add_argument("--organization", help="organization name, the part before the dash; asked when omitted")

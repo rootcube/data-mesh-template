@@ -37,12 +37,13 @@ The locator from the activation mail (`xy12345.eu-central-1`) is not what you ne
 
 ## 3. Install the tools
 
-`just`, git and Terraform (1.5 or newer):
+`just` and git. Terraform (1.5 or newer) is needed too, but `just setup` installs it for you
+when it is missing (through tfenv on Homebrew, winget on Windows).
 
 === "macOS / Linux"
 
     ```bash
-    brew install just git terraform
+    brew install just git
     ```
 
 === "Windows"
@@ -50,7 +51,6 @@ The locator from the activation mail (`xy12345.eu-central-1`) is not what you ne
     ```powershell
     winget install --id Casey.Just -e
     winget install --id Git.Git -e
-    winget install --id Hashicorp.Terraform -e
     ```
 
 ## 4. Bootstrap
@@ -60,9 +60,11 @@ git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-templat
 just setup
 ```
 
-`just setup` runs `just init` (uv, the virtual environment, `.env`, dbt packages) and then
-`just sf bootstrap`, which asks for the organization name, the account name, your
-username, your password and an MFA passcode (leave it empty for a push notification), then:
+`just setup` runs `just init` (uv, the virtual environment, `.env`, dbt packages) and then asks
+whether the account is fresh or already provisioned. Answer `1` (fresh): that is
+`just sf bootstrap`, which installs Terraform if missing and asks for the organization name, the
+account name, your username, your password and an MFA passcode (leave it empty for a push
+notification), then:
 
 1. logs in to `<organization>-<account>` and switches to `ACCOUNTADMIN`;
 2. generates `~/.snowflake/keys/terraform.p8` and runs `terraform/modules/snowflake/init.sql`
@@ -75,11 +77,11 @@ username, your password and an MFA passcode (leave it empty for a push notificat
    the databases, schemas, roles and warehouses of the `example` project in `development` and
    `production` and grants you `RL_EXAMPLE_DEV__ENG`;
 5. connects with your key pair, proposes `RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV`,
-   `DB_EXAMPLE_DEV` and a personal schema prefix (`DBT_<YOU>`), verifies the login and writes
+   `DB_EXAMPLE_DEV` and a personal schema prefix (`DBT_<USERNAME>`), verifies the login and writes
    `.env`.
 
-`just setup --yes` auto-approves the Terraform plan and skips the context confirmation.
-Rerunning `just setup` is safe: the prompts offer the organization, account and user from your
+`just sf bootstrap --yes` runs the same without the wizard, auto-approves the Terraform plan
+and skips the context confirmation. Rerunning `just setup` is safe: the prompts offer the organization, account and user from your
 `.env` as defaults (Enter keeps them), `init.sql` is idempotent, the script offers to keep
 existing keys, and Terraform applies only the difference.
 

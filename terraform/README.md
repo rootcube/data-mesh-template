@@ -29,13 +29,14 @@ and `.env`; it needs the organization name, the account name and the password of
 `ACCOUNTADMIN`:
 
 ```bash
-just setup            # = just init + just sf bootstrap
+just setup            # = just init + a one-question wizard; answer 1 (fresh) for just sf bootstrap
 ```
 
 It generates `~/.snowflake/keys/terraform.p8`, runs `init.sql` with that public key, registers
 a key pair on your own user, writes a `config/users/<you>.yaml` (engineer in development on
-every project) unless one lists your login, writes the `TF_VAR_*` block to `.env`, runs
-`terraform init` and `terraform apply` (you confirm the plan; `--yes` auto-approves) and ends
+every project) unless one lists your login, warns about user files whose login the account does
+not have (Terraform would fail on their grants), writes the `TF_VAR_*` block to `.env`, runs
+`terraform init` and `terraform apply` (you confirm the plan; `just sf bootstrap --yes` auto-approves) and ends
 like `just sf setup`. Rerunning it is safe: the prompts default to the values already in
 `.env`, `init.sql` is idempotent, existing keys are kept when you say so, and Terraform applies
 only the difference.

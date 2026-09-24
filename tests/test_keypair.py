@@ -63,9 +63,26 @@ def test_ensure_user_config_writes_engineer_grants_once(tmp_path: Path, monkeypa
     (tmp_path / "config" / "projects").mkdir()
     (tmp_path / "config" / "projects" / "example.yaml").write_text("code: example\n")
     monkeypatch.setattr(script, "TF_DIR", tmp_path)
-    script.ensure_user_config("USERNAME")
+    script.ensure_user_config("USERNAME", {"USERNAME"})
     written = tmp_path / "config" / "users" / "username.yaml"
     assert 'login: "USERNAME"' in written.read_text()
     assert "  - project: example\n    role: engineer\n    environments:\n      - development\n" in written.read_text()
-    script.ensure_user_config("username")
+    script.ensure_user_config("username", {"USERNAME"})
     assert len(list((tmp_path / "config" / "users").glob("*.yaml"))) == 1
+
+
+def test_ensure_user_config_warns_about_logins_missing_from_the_account(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = load_script()
+    users = tmp_path / "config" / "users"
+    users.mkdir(parents=True)
+    (tmp_path / "config" / "projects").mkdir()
+    (users / "admin.yaml").write_text('login: "ADMIN"\ncreate: false\nroles: []\n')
+    (users / "gone.yaml").write_text('login: "GONE"\ncreate: false\ndisabled: true\nroles: []\n')
+    (users / "new.yaml").write_text('login: "NEW"\ncreate: true\nroles: []\n')
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    script.ensure_user_config("USERNAME", {"USERNAME"})
+    out = capsys.readouterr().out
+    assert "admin.yaml lists ADMIN, which does not exist in this account" in out
+    assert "GONE" not in out and "NEW" not in out

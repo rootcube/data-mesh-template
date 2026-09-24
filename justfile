@@ -74,9 +74,9 @@ _init:
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
 
-# fresh Snowflake account: `just init`, then bootstrap it (Terraform user, provisioning, your key pair, .env)
-setup *args: _init
-    uv run python scripts/snowflake.py bootstrap {{args}}
+# everything in one go: `just init`, then the wizard (fresh account -> bootstrap incl. Terraform install; provisioned -> key pair + .env)
+setup: _init
+    uv run python scripts/snowflake.py wizard
 
 # show tool versions and whether .env and your key pair are in place
 info:
