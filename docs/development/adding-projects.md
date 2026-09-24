@@ -218,7 +218,7 @@ SNOWFLAKE_DATABASE=DB_ENERGY_DEV
 ```
 
 `SNOWFLAKE_SCHEMA` (your personal prefix) and the key pair stay as they are: the same key works
-in every project you hold a role in. `just snowflake check` confirms the context and prints the
+in every project you hold a role in. `just sf check` confirms the context and prints the
 layer schemas (`DBT_<NAME>_SRC, DBT_<NAME>_STG, ...`).
 
 Then:

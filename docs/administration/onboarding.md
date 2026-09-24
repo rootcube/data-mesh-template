@@ -6,7 +6,7 @@ icon: material/account-plus
 
 How a person or a service user gets access to a project, end to end. Users are YAML files under
 `terraform/config/users/`; Terraform grants them project roles. A person then registers a key
-pair for themselves with `just snowflake setup`; for a service user you register it.
+pair for themselves with `just sf setup`; for a service user you register it.
 
 ## A person
 
@@ -59,7 +59,7 @@ out the password from `just tf output -json initial_passwords`; Snowflake forces
 the first login.
 
 !!! note "Defaults on the user"
-    Terraform sets no default role, warehouse or database on the user. `just snowflake setup`
+    Terraform sets no default role, warehouse or database on the user. `just sf setup`
     proposes whatever Snowflake reports for the login, so tell the person the three names
     (`RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV` and `DB_EXAMPLE_DEV` in the starter project), or set
     them once with `ALTER USER ... SET DEFAULT_ROLE = ... DEFAULT_WAREHOUSE = ... DEFAULT_NAMESPACE = ...`.
@@ -69,12 +69,12 @@ the first login.
 ```bash
 git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
 just init
-just snowflake setup
-just snowflake check
+just sf setup
+just sf check
 just start
 ```
 
-`just snowflake setup` logs in once (browser SSO, or `--auth password`), writes an RSA key pair
+`just sf setup` logs in once (browser SSO, or `--auth password`), writes an RSA key pair
 to `~/.snowflake/keys/`, registers the public key on the person's own user with
 `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies the key-pair login and writes `.env`. The engineer
 side of this is [Snowflake authentication](../getting-started/snowflake-auth.md).
@@ -109,7 +109,7 @@ role that created them, and anyone with that role can drop them when a person le
 ## Key registration fallback
 
 `ALTER USER ... SET RSA_PUBLIC_KEY` on your own user is allowed by default. If an account
-policy blocks it, `just snowflake setup` stops at step 3 with the Snowflake error and does not
+policy blocks it, `just sf setup` stops at step 3 with the Snowflake error and does not
 write `.env`. Then:
 
 1. The person sends you `~/.snowflake/keys/<account>__<user>.pub`.
@@ -122,7 +122,7 @@ write `.env`. Then:
 
 3. The person fills in the Snowflake block of `.env` by hand (account, login, private key
    path, role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<NAME>`) and runs
-   `just snowflake check`.
+   `just sf check`.
 
 `RSA_PUBLIC_KEY_2` is the second slot, for rotating a key without a gap.
 
@@ -154,7 +154,7 @@ Deployed environments run dlt and dbt as system users: the `ingest` role
    `~/.snowflake/keys/` and prints the public key body:
 
     ```bash
-    just snowflake keygen example_prd_transform
+    just sf keygen example_prd_transform
     ```
 
     Then, as `SECURITYADMIN`:

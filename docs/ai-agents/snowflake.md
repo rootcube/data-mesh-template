@@ -4,7 +4,7 @@ icon: material/snowflake
 
 # Snowflake
 
-Snowflake is the only data store: dlt lands source data there, every dbt model builds there, and every project has one database per environment. This page is the agent-facing operational guide: what the platform model looks like as Snowflake objects, the one settings object every tool reads, key-pair authentication, the shared macros, and how to check your work with the `just snowflake` recipes. The canonical rules (concepts, provisioning, variables) live on the linked pages; do not restate or re-derive them.
+Snowflake is the only data store: dlt lands source data there, every dbt model builds there, and every project has one database per environment. This page is the agent-facing operational guide: what the platform model looks like as Snowflake objects, the one settings object every tool reads, key-pair authentication, the shared macros, and how to check your work with the `just sf` recipes. The canonical rules (concepts, provisioning, variables) live on the linked pages; do not restate or re-derive them.
 
 ## The platform model in Snowflake
 
@@ -33,7 +33,7 @@ Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/ini
 
 ## Development: personal schemas in a shared database
 
-Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To keep people out of each other's way, `dev` does not use the `_<LAYER>` schemas; each engineer gets personal copies prefixed with `SNOWFLAKE_SCHEMA` (`DBT_<NAME>`, written by `just snowflake setup`), created on demand by dlt and dbt:
+Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To keep people out of each other's way, `dev` does not use the `_<LAYER>` schemas; each engineer gets personal copies prefixed with `SNOWFLAKE_SCHEMA` (`DBT_<NAME>`, written by `just sf setup`), created on demand by dlt and dbt:
 
 | Layer | `dev` (prefix `DBT_INFO`) | `tst`, `acc`, `prd` | Written by |
 |---|---|---|---|
@@ -70,15 +70,15 @@ Layer semantics and materialization defaults: [Layers in practice](../architectu
 
 Authentication is key pair only, no passwords in files:
 
-- `just snowflake setup` does the one-time interactive login (browser by default, `--auth password` for password plus MFA), writes an RSA 2048 key pair to `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key with `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies key-pair login (with a few retries, a fresh key can take a moment), asks you to confirm role, warehouse, database and personal schema prefix (defaults from your user's settings, prefix `DBT_<first part of your login>`), and writes `.env` including `ENVIRONMENT`. `--slot 2` registers into `RSA_PUBLIC_KEY_2` for rotation; `--passphrase` encrypts the private key; `--yes` skips the confirmation.
-- `just snowflake check` connects with the key pair and prints organization, account, user, role, warehouse, database, schema and version, the schemas that exist in your database, and the layer schemas it resolves for your environment.
-- `just snowflake query "SELECT 1"` runs one statement (`--limit 50` rows by default).
-- `just snowflake keygen <name>` creates a key pair without logging in and prints the public key body, for service users: `just snowflake keygen terraform` is step one of the administrator bootstrap; the ingest and transform system users of deployed environments get theirs the same way.
+- `just sf setup` does the one-time interactive login (browser by default, `--auth password` for password plus MFA), writes an RSA 2048 key pair to `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key with `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies key-pair login (with a few retries, a fresh key can take a moment), asks you to confirm role, warehouse, database and personal schema prefix (defaults from your user's settings, prefix `DBT_<first part of your login>`), and writes `.env` including `ENVIRONMENT`. `--slot 2` registers into `RSA_PUBLIC_KEY_2` for rotation; `--passphrase` encrypts the private key; `--yes` skips the confirmation.
+- `just sf check` connects with the key pair and prints organization, account, user, role, warehouse, database, schema and version, the schemas that exist in your database, and the layer schemas it resolves for your environment.
+- `just sf query "SELECT 1"` runs one statement (`--limit 50` rows by default).
+- `just sf keygen <name>` creates a key pair without logging in and prints the public key body, for service users: `just sf keygen terraform` is step one of the administrator bootstrap; the ingest and transform system users of deployed environments get theirs the same way.
 
 The walkthrough: [Snowflake authentication](../getting-started/snowflake-auth.md); every variable: [Environment variables](../reference/environment-variables.md); onboarding people and system users: [Onboarding](../administration/onboarding.md).
 
 !!! warning "No quotes in `.env`"
-    `just` and Docker pass quoted values literally, which breaks identifiers and the key path. `just snowflake setup` writes the file unquoted; keep it that way when editing by hand.
+    `just` and Docker pass quoted values literally, which breaks identifiers and the key path. `just sf setup` writes the file unquoted; keep it that way when editing by hand.
 
 ## Shared macros
 
@@ -110,10 +110,10 @@ Defaults come from `dbt/dbt_example/dbt_project.yml`: tables for `_STG`, `_INT` 
 No MCP server is configured for Snowflake; the recipes cover the same ground.
 
 ```bash
-just snowflake check                                                             # who am I, which schemas exist, which layer schemas apply
-just snowflake query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"    # did the load land
-just snowflake query "SELECT COUNT(1) FROM dbt_info_stg.stg__knmi__climate_hourly"  # did the model build
-just snowflake query "SHOW TABLES IN SCHEMA dbt_info_mtd"                        # run metadata tables
+just sf check                                                             # who am I, which schemas exist, which layer schemas apply
+just sf query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"    # did the load land
+just sf query "SELECT COUNT(1) FROM dbt_info_stg.stg__knmi__climate_hourly"  # did the model build
+just sf query "SHOW TABLES IN SCHEMA dbt_info_mtd"                        # run metadata tables
 ```
 
 `dbt_info` stands for your own `SNOWFLAKE_SCHEMA` prefix; outside `dev` the schemas are `_SRC`, `_STG` and `_MTD`. For anything larger, the run banner from `log_run_info` prints a Snowsight link filtered on the run's query tag; open it to see every statement dbt executed with timings.

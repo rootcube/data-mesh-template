@@ -1,7 +1,7 @@
 """Snowflake connection settings shared by dbt, dlt, Dagster and the setup script.
 
 Everything reads the same SNOWFLAKE_* variables plus ENVIRONMENT (see .env.example); `just` and
-.envrc load them from .env. Key-pair authentication only: `just snowflake setup` creates the key
+.envrc load them from .env. Key-pair authentication only: `just sf setup` creates the key
 pair and registers the public key on your user.
 
 Layers map to schemas of the project database (DB_<PROJECT>_<ENV>): `_<LAYER>` in every

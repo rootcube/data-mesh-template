@@ -139,7 +139,7 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 
     `just start`, then materialize `dlt/ingest/knmi/climate_hourly` in the UI, or launch `job_dlt_ingest_all`. Same `source` and `pipeline` objects, so the two paths cannot drift.
 
-Check the result either way with `just snowflake query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_info` (`just snowflake check` prints the layer schemas it resolved).
+Check the result either way with `just sf query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_info` (`just sf check` prints the layer schemas it resolved).
 
 ## Runtime configuration
 

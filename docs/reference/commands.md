@@ -14,20 +14,21 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just init` | Install uv if missing, `uv sync`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
+| `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, `gh`, or `all` (the default) |
 
 ## Snowflake
 
 | Command | What it does |
 |---------|--------------|
-| `just snowflake setup` | One-time interactive login, key pair, registration on your user, verification, `.env` |
-| `just snowflake setup --auth password` | Same, with password + MFA in the terminal instead of the browser |
-| `just snowflake context` | Pick the project you work in from the roles granted to you, then write role, warehouse, database and schema prefix to `.env`; no login needed (`--role`, `--yes`) |
-| `just snowflake setup --passphrase` | Encrypt the private key with a passphrase |
-| `just snowflake setup --slot 2` | Register into `RSA_PUBLIC_KEY_2` (key rotation) |
-| `just snowflake setup --account <org>-<account> --user <login> --yes` | Skip the prompts and keep every default |
-| `just snowflake check` | Connect with the key pair and print your context plus the layer schemas |
-| `just snowflake query "SELECT 1"` | Run one statement (`--limit 50` rows by default) |
-| `just snowflake keygen <name>` | Key pair only, no login (service users, the Terraform user); `--force` overwrites |
+| `just sf setup` | One-time interactive login, key pair, registration on your user, verification, `.env` |
+| `just sf setup --auth password` | Same, with password + MFA in the terminal instead of the browser |
+| `just sf context` | Pick the project you work in from the roles granted to you, then write role, warehouse, database and schema prefix to `.env`; no login needed (`--role`, `--yes`) |
+| `just sf setup --passphrase` | Encrypt the private key with a passphrase |
+| `just sf setup --slot 2` | Register into `RSA_PUBLIC_KEY_2` (key rotation) |
+| `just sf setup --account <org>-<account> --user <login> --yes` | Skip the prompts and keep every default |
+| `just sf check` | Connect with the key pair and print your context plus the layer schemas |
+| `just sf query "SELECT 1"` | Run one statement (`--limit 50` rows by default) |
+| `just sf keygen <name>` | Key pair only, no login (service users, the Terraform user); `--force` overwrites |
 
 ## Dagster
 

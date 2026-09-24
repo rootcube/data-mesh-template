@@ -81,7 +81,7 @@ repeats it with `env_var`:
 
 The rest of the connection (`SNOWFLAKE_ROLE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_WAREHOUSE`) has to
 match the environment: `RL_EXAMPLE_DEV__ENG`, `DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV` for `dev`.
-`just snowflake setup` writes those for an engineer.
+`just sf setup` writes those for an engineer.
 
 ## In Snowflake
 

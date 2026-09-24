@@ -118,7 +118,7 @@ For another project: `just project=dbt_x dbt parse`.
 
 ```bash
 just dbt build --select stg__knmi__climate_hourly
-just snowflake query "SELECT COUNT(1), MIN(observed_at), MAX(observed_at) FROM dbt_info_stg.stg__knmi__climate_hourly"
+just sf query "SELECT COUNT(1), MIN(observed_at), MAX(observed_at) FROM dbt_info_stg.stg__knmi__climate_hourly"
 ```
 
 `dbt build` runs the model and its tests; a failed test stores its rows in the temporary layer (`<prefix>_TMP` in `dev`, `_TMP` elsewhere). Replace `dbt_info` with your own `SNOWFLAKE_SCHEMA` prefix.

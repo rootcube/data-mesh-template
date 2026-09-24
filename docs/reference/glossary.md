@@ -119,9 +119,9 @@ Key and code (configuration)
     names use codes.
 
 Key pair
-:   RSA key pair for Snowflake authentication. `just snowflake setup` generates it under
+:   RSA key pair for Snowflake authentication. `just sf setup` generates it under
     `~/.snowflake/keys/`, registers the public key on your user and writes the private key
-    path to `.env`. No passwords in files. `just snowflake keygen <name>` makes one for a
+    path to `.env`. No passwords in files. `just sf keygen <name>` makes one for a
     service user.
 
 KNMI

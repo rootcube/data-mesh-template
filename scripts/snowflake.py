@@ -1,11 +1,11 @@
 """Snowflake key-pair authentication for the platform.
 
-    just snowflake setup              one-time: log in interactively, create + register a key pair, write .env
-    just snowflake context            pick the project you work in (from the roles granted to you) and write
+    just sf setup              one-time: log in interactively, create + register a key pair, write .env
+    just sf context            pick the project you work in (from the roles granted to you) and write
                                       role, warehouse, database and schema prefix to .env; no login needed
-    just snowflake check              connect with the key pair from .env and print who you are
-    just snowflake query "SELECT 1"   run one statement with the key pair from .env
-    just snowflake keygen <name>      create a key pair only (for service users such as the Terraform user)
+    just sf check              connect with the key pair from .env and print who you are
+    just sf query "SELECT 1"   run one statement with the key pair from .env
+    just sf keygen <name>      create a key pair only (for service users such as the Terraform user)
 
 `setup` needs exactly one interactive login: your browser (SSO or the Snowflake login page,
 the default) or your password plus MFA (`--auth password`). It then generates an RSA key
@@ -224,9 +224,9 @@ def load_settings(required: tuple[str, ...] = SnowflakeSettings.REQUIRED) -> Sno
     settings = SnowflakeSettings.from_env({**file_values, **os.environ})
     missing = settings.missing(required)
     if missing:
-        sys.exit(f"Missing in .env: {', '.join(missing)}. Run `just snowflake setup` first.")
+        sys.exit(f"Missing in .env: {', '.join(missing)}. Run `just sf setup` first.")
     if not settings.key_path().exists():
-        sys.exit(f"Private key not found: {settings.key_path()}. Run `just snowflake setup` again.")
+        sys.exit(f"Private key not found: {settings.key_path()}. Run `just sf setup` again.")
     return settings
 
 
@@ -323,7 +323,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
             print(
                 f"Your account does not let you set your own key. Send {public_path} to a platform "
                 "administrator to register (see terraform/README.md), fill in the Snowflake block of "
-                ".env by hand, then run `just snowflake check`."
+                ".env by hand, then run `just sf check`."
             )
             return 1
         print(f"{slot} set on {exact_user}")
@@ -348,7 +348,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     if not verify(settings):
         return 1
     write_settings(settings)
-    print("\nDone. Next: `just snowflake check`, then `just start` for the Dagster UI.")
+    print("\nDone. Next: `just sf check`, then `just start` for the Dagster UI.")
     return 0
 
 
@@ -362,7 +362,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     if not verify(settings):
         return 1
     write_settings(settings)
-    print("\nDone. Next: `just snowflake check`, then restart `just start` so Dagster reads the new .env.")
+    print("\nDone. Next: `just sf check`, then restart `just start` so Dagster reads the new .env.")
     return 0
 
 
@@ -424,7 +424,7 @@ def cmd_keygen(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="just snowflake", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        prog="just sf", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

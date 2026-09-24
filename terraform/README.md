@@ -26,7 +26,7 @@ other environments only use the provisioned `_<LAYER>` schemas.
 1. Generate a key pair for the Terraform service user; the command prints the public key body:
 
     ```bash
-    just snowflake keygen terraform
+    just sf keygen terraform
     ```
 
 2. Open `modules/snowflake/init.sql`, uncomment the `RSA_PUBLIC_KEY` line in the `ALTER USER`
@@ -91,12 +91,12 @@ databases, schemas, roles and warehouses it adds.
 2. `just tf apply`. For created users, hand out the password from
    `just tf output -json initial_passwords`.
 
-3. The person runs `just snowflake setup`, which logs in once, registers a key pair and writes
+3. The person runs `just sf setup`, which logs in once, registers a key pair and writes
    their `.env` with `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
    `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and a personal schema prefix such as `DBT_SOMEONE`.
 
 System users for deployed environments (the transform and ingest roles) are created by hand:
-`CREATE USER <login> TYPE = SERVICE`, then `just snowflake keygen <login>` and
+`CREATE USER <login> TYPE = SERVICE`, then `just sf keygen <login>` and
 `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`. Grant them `RL_<PROJECT>_<ENV>__TFM` or
 `__ING` through a `create: false` user file with the same `roles` list.
 

@@ -110,7 +110,7 @@ Quick fixes for check failures. Setup and runtime failure modes with more backgr
 | `terraform fmt` fails with "command not found" | A `.tf` change on a machine without Terraform | Administrators install Terraform; engineers leave `terraform/*.tf` alone |
 | `validate-configs` reports `[projects/...]` or `[roles/...]` errors | A YAML under `terraform/config` breaks its schema, names a missing key, or lacks a required item | `just tf-validate-config` prints the file, the field and the message; fix the YAML |
 | Port 3000 already in use | A previous Dagster instance is still running | `just stop`, then `just start` |
-| `JWT token is invalid` on any Snowflake step | The key in `.env` does not match the key registered on the user | `just snowflake setup` again, let it re-register the existing key |
+| `JWT token is invalid` on any Snowflake step | The key in `.env` does not match the key registered on the user | `just sf setup` again, let it re-register the existing key |
 
 ## Related pages
 

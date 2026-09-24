@@ -53,7 +53,7 @@ review.
 An engineer works in the development environment of one project: the shared database
 `DB_<PROJECT>_DEV`, personal schemas prefixed with your `SNOWFLAKE_SCHEMA` (`DBT_<NAME>_SRC`,
 `DBT_<NAME>_STG`, ...), the project's engineer role `RL_<PROJECT>_DEV__ENG` and its warehouse
-`WH_<PROJECT>_DEV`. `just snowflake setup` writes those into `.env`; nothing else needs
+`WH_<PROJECT>_DEV`. `just sf setup` writes those into `.env`; nothing else needs
 configuring. The starter ships one project, `example`, so out of the box that is
 `DB_EXAMPLE_DEV`. The other environments (`tst`, `acc`, `prd`) use the provisioned `_<LAYER>`
 schemas and are not where you develop. Background: [Environment](../concepts/environment.md)
@@ -81,7 +81,7 @@ Details, including the pre-commit hooks and the CI jobs, are on [Testing](testin
 
 !!! note "Verify before you say it works"
     A code location that loads is not the same as a pipeline that ran. For a dlt change, run it
-    (`just dlt run <source>`) and count rows (`just snowflake query "SELECT COUNT(1) FROM ..."`).
+    (`just dlt run <source>`) and count rows (`just sf query "SELECT COUNT(1) FROM ..."`).
     For a dbt change, `just dbt build --select <model>` and read the summary.
 
 ## Where things go

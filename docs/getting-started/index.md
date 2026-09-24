@@ -9,7 +9,7 @@ project's development database. Four steps, each one page:
 
 1. [Prerequisites](prerequisites.md): `just`, git, and what your platform administrator gives you.
 2. [Installation](installation.md): `just init` installs uv, the Python environment and the dbt packages.
-3. [Snowflake authentication](snowflake-auth.md): `just snowflake setup` logs you in once and switches you to key-pair authentication.
+3. [Snowflake authentication](snowflake-auth.md): `just sf setup` logs you in once and switches you to key-pair authentication.
 4. [First run](first-run.md): `just start`, materialize the KNMI weather load and build the dbt models.
 
 Something off? [Troubleshooting](troubleshooting.md) covers the usual suspects.
@@ -24,8 +24,8 @@ Something off? [Troubleshooting](troubleshooting.md) covers the usual suspects.
 - [ ] `just` and git installed
 - [ ] From your administrator: the account identifier, your login, your engineer role, the development database and the warehouse (plus a one-time password if the user was created for you)
 - [ ] `just init` finished without errors
-- [ ] `just snowflake setup` registered your key and wrote `.env`
-- [ ] `just snowflake check` shows your role, warehouse, database and personal layer schemas
+- [ ] `just sf setup` registered your key and wrote `.env`
+- [ ] `just sf check` shows your role, warehouse, database and personal layer schemas
 - [ ] `just start` shows two code locations loaded at <http://localhost:3000>
 
 ## Where you end up

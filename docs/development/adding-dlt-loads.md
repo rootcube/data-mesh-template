@@ -202,10 +202,10 @@ without it the component invents an upstream placeholder asset per resource.
 ```bash
 just dlt list                   # airquality now listed next to knmi
 just dlt run airquality
-just snowflake query "SELECT COUNT(1) FROM DBT_<NAME>_SRC.airquality__measurement_hourly"
+just sf query "SELECT COUNT(1) FROM DBT_<NAME>_SRC.airquality__measurement_hourly"
 ```
 
-`just snowflake check` prints your layer schemas if you are unsure of the prefix. In dev the
+`just sf check` prints your layer schemas if you are unsure of the prefix. In dev the
 schema is created on first load. `RUNTIME__LOG_LEVEL=INFO` in `.env` shows the extract,
 normalize and load steps. Something wrong with the data? `just dlt run airquality --full-refresh`
 drops the source's tables and state and loads again.
@@ -379,7 +379,7 @@ test calls the API or Snowflake.
 - [ ] Folder under `dlt_pipelines/pipelines/ingest/<source>/` with `__init__.py`, `constants.py`, `source.py`, `pipelines.py`, `defs.yaml`
 - [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `dataset_name=source_dataset()`
 - [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
-- [ ] `just dlt run <source>` loads rows; `just snowflake query` counts them in `<prefix>_SRC`
+- [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
 - [ ] `dbt/<project>/sources/src_<source>.yml` with the `env_var` schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key
 - [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes
 - [ ] `just validate` and `just check` pass

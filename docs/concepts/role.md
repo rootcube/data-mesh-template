@@ -187,7 +187,7 @@ Which role a tool runs as is not decided in Terraform but in `.env`:
 
 | Who | `SNOWFLAKE_ROLE` | How |
 |-----|------------------|-----|
-| An engineer in `dev` | `RL_<PROJECT>_DEV__ENG` | Written by `just snowflake setup` |
+| An engineer in `dev` | `RL_<PROJECT>_DEV__ENG` | Written by `just sf setup` |
 | dbt in a deployed environment | `RL_<PROJECT>_<ENV>__TFM` | A `service` user in `users/` with that role |
 | dlt in a deployed environment | `RL_<PROJECT>_<ENV>__ING` | Same |
 

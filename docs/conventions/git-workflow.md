@@ -99,7 +99,7 @@ follow a release is chained off the `release_created` and `tag_name` outputs of 
 
 `main` accepts pull requests only: no direct pushes, no force pushes, no deletion, and the
 rule applies to administrators too. The settings are `.github/branch-protection.json`; apply
-them once with the GitHub CLI (`brew install gh`, `gh auth login`):
+them once with the GitHub CLI (`just install gh`, then `gh auth login`):
 
 ```bash
 gh api -X PUT repos/rootcube/data-mesh-template/branches/main/protection --input .github/branch-protection.json

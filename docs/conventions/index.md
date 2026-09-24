@@ -31,7 +31,7 @@ grows from one project to many.
 From `AGENTS.md`, and non-negotiable:
 
 1. **Never hardcode credentials.** Environment variables only: the `SNOWFLAKE_*` block in `.env`,
-   written by `just snowflake setup`.
+   written by `just sf setup`.
 2. **Never bypass pre-commit.** Fix the issue instead of reaching for `--no-verify`.
 3. **Follow the [dbt style guide](dbt-style-guide.md)** and the layer rules: models reference only
    the layer directly below.

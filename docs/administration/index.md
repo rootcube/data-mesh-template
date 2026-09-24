@@ -43,7 +43,7 @@ Everything is derived from the YAML. A new project is a copy of
 
 ## Before the first engineer starts
 
-- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in (`just snowflake keygen terraform` creates the pair and prints the key body)
+- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in (`just sf keygen terraform` creates the pair and prints the key body)
 - [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` (see [Environment variables](../reference/environment-variables.md))
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
 - [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)
