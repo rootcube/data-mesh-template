@@ -6,6 +6,7 @@ from dlt.common.destination import Destination
 from orchestrator.resources.snowflake import SnowflakeSettings
 
 SOURCE_LAYER = "src"
+STAGING_LAYER = "tmp"
 STAGE = "ST_DLT"
 
 
@@ -16,7 +17,14 @@ def snowflake_destination() -> Destination:
     does on every code-location load) works without a .env.
     """
     settings = SnowflakeSettings.from_env()
-    return dlt.destinations.snowflake(credentials=settings.dlt_credentials(), stage_name=load_stage(settings))
+    return dlt.destinations.snowflake(
+        credentials=settings.dlt_credentials(),
+        stage_name=load_stage(settings),
+        # `merge` loads into a staging table first; keep those in the temporary layer (`_TMP`, or the
+        # personal `<PREFIX>_TMP` in dev) instead of dlt's default `<dataset>_staging` schema, which
+        # nobody provisions and the ingest role may not create.
+        staging_dataset_name_layout=settings.schema_for_layer(STAGING_LAYER).lower(),
+    )
 
 
 def load_stage(settings: SnowflakeSettings) -> str:

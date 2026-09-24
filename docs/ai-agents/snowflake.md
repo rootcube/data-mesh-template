@@ -26,7 +26,7 @@ The four purposes, from `terraform/config/roles/`:
 |---|---|---|---|
 | Engineer | `ENG` | person | Full read and write on every layer in `dev` plus `CREATE SCHEMA` on the `dev` database (personal schemas); read-only on the layers in `prd`; read and write on `_TMP` everywhere. Inherits `transform` and `ingest` in `dev` and `tst`, `analyst` everywhere. |
 | Analyst | `ANL` | person | Read on `_MRT` and `_EXP`, read and write on `_TMP`, `USAGE` on the default warehouse. |
-| Ingest | `ING` | system | Write on `_SRC` only: what dlt runs as in deployed environments. |
+| Ingest | `ING` | system | Write on `_SRC`, plus tables in `_TMP` for the staging tables of `merge` loads: what dlt runs as in deployed environments. |
 | Transform | `TFM` | system | Read on `_SRC`, write on `_STG` to `_EXP`, `_REF`, `_MTD`, `_TMP`: what dbt runs as in deployed environments. |
 
 Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/init.sql`, created once as `ACCOUNTADMIN`: the service user `TERRAFORM_USER` (key pair only, no password), the role `RL_PLATFORM_PROVISIONING`, the warehouse `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The provider authenticates as that user with `TF_VAR_SNOWFLAKE_*` from `.env` (the commented block at the bottom of `.env.example`).
@@ -41,7 +41,7 @@ Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To 
 | Reference | `DBT_USERNAME_REF` | `_REF` | dbt seeds |
 | Staging, integration, mart, expose | `DBT_USERNAME_STG`, `_INT`, `_MRT`, `_EXP` | `_STG`, `_INT`, `_MRT`, `_EXP` | dbt models (`02_stg` to `05_exp`) |
 | Metadata | `DBT_USERNAME_MTD` | `_MTD` | dbt (`dbt_common` hook): `pre__dbt__*` run metadata, created on demand by the first real run |
-| Temporary | `DBT_USERNAME_TMP` | `_TMP` | dbt: stored test failures; also `target.schema` outside `dev` |
+| Temporary | `DBT_USERNAME_TMP` | `_TMP` | dbt: stored test failures, also `target.schema` outside `dev`; dlt: the staging tables of `merge` loads (`staging_dataset_name_layout`) |
 | (no layer) | `DBT_USERNAME` | `_TMP` | dbt models without a `+schema` config (`target.schema`) |
 
 Three pieces of code implement that one rule; keep them in step:

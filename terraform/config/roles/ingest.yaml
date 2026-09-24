@@ -38,3 +38,13 @@ privileges:
         - READ ON STAGES
         - WRITE ON STAGES
         - USAGE ON FILE FORMATS
+    # dlt's staging tables for `merge` loads (staging_dataset_name_layout in dlt_pipelines/utils/destination.py)
+    temporary:
+      all:
+        - USAGE
+        - CREATE TABLE
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
