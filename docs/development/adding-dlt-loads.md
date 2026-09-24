@@ -185,7 +185,7 @@ attributes:
       translation:
         key: '{{ resource.name | lower }}'
         key_prefix: '{{ ["dlt", "ingest", "airquality"] }}'
-        group_name: dlt_ingest_airquality
+        group_name: dlt/ingest/airquality
         kinds:
           - dlt
           - snowflake
@@ -194,7 +194,7 @@ attributes:
 ```
 
 `.pipelines.pipeline` is relative to the folder the file is in. The resulting asset is
-`dlt/ingest/airquality/measurement_hourly` in group `dlt_ingest_airquality`. `deps: []` matters:
+`dlt/ingest/airquality/measurement_hourly` in group `dlt/ingest/airquality`. `deps: []` matters:
 without it the component invents an upstream placeholder asset per resource.
 
 ## 6. Run it outside Dagster
@@ -217,7 +217,7 @@ just validate    # the dlt location loads with the new defs.yaml
 just start
 ```
 
-In the UI, the asset `measurement_hourly` sits in group `dlt_ingest_airquality`; **Materialize**
+In the UI, the asset `measurement_hourly` sits in group `dlt/ingest/airquality`; **Materialize**
 runs the same `pipeline.run(source)`. It is also part of `job_dlt_ingest_all`, without any
 change to the job. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
 both keys from the terminal.
@@ -357,7 +357,8 @@ just sqlfluff lint models
 
 The model lands as `DBT_<NAME>_STG.STG__AIRQUALITY__MEASUREMENT_HOURLY` in your dev database.
 After `just validate` (or a reload of the `dbt_example` location in the UI), the graph shows
-`dlt/ingest/airquality/measurement_hourly` feeding `stg/stg__airquality__measurement_hourly`.
+`dlt/ingest/airquality/measurement_hourly` feeding
+`dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly`.
 From here on it is [Adding a dbt model](adding-dbt-models.md).
 
 ## 9. Validate
@@ -377,7 +378,7 @@ test calls the API or Snowflake.
 
 - [ ] Folder under `dlt_pipelines/pipelines/ingest/<source>/` with `__init__.py`, `constants.py`, `source.py`, `pipelines.py`, `defs.yaml`
 - [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `dataset_name=source_dataset()`
-- [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt_ingest_<source>` and `deps: []`
+- [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
 - [ ] `just dlt run <source>` loads rows; `just snowflake query` counts them in `<prefix>_SRC`
 - [ ] `dbt/<project>/sources/src_<source>.yml` with the `env_var` schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key
 - [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes

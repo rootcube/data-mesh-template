@@ -188,10 +188,10 @@ just dbt-all parse --target dummy                # every project
 Each dbt project is one Dagster code location. The location's `defs/dbt/defs.yaml` declares a
 `DbtProjectComponent` with the project and profiles directories; `prepare_project_cli_args:
 ["parse", "--quiet"]` re-parses the project on every code-location load, so the asset graph
-always matches the models on disk. Model asset keys are `<layer>/<model name>`
-(`stg/stg__knmi__climate_hourly`, the `+schema` value plus the name, the same in every
-environment); sources take their key from `config.meta.dagster.asset_key`; the group is the dbt
-package name (`dbt_example` or `dbt_common`). Details on
+always matches the models on disk. Model asset keys follow the file path
+(`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, the same in every environment); sources take
+their key from `config.meta.dagster.asset_key`; the group is the key without its last segment
+(`dbt_example/models/02_stg/knmi`). Details on
 [Orchestration](orchestration.md#the-dbt-locations).
 
 ## One project per mesh node

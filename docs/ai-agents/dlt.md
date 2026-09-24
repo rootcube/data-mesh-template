@@ -106,7 +106,7 @@ attributes:
       translation:
         key: '{{ resource.name | lower }}'
         key_prefix: '{{ ["dlt", "ingest", "knmi"] }}'
-        group_name: dlt_ingest_knmi
+        group_name: dlt/ingest/knmi
         kinds:
           - dlt
           - snowflake

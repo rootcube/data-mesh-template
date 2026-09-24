@@ -141,13 +141,14 @@ seeds:
 Three things matter here:
 
 The `name`
-:   It is the dbt package name, the Dagster group name and part of the asset job name.
+:   It is the dbt package name, the first segment of every asset key and group, and part of the
+    asset job name.
 
 `dbt_common: +enabled: false`
 :   Every project installs `dbt_common`, but exactly one builds its models. Two projects building
-    `dim__generic__calendar` produce the same asset key (`mrt/dim__generic__calendar`) in two
-    code locations, and Dagster refuses to load that. The macros, the dispatch overrides and the
-    `on-run-start` / `on-run-end` hooks keep working with the models disabled.
+    `dim__generic__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
+    write the same table into the one database `.env` points at. The macros, the dispatch
+    overrides and the `on-run-start` / `on-run-end` hooks keep working with the models disabled.
 
 The dispatch block stays
 :   Without `search_order: ["dbt_common", "dbt"]` the project falls back to dbt's own
@@ -156,7 +157,8 @@ The dispatch block stays
 
 `packages.yml` is the same file in every project: the local `../dbt_common` plus `dbt_utils`.
 Delete the copied `sources/src_knmi.yml` and `models/02_stg/knmi/` unless this project owns
-that source. Model names must be unique across projects because asset keys are `<layer>/<name>`.
+that source. Asset keys carry the project name (`dbt_energy/models/...`), so a model name only has to be
+unique within its project.
 
 Install the packages for the new project:
 
@@ -183,7 +185,7 @@ defs = build_dbt_defs("dbt_energy", _defs_module)
 ```
 
 ```yaml title="src/orchestrator/locations/dbt/dbt_energy/defs/dbt/defs.yaml"
-type: dagster_dbt.DbtProjectComponent
+type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
 
 attributes:
   project:
@@ -191,9 +193,6 @@ attributes:
     profiles_dir: '{{ context.project_root }}/dbt'
     prepare_project_cli_args: ["parse", "--quiet"]
   select: "*"
-
-  translation:
-    group_name: '{{ node.package_name }}'
 ```
 
 `build_dbt_defs()` gives the location `job_dbt_energy_build_all` for free.

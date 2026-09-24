@@ -60,7 +60,7 @@ Generic tests
 :   `dbt/dbt_common/tests/generic/` ships four tests: `has_data` and `rows_expected` on a model, `not_empty` and `not_negative` on a column. From a project they are called namespaced (`dbt_common.has_data`); `has_data` sets `store_failures=false` because its failure row is a constant.
 
 !!! danger "Exactly one project builds the `dbt_common` models"
-    Each dbt project is its own Dagster code location, and asset keys are `<layer>/<name>` (for example `mrt/dim__generic__calendar`). Two projects that both build `dim__generic__calendar` produce the same asset key in two locations, which Dagster rejects. Every project after the first sets `models: dbt_common: +enabled: false` (the opt-out documented in `dbt_common/dbt_project.yml`).
+    Each dbt project is its own Dagster code location. Two projects that both build `dim__generic__calendar` get distinct asset keys (`<project>/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar`) but write the same table into the one database `.env` points at. Every project after the first sets `models: dbt_common: +enabled: false` (the opt-out documented in `dbt_common/dbt_project.yml`).
 
 !!! warning "`int__generic__holiday` is a Python model"
     It runs as Snowpark inside Snowflake and imports the `holidays` package from the Anaconda channel, which an `ORGADMIN` has to accept once per account. If it fails with a package error, ask a platform administrator or disable the model in `dbt/dbt_example/dbt_project.yml`; the snippet is in [Snowflake provisioning](../administration/snowflake-provisioning.md).

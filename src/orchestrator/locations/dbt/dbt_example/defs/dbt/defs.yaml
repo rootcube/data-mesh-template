@@ -1,4 +1,4 @@
-type: dagster_dbt.DbtProjectComponent
+type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
 
 attributes:
   project:
@@ -9,10 +9,8 @@ attributes:
     prepare_project_cli_args: ["parse", "--quiet"]
   select: "*"
 
-  # Asset keys follow dagster-dbt's default, <layer>/<name> (e.g. stg/stg__knmi__climate_hourly,
-  # the +schema config plus the model name), the same in every environment. Sources take their key from
-  # `config.meta.dagster.asset_key` in sources/*.yml so they line up with the dlt assets.
-  # Groups follow the dbt package: dbt_example for this project's models, dbt_common for
-  # the shared generic models it builds.
-  translation:
-    group_name: '{{ node.package_name }}'
+  # Asset keys, groups and kinds come from DataMeshDbtTranslator in shared.py: the key follows
+  # the file path (dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly, or
+  # dbt_example/packages/dbt_common/... for package nodes) and the group is the key without
+  # its last segment, so the UI nests assets by project, package, layer and domain. Sources take
+  # their key from `config.meta.dagster.asset_key` in sources/*.yml so they line up with the dlt assets.

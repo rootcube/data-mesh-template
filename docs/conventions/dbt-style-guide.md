@@ -575,9 +575,9 @@ dependency order.
 - **Seeds**: `seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`.
 - **Generic tests**: `has_data`, `rows_expected`, `not_empty`, `not_negative`.
 
-Every installing project builds its own copy of those models. Because two projects building the
-same model would produce duplicate asset keys across Dagster code locations
-(`mrt/dim__generic__calendar` twice), **exactly one project builds them** (`dbt_example` today);
+Every installing project could build its own copy of those models, into the one database
+`.env` points at, so the same tables would be built twice. **Exactly one project builds them**
+(`dbt_example` today);
 another project opts out with `models: dbt_common: +enabled: false` in its `dbt_project.yml`.
 Macros, hooks and generic tests keep working either way.
 

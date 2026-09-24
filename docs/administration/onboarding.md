@@ -83,9 +83,9 @@ side of this is [Snowflake authentication](../getting-started/snowflake-auth.md)
 
 ```dotenv
 ENVIRONMENT=dev
-SNOWFLAKE_ACCOUNT=ROOTCUBE-PLATFORM
+SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
 SNOWFLAKE_USER=SOMEONE@EXAMPLE.COM
-SNOWFLAKE_PRIVATE_KEY_PATH=/Users/someone/.snowflake/keys/rootcube-platform__someone_example.com.p8
+SNOWFLAKE_PRIVATE_KEY_PATH=/Users/someone/.snowflake/keys/myorg-myaccount__someone_example.com.p8
 SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
 SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG
 SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV
@@ -168,7 +168,7 @@ Deployed environments run dlt and dbt as system users: the `ingest` role
 
     ```dotenv
     ENVIRONMENT=prd
-    SNOWFLAKE_ACCOUNT=ROOTCUBE-PLATFORM
+    SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
     SNOWFLAKE_USER=example_prd_transform
     SNOWFLAKE_PRIVATE_KEY_PATH=/path/to/example_prd_transform.p8
     SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=

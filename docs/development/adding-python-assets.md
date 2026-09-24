@@ -57,7 +57,7 @@ STG_SCHEMA = SnowflakeSettings.from_env().schema_for_layer("stg")
 @asset(
     group_name="weather",
     kinds={"python", "snowflake"},
-    deps=[AssetKey(["stg", "stg__knmi__climate_hourly"])],
+    deps=[AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])],
 )
 def knmi_freshness_report(context: AssetExecutionContext) -> MaterializeResult:
     """Row count and latest observation of the staged KNMI data, as asset metadata."""
@@ -72,8 +72,9 @@ def knmi_freshness_report(context: AssetExecutionContext) -> MaterializeResult:
 Points worth copying:
 
 `deps=[AssetKey([...])]`
-:   Upstream assets by key, not by import. dbt model keys are `<layer>/<name>`, so the staged
-    model is `AssetKey(["stg", "stg__knmi__climate_hourly"])`; a dlt asset would be
+:   Upstream assets by key, not by import. dbt model keys follow the file path, so the staged
+    model is `AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])`;
+    a dlt asset would be
     `AssetKey(["dlt", "ingest", "knmi", "climate_hourly"])`. Keys resolve across code
     locations, so a dependency on an asset in another location works the same way.
 
@@ -92,8 +93,9 @@ Points worth copying:
     to record.
 
 `group_name` and `kinds`
-:   The group is how the asset catalog is organized (dbt models use their package name, dlt
-    loads `dlt_ingest_<source>`); `kinds` become the little tool icons.
+:   The group is how the asset catalog is organized (dbt models use their key without its last
+    segment, such as `dbt_example/models/02_stg/knmi`; dlt loads `dlt/ingest/<source>`); `kinds`
+    become the little tool icons.
 
 ## Merging it into the location
 

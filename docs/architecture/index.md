@@ -46,7 +46,7 @@ flowchart LR
    `_EXP`. Seeds go to `_REF`, run metadata to `_MTD`, stored test failures to `_TMP`. The
    project is `dbt/dbt_example/`, with the shared `dbt/dbt_common/` package installed into it.
 3. **Dagster** shows both as one asset graph. The dlt asset `dlt/ingest/knmi/climate_hourly`
-   feeds the dbt asset `stg/stg__knmi__climate_hourly`, even though the two live in different
+   feeds the dbt asset `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, even though the two live in different
    code locations. `workspace.yaml` lists those locations.
 
 Everything lands in one database per environment, `DB_EXAMPLE_<ENV>`. In development the
@@ -84,7 +84,7 @@ dlt
 
 Dagster
 :   One code location per concern: `dlt` for every load, `dbt_<project>` per dbt project. Asset
-    keys carry the layer (`stg/stg__knmi__climate_hourly`) or the load
+    keys carry the project and path (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`) or the load
     (`dlt/ingest/knmi/climate_hourly`). Dagster runs with the same `.env`, so it works in the
     environment the checkout is configured for.
 

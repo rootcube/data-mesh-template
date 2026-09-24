@@ -213,7 +213,8 @@ Dagster code locations
 :   `build_dbt_defs(project_name, defs_module)` in `src/orchestrator/locations/dbt/shared.py` turns
     a dbt project into a code location with a `job_<project>_build_all` job. dlt loads are
     declared in a `defs.yaml` next to the pipeline (`dagster_dlt.DltLoadCollectionComponent`),
-    dbt projects in `defs/dbt/defs.yaml` (`dagster_dbt.DbtProjectComponent`). Extend those instead
+    dbt projects in `defs/dbt/defs.yaml` (`DataMeshDbtProjectComponent` in `shared.py`, a
+    `dagster_dbt.DbtProjectComponent` with path-based keys). Extend those instead
     of writing assets by hand. See [adding Python assets](../development/adding-python-assets.md)
     and [adding dlt loads](../development/adding-dlt-loads.md).
 

@@ -53,8 +53,9 @@ shared calendar and time models). The `fct__`, `brg__`, `agg__` and `exp__` exam
 illustrative; `dbt_example` has only the staging model so far.
 
 The model name is also the last segment of its Dagster asset key and its Snowflake table or view
-name, so pick it once and carefully. Model names must be unique across every project in the
-repo, because asset keys (`<layer>/<name>`) are shared across code locations.
+name, so pick it once and carefully. The asset key carries the project name
+(`<project>/models/...`), so a model name only has to be unique within its project; distinct
+names across the repo keep the catalog searchable.
 
 ### Columns
 
@@ -105,7 +106,7 @@ in `pipelines.py`:
 | Pipeline name | `ingest_<source>` | `ingest_knmi` |
 | Dataset (Snowflake schema) | `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (`source_dataset()`) | `DBT_INFO_SRC` |
 | Dagster asset key | `dlt/ingest/<source>/<entity>` | `dlt/ingest/knmi/climate_hourly` |
-| Dagster group | `dlt_ingest_<source>` | `dlt_ingest_knmi` |
+| Dagster group | `dlt/ingest/<source>` | `dlt/ingest/knmi` |
 | Kind tags | `dlt`, `snowflake` | same |
 
 Every source of a project shares one `_SRC` schema, which is why the table carries the source
@@ -125,8 +126,9 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Python module of a dbt location | `orchestrator.locations.dbt.dbt_<project>.definitions` | `orchestrator.locations.dbt.dbt_example.definitions` |
 | Job (dlt) | `job_dlt_ingest_all` | same |
 | Job (dbt) | `job_<project>_build_all` | `job_dbt_example_build_all` |
-| Asset key (dbt model) | `<layer>/<name>`: the `+schema` value plus the model name | `stg/stg__knmi__climate_hourly`, `mrt/dim__generic__calendar` |
-| Asset key (dbt seed) | `ref/<name>` | `ref/seed_month` |
+| Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar` |
+| Asset key (dbt seed) | `<project>/seeds/<name>`, or `<project>/packages/<package>/seeds/<name>` | `dbt_example/packages/dbt_common/seeds/seed_month` |
+| Asset group (dbt) | the key without its last segment | `dbt_example/models/02_stg/knmi` |
 | Asset key (dbt source) | `config.meta.dagster.asset_key` from the source YAML | `dlt/ingest/knmi/climate_hourly` |
 | Asset group (dbt) | the dbt package name | `dbt_example`, `dbt_common` |
 

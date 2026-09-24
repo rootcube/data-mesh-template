@@ -213,8 +213,10 @@ another project wants.
 ## Where Dagster comes in
 
 Nothing to do. The `dbt_example` code location re-parses the project on load, so after
-`just validate` (or a reload in the UI) the new model shows up as `int/int__weather__station_day`
-in group `dbt_example`, downstream of `stg/stg__knmi__climate_hourly`. Materializing it runs
+`just validate` (or a reload in the UI) the new model shows up as
+`dbt_example/models/03_int/weather/int__weather__station_day` (group
+`dbt_example/models/03_int/weather`), downstream of
+`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`. Materializing it runs
 `dbt build` for that selection.
 
 ## Checklist

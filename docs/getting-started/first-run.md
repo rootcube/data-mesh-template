@@ -27,7 +27,7 @@ A location that failed to load shows the error right there; the terminal has the
 The starter source is the KNMI weather API: public, no credentials, small (seven stations, the
 last 30 days, hourly).
 
-1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt_ingest_knmi`).
+1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt/ingest/knmi`).
 2. **Materialize**. The run fetches the observations and merges them into the table
    `knmi__climate_hourly` in your personal source schema `DBT_<NAME>_SRC`, creating the schema
    on first use.
@@ -48,7 +48,7 @@ loading.
 
 ## Build the dbt models
 
-In the asset graph, `stg/stg__knmi__climate_hourly` hangs directly under the dlt asset: the dbt
+In the asset graph, `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly` hangs directly under the dlt asset: the dbt
 source declares the dlt asset key, so the lineage runs across the two code locations. Select
 the dbt assets and materialize, or from the terminal:
 

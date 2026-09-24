@@ -13,6 +13,8 @@ multi-project mesh: one dbt project and one Dagster code location per project, a
 ## Quickstart (engineer)
 
 Prerequisites: [`just`](https://github.com/casey/just) and git. Everything else is installed for you.
+No Snowflake platform yet? A free [trial account](https://signup.snowflake.com/) is enough to
+bootstrap the `example` project and try everything; see [Prerequisites](docs/getting-started/prerequisites.md).
 
 ```bash
 git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template

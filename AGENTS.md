@@ -80,8 +80,8 @@ Detail: [Architecture](docs/architecture/index.md), [Concepts](docs/concepts/ind
 ```
 src/orchestrator/                 # Dagster package
 ├── locations/dlt/definitions.py  #   loads the dlt_pipelines component tree (one asset per dlt resource)
-├── locations/dbt/shared.py       #   build_dbt_defs(): one code location per dbt project
-├── locations/dbt/dbt_example/    #   definitions.py + defs/dbt/defs.yaml (DbtProjectComponent)
+├── locations/dbt/shared.py       #   build_dbt_defs(): one code location per dbt project; DataMeshDbtProjectComponent: path-based keys and groups
+├── locations/dbt/dbt_example/    #   definitions.py + defs/dbt/defs.yaml (DataMeshDbtProjectComponent)
 ├── resources/snowflake.py        #   SnowflakeSettings.from_env(): the only reader of SNOWFLAKE_* and ENVIRONMENT
 └── utils/dotenv.py               #   .env editing used by scripts/snowflake.py
 dlt_pipelines/                    # dlt package: pipelines/ingest/<source>/{constants,source,pipelines}.py + defs.yaml
@@ -97,7 +97,7 @@ docs/ + mkdocs.yml                # the documentation site
 
 Locations load in their own subprocess and never import each other; cross-location lineage
 resolves through shared asset keys (dbt sources declare `config.meta.dagster.asset_key` matching
-the dlt asset key `dlt/ingest/<source>/<entity>`). dagster-dbt keys are `<layer>/<name>` (the `+schema` config plus the model name, e.g. `stg/stg__knmi__climate_hourly`).
+the dlt asset key `dlt/ingest/<source>/<entity>`). dbt keys follow the file path, `<project>/models/<layer>/<domain>/<name>` (e.g. `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`; nodes from a package get `<project>/packages/<package>/...`), and the group is the key without its last segment, which nests the assets in the UI (`DataMeshDbtTranslator` in `locations/dbt/shared.py`).
 
 ## Common commands
 
@@ -148,6 +148,6 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 - **`dbt deps` first.** The Dagster dbt location parses the project on load; without packages it fails. `just dbt-all deps`.
 - **Every dbt model needs its `_conf/<model>.yml`** with column descriptions, `data_type` and named tests.
 - **Do not reference across layers.** STG cannot ref INT, MRT cannot ref EXP.
-- **Asset key collisions.** Two dbt projects building the same `dbt_common` models produce duplicate asset keys across code locations. Only one project builds them; others disable `dbt_common` models.
+- **Two builders of `dbt_common`.** Every project that builds the `dbt_common` models writes the same tables into the one database `.env` points at. Only one project builds them; others disable `dbt_common` models.
 - **Source YAML cannot call macros.** The source layer schema is spelled out with `env_var` in `sources/*.yml`; keep it in step with `dbt_common.generate_schema_name`.
 - **No quotes in `.env`.** `just` and Docker pass quoted values literally.

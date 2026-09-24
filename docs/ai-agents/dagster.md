@@ -49,7 +49,7 @@ Everything that is an asset today comes from a component `defs.yaml`; there is n
           translation:
             key: '{{ resource.name | lower }}'
             key_prefix: '{{ ["dlt", "ingest", "knmi"] }}'
-            group_name: dlt_ingest_knmi
+            group_name: dlt/ingest/knmi
             kinds:
               - dlt
               - snowflake
@@ -61,7 +61,7 @@ Everything that is an asset today comes from a component `defs.yaml`; there is n
 
 === "dbt"
 
-    `src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml`, type `dagster_dbt.DbtProjectComponent`. It points at `dbt/dbt_example` with the shared `dbt/` profiles dir, selects `*`, and re-parses the project on every code-location load (`prepare_project_cli_args: ["parse", "--quiet"]`), so the manifest always matches the models on disk. Asset keys follow dagster-dbt's default, `<layer>/<name>`: the `+schema` config plus the model name (`stg/stg__knmi__climate_hourly`), the same in every environment. Sources take their key from `config.meta.dagster.asset_key`, and the group is the dbt package name (`translation: group_name: '{{ node.package_name }}'`, so `dbt_example` or `dbt_common`).
+    `src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml`, type `orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent` (dagster-dbt's `DbtProjectComponent` with the key scheme below). It points at `dbt/dbt_example` with the shared `dbt/` profiles dir, selects `*`, and re-parses the project on every code-location load (`prepare_project_cli_args: ["parse", "--quiet"]`), so the manifest always matches the models on disk. Asset keys follow the file path, `<project>/models/<layer>/<domain>/<name>` (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`), with `<project>/packages/<package>/...` for nodes from a package, the same in every environment. Sources take their key from `config.meta.dagster.asset_key`, and the group is the key without its last segment (`dbt_example/models/02_stg/knmi`), which is what nests the assets in the UI (`DataMeshDbtTranslator` in `shared.py`).
 
 !!! warning "Component-relative references"
     The `.pipelines.pipeline` style references in a `defs.yaml` resolve relative to the folder that holds the `defs.yaml`. Keep `pipelines.py` next to it.

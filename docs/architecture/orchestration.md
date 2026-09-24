@@ -96,7 +96,7 @@ defs = build_dbt_defs("dbt_example", _defs_module)
 one component:
 
 ```yaml title="src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
-type: dagster_dbt.DbtProjectComponent
+type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
 
 attributes:
   project:
@@ -104,9 +104,6 @@ attributes:
     profiles_dir: '{{ context.project_root }}/dbt'
     prepare_project_cli_args: ["parse", "--quiet"]
   select: "*"
-
-  translation:
-    group_name: '{{ node.package_name }}'
 ```
 
 `prepare_project_cli_args` makes the location run `dbt parse --quiet` on every load, so the
@@ -118,21 +115,24 @@ it.
 
 | Kind | Key | Example | Group |
 |------|-----|---------|-------|
-| dlt resource | `dlt/ingest/<source>/<entity>` (from `defs.yaml`: `key_prefix` + lowercased resource name) | `dlt/ingest/knmi/climate_hourly` | `dlt_ingest_<source>` |
-| dbt model, seed | `<layer>/<node name>` (the `+schema` value plus the name) | `stg/stg__knmi__climate_hourly`, `ref/seed_month`, `mrt/dim__generic__calendar` | dbt package name: `dbt_example`, `dbt_common` |
+| dlt resource | `dlt/ingest/<source>/<entity>` (from `defs.yaml`: `key_prefix` + lowercased resource name) | `dlt/ingest/knmi/climate_hourly` | `dlt/ingest/<source>` |
+| dbt model, seed | `<project>/<path in the project>/<node name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/seeds/seed_month`, `dbt_example/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar` | the key without its last segment: `dbt_example/models/02_stg/knmi` |
 | dbt source | `config.meta.dagster.asset_key` from the source YAML | `dlt/ingest/knmi/climate_hourly` | the upstream asset's group |
 
-The dbt keys come from the default `dagster_dbt` translator: the model's configured schema
-(`stg`, `int`, `mrt`, `exp`, `ref`) followed by its name. Because the key uses the `+schema`
-value and not the physical schema, it is the same in every environment: `DBT_INFO_STG` in `dev`
-and `_STG` in `prd` both show up as `stg/...`. Search the asset catalog for the model name and
-the layer prefix takes care of itself; when you need the full key in code, it is
-`AssetKey(["stg", "stg__knmi__climate_hourly"])`.
+The dbt keys come from `DataMeshDbtTranslator` in `src/orchestrator/locations/dbt/shared.py`:
+the project name, the node's path inside the project (`models/02_stg/knmi`), then its name; a
+node from an installed package gets `packages/<package>` after the project name. Nothing in
+the key depends on the physical schema, so it is the same in every environment: `DBT_INFO_STG`
+in `dev` and `_STG` in `prd` both show up under `dbt_example/models/02_stg/...`. The group is
+the key without its last segment, so the UI nests assets by project, package, layer and domain.
+Search the asset catalog for the model name; when you need the full key in code, it is
+`AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])`.
 
 ## Lineage across code locations
 
 The dlt asset and the dbt staging model live in different locations and different processes,
-yet the graph shows `dlt/ingest/knmi/climate_hourly` feeding `stg/stg__knmi__climate_hourly`.
+yet the graph shows `dlt/ingest/knmi/climate_hourly` feeding
+`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`.
 No import makes that happen; the key does. The dbt source declares it:
 
 ```yaml title="dbt/dbt_example/sources/src_knmi.yml (excerpt)"
@@ -150,9 +150,11 @@ sources:
 
 Dagster resolves both locations' definitions into one global graph and joins on equal keys.
 The same mechanism works in the other direction: a Python asset or a second dbt project that
-depends on `dim__generic__calendar` names `AssetKey(["mrt", "dim__generic__calendar"])` and
-gets the edge, whichever location builds it. Two locations declaring the *same materializable*
-key is an error, which is why only one dbt project may build the `dbt_common` models.
+depends on `dim__generic__calendar` names
+`AssetKey(["dbt_example", "packages", "dbt_common", "models", "04_mrt", "generic", "dim__generic__calendar"])`
+and gets the edge. Two locations declaring the *same materializable* key is an error; the
+project prefix keeps dbt keys apart, so the reason only one dbt project builds the `dbt_common`
+models is the tables, which would otherwise be built twice in the same database.
 
 ## Jobs
 

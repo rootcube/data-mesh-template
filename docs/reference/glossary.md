@@ -15,8 +15,8 @@ Asset (Dagster)
 
 Asset key (Dagster)
 :   The path-like identifier of an asset. dlt loads: `dlt/ingest/<source>/<resource>`; dbt
-    models and seeds: `<layer>/<name>` (`stg/stg__knmi__climate_hourly`), the same in every
-    environment. Equal keys in different code locations are how lineage crosses locations. See
+    models and seeds: `<project>/<path>/<name>` (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`), the
+    same in every environment. Equal keys in different code locations are how lineage crosses locations. See
     [Orchestration](../architecture/orchestration.md).
 
 Code location (Dagster)
@@ -95,8 +95,9 @@ Full refresh (dlt)
     destination, then load. Maps to `pipeline.run(source, refresh="drop_sources")`.
 
 Group (Dagster)
-:   How the asset catalog is organized. dlt loads: `dlt_ingest_<source>`; dbt nodes: their
-    package name (`dbt_example`, `dbt_common`).
+:   How the asset catalog is organized. dlt loads: `dlt/ingest/<source>`; dbt nodes: their
+    key without its last segment (`dbt_example/models/02_stg/knmi`), which nests them by
+    project, package, layer and domain.
 
 Hooks (dbt)
 :   SQL or macro calls that run around an invocation. `on-run-start` in `dbt_example` prints

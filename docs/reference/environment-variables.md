@@ -18,7 +18,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 | Variable | Example | Meaning |
 |----------|---------|---------|
 | `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `prd` (the shared `_<LAYER>` schemas, for deployed service users; `tst` and `acc` need a profile target once enabled) |
-| `SNOWFLAKE_ACCOUNT` | `ROOTCUBE-PLATFORM` | Account identifier as `<organization>-<account>` |
+| `SNOWFLAKE_ACCOUNT` | `MYORG-MYACCOUNT` | Account identifier as `<organization>-<account>` |
 | `SNOWFLAKE_USER` | `ENGINEER@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
 | `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/you/.snowflake/keys/....p8` | Absolute path of the private key `just snowflake setup` wrote |
 | `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | empty | Only set when you chose `--passphrase` |
@@ -75,8 +75,8 @@ Terraform reads its provider settings from `TF_VAR_*` variables, kept in the sam
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `TF_VAR_SNOWFLAKE_ORGANIZATION` | required | Organization part of the account identifier (`ROOTCUBE` in `ROOTCUBE-PLATFORM`) |
-| `TF_VAR_SNOWFLAKE_ACCOUNT` | required | Account part (`PLATFORM`) |
+| `TF_VAR_SNOWFLAKE_ORGANIZATION` | required | Organization part of the account identifier (`MYORG` in `MYORG-MYACCOUNT`) |
+| `TF_VAR_SNOWFLAKE_ACCOUNT` | required | Account part (`MYACCOUNT`) |
 | `TF_VAR_SNOWFLAKE_USER` | `TERRAFORM_USER` | Service user created by `terraform/modules/snowflake/init.sql` |
 | `TF_VAR_SNOWFLAKE_PROVISIONING_ROLE` | `RL_PLATFORM_PROVISIONING` | Role Terraform provisions with |
 | `TF_VAR_SNOWFLAKE_WAREHOUSE` | `WH_PLATFORM_PROVISIONING` | Warehouse for the provider's own queries |

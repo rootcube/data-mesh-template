@@ -288,7 +288,7 @@ def write_settings(settings: SnowflakeSettings) -> None:
 def cmd_setup(args: argparse.Namespace) -> int:
     current = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
     account = args.account or ask(
-        "Snowflake account (<organization>-<account>, e.g. ROOTCUBE-PLATFORM)", current.get("SNOWFLAKE_ACCOUNT") or None
+        "Snowflake account (<organization>-<account>, e.g. MYORG-MYACCOUNT)", current.get("SNOWFLAKE_ACCOUNT") or None
     )
     user = args.user or ask("Snowflake user", current.get("SNOWFLAKE_USER") or None)
 

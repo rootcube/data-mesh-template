@@ -160,7 +160,7 @@ attributes:
       translation:
         key: '{{ resource.name | lower }}'
         key_prefix: '{{ ["dlt", "ingest", "knmi"] }}'
-        group_name: dlt_ingest_knmi
+        group_name: dlt/ingest/knmi
         kinds:
           - dlt
           - snowflake
@@ -179,15 +179,15 @@ resource.
 | Artifact | Value |
 |----------|-------|
 | Asset key | `dlt/ingest/<source>/<entity>`: `dlt/ingest/knmi/climate_hourly` |
-| Group | `dlt_ingest_<source>` |
+| Group | `dlt/ingest/<source>` |
 | Kinds | `dlt`, `snowflake` |
 | Job | `job_dlt_ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
 | Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_INFO_SRC.knmi__climate_hourly` in `dev` |
 
 The asset key is what links ingestion to transformation. The dbt source in
 `dbt/dbt_example/sources/src_knmi.yml` declares the same key under
-`config.meta.dagster.asset_key`, and Dagster draws the edge to `stg/stg__knmi__climate_hourly`
-across the two code locations. See
+`config.meta.dagster.asset_key`, and Dagster draws the edge to
+`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly` across the two code locations. See
 [Orchestration](orchestration.md#lineage-across-code-locations).
 
 ## The standalone runner
