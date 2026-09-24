@@ -97,18 +97,26 @@ follow a release is chained off the `release_created` and `tag_name` outputs of 
 
 ## Protected main
 
-`main` accepts pull requests only: no direct pushes, no force pushes, no deletion, and the
-rule applies to administrators too. The settings are `.github/branch-protection.json`; apply
-them once with the GitHub CLI (`just install gh`, then `gh auth login`) or in the repository settings:
+`main` accepts pull requests only: no direct pushes, no force pushes, no deletion, every
+review thread resolved, the four CI jobs green, and the rule applies to administrators too.
+The rule is a repository ruleset named `main`; its export is `.github/rulesets/main.json`.
+Apply it on a fresh repository with the GitHub CLI (`just install gh`, then `gh auth login`)
+or import the file under **Settings > Rules > Rulesets**:
 
 ```bash
-gh api -X PUT repos/rootcube/data-mesh-template/branches/main/protection --input .github/branch-protection.json
+gh api -X POST repos/rootcube/data-mesh-template/rulesets --input .github/rulesets/main.json
 ```
 
-CI still runs on every pull request, but it is not a required check: release-please opens its
-pull requests with `GITHUB_TOKEN`, and GitHub runs no workflows for those, so a required check
-would make the release pull request unmergeable. Approvals are set to zero for a single
-maintainer; raise `required_approving_review_count` when there are reviewers.
+Approvals are set to zero for a single maintainer; raise `required_approving_review_count`
+in the ruleset when there are reviewers.
+
+The required CI checks need one secret: release-please opens its pull request with
+`GITHUB_TOKEN`, and GitHub runs no workflows for events that token causes, so without help the
+release pull request never gets its checks and cannot be merged. `RELEASE_PLEASE_TOKEN`, a
+fine-grained personal access token for this repository with *Contents* and *Pull requests* set
+to read and write, makes the pull request count as opened by a person, and CI runs on it.
+Without the secret the workflow falls back to `GITHUB_TOKEN`; close and reopen the release
+pull request to trigger CI by hand.
 
 ## What runs when
 
@@ -143,6 +151,13 @@ CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`:
 release-please, on every push to `main`, from `.github/workflows/release-please.yml`: the release
 pull request, and on its merge the tag and the GitHub release. It is not a check on your pull
 request.
+
+Dependabot, weekly on Monday, from `.github/dependabot.yml`: one grouped pull request per
+ecosystem for Python packages (`uv.lock`), GitHub Actions and the Terraform providers, with
+conventional titles (`chore(deps)`, `ci(deps)`) so they never bump the release version on their
+own. Security updates for vulnerable Python packages arrive separately as soon as an advisory
+matches; they are a repository setting (**Settings > Advanced Security > Dependabot security
+updates**). dbt packages and pre-commit hooks are not covered; bump those by hand.
 
 ## Rules recap
 
