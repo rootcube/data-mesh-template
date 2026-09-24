@@ -103,7 +103,7 @@ the dlt asset key `dlt/ingest/<source>/<entity>`). dbt keys follow the file path
 
 ```bash
 just init             # uv + .venv + .env + dbt deps
-just install terraform # tools uv does not manage: terraform (tfenv), direnv, gh, or all
+just install terraform # tools uv does not manage: terraform (tfenv), direnv, or all (gh is optional)
 just sf setup         # one-time key-pair setup (interactive login)
 just setup            # fresh account: init + Terraform user + provisioning + key pair + .env (ACCOUNTADMIN password)
 just sf context       # (re)point .env at a project from the roles granted to you, no login

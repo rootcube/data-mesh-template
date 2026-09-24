@@ -8,8 +8,8 @@ icon: material/clipboard-check
 
 You install two things yourself; `just init` takes care of the rest (uv, Python 3.13, the
 virtual environment, the dbt packages). Tools that uv does not manage have `just install`:
-`just install direnv`, `just install terraform`, `just install gh` or `just install all`
-(Homebrew on macOS and Linux, winget on Windows). Engineers need none of them.
+`just install direnv`, `just install terraform` or `just install all` (Homebrew on macOS and
+Linux, winget on Windows). Engineers need none of them.
 
 === "macOS / Linux"
 

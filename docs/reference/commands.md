@@ -15,7 +15,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just setup` | Fresh account: `just init`, then `just sf bootstrap` (arguments pass through) |
 | `just init` | Install uv if missing, `uv sync`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
-| `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, `gh`, or `all` (the default) |
+| `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, or `all` (the default); `gh` is available too but optional, nothing in the repo needs it |
 
 ## Snowflake
 

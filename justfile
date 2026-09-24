@@ -75,7 +75,7 @@ setup *args: init
 info:
     uv run python scripts/info.py
 
-# install a tool uv does not manage: all | uv | tfenv | terraform | direnv | gh (Homebrew on macOS/Linux)
+# install a tool uv does not manage: all | uv | tfenv | terraform | direnv (Homebrew on macOS/Linux); `gh` is optional and not part of `all`
 [unix]
 install tool="all":
     #!/usr/bin/env bash
@@ -91,14 +91,14 @@ install tool="all":
                    echo 'then add to ~/.zshrc (or ~/.bashrc): eval "$(direnv hook zsh)"' ;;
         gh)        brew_install gh https://cli.github.com/
                    echo "then: gh auth login" ;;
-        all)       for t in uv terraform direnv gh; do just install "$t"; done ;;
+        all)       for t in uv terraform direnv; do just install "$t"; done ;;
         *)         echo "usage: just install [all|uv|tfenv|terraform|direnv|gh]"; exit 1 ;;
     esac
 
-# install a tool uv does not manage: all | uv | terraform | direnv | gh (winget)
+# install a tool uv does not manage: all | uv | terraform | direnv (winget); `gh` is optional and not part of `all`
 [windows]
 install tool="all":
-    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { winget install --id Hashicorp.Terraform -e } "direnv" { winget install --id direnv.direnv -e; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { winget install --id GitHub.cli -e; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv; just install gh } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
+    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { winget install --id Hashicorp.Terraform -e } "direnv" { winget install --id direnv.direnv -e; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { winget install --id GitHub.cli -e; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
 
 # --- Snowflake --------------------------------------------------------------
 
