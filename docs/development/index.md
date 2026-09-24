@@ -51,8 +51,8 @@ review.
 ## Where you work
 
 An engineer works in the development environment of one project: the shared database
-`DB_<PROJECT>_DEV`, personal schemas prefixed with your `SNOWFLAKE_SCHEMA` (`DBT_<NAME>_SRC`,
-`DBT_<NAME>_STG`, ...), the project's engineer role `RL_<PROJECT>_DEV__ENG` and its warehouse
+`DB_<PROJECT>_DEV`, personal schemas prefixed with your `SNOWFLAKE_SCHEMA` (`DBT_<USERNAME>_SRC`,
+`DBT_<USERNAME>_STG`, ...), the project's engineer role `RL_<PROJECT>_DEV__ENG` and its warehouse
 `WH_<PROJECT>_DEV`. `just snowflake setup` writes those into `.env`; nothing else needs
 configuring. The starter ships one project, `example`, so out of the box that is
 `DB_EXAMPLE_DEV`. The other environments (`tst`, `acc`, `prd`) use the provisioned `_<LAYER>`

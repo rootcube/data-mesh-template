@@ -19,13 +19,13 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 |----------|---------|---------|
 | `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `prd` (the shared `_<LAYER>` schemas, for deployed service users; `tst` and `acc` need a profile target once enabled) |
 | `SNOWFLAKE_ACCOUNT` | `MYORG-MYACCOUNT` | Account identifier as `<organization>-<account>` |
-| `SNOWFLAKE_USER` | `ENGINEER@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
-| `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/you/.snowflake/keys/....p8` | Absolute path of the private key `just snowflake setup` wrote |
+| `SNOWFLAKE_USER` | `USERNAME@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
+| `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/username/.snowflake/keys/....p8` | Absolute path of the private key `just snowflake setup` wrote |
 | `SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | empty | Only set when you chose `--passphrase` |
 | `SNOWFLAKE_ROLE` | `RL_EXAMPLE_DEV__ENG` | Your engineer role in the project |
 | `SNOWFLAKE_WAREHOUSE` | `WH_EXAMPLE_DEV` | The project's warehouse |
 | `SNOWFLAKE_DATABASE` | `DB_EXAMPLE_DEV` | The project database of that environment |
-| `SNOWFLAKE_SCHEMA` | `DBT_ENGINEER` | Prefix of your personal schemas in `dev` (`<prefix>_SRC`, `<prefix>_STG`, ...); also dbt's schema for models without a layer |
+| `SNOWFLAKE_SCHEMA` | `DBT_USERNAME` | Prefix of your personal schemas in `dev` (`<prefix>_SRC`, `<prefix>_STG`, ...); also dbt's schema for models without a layer |
 
 `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PRIVATE_KEY_PATH`, `SNOWFLAKE_ROLE`,
 `SNOWFLAKE_WAREHOUSE` and `SNOWFLAKE_DATABASE` are required; `just info` and
@@ -38,7 +38,7 @@ reads the same names with `env_var()`, and `dbt/dbt_example/sources/src_knmi.yml
 
 | `ENVIRONMENT` | `SNOWFLAKE_SCHEMA` | dlt loads into | dbt model with `+schema: stg` | dbt model without `+schema` |
 |---------------|--------------------|----------------|-------------------------------|-----------------------------|
-| `dev` | `DBT_ENGINEER` | `DBT_ENGINEER_SRC` | `DBT_ENGINEER_STG` | `DBT_ENGINEER` |
+| `dev` | `DBT_USERNAME` | `DBT_USERNAME_SRC` | `DBT_USERNAME_STG` | `DBT_USERNAME` |
 | `dev` | empty | `_SRC` | `DBT_STG` (profile default `DBT`) | `DBT` |
 | `prd` | empty | `_SRC` | `_STG` | `_TMP` (profile default) |
 

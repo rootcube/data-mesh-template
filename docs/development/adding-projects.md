@@ -86,9 +86,9 @@ every pull request; only `plan` and `apply` need the Terraform service user. Det
 Users assume project roles. Add the project to each engineer's file under
 `terraform/config/users/` and apply again:
 
-```yaml title="terraform/config/users/someone.yaml"
-login: "someone@example.com"
-name: "Someone"
+```yaml title="terraform/config/users/username.yaml"
+login: "username@example.com"
+name: "Username"
 type: "person"
 create: false
 roles:
@@ -219,7 +219,7 @@ SNOWFLAKE_DATABASE=DB_ENERGY_DEV
 
 `SNOWFLAKE_SCHEMA` (your personal prefix) and the key pair stay as they are: the same key works
 in every project you hold a role in. `just snowflake check` confirms the context and prints the
-layer schemas (`DBT_<NAME>_SRC, DBT_<NAME>_STG, ...`).
+layer schemas (`DBT_<USERNAME>_SRC, DBT_<USERNAME>_STG, ...`).
 
 Then:
 

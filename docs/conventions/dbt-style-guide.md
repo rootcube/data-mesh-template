@@ -42,15 +42,15 @@ Two more schemas are dbt's own: test failures are stored in `_TMP` (`+store_fail
 executions) into `pre__dbt__*` tables in `_MTD`.
 
 The schema names above are the provisioned ones in `tst`, `acc` and `prd`. In `dev` every
-engineer works in personal copies prefixed with `SNOWFLAKE_SCHEMA`: `DBT_INFO_STG`,
-`DBT_INFO_MRT`, and so on, all in the shared `DB_<PROJECT>_DEV`. `dbt_common` overrides
+engineer works in personal copies prefixed with `SNOWFLAKE_SCHEMA`: `DBT_USERNAME_STG`,
+`DBT_USERNAME_MRT`, and so on, all in the shared `DB_<PROJECT>_DEV`. `dbt_common` overrides
 `generate_schema_name` to implement that rule; a model without a `+schema` config lands in
 `SNOWFLAKE_SCHEMA` itself (`DBT` by profile default, `_TMP` in the shared environments).
 
 | target | `target.schema` | `+schema` | Result |
 |---|---|---|---|
-| dev | `DBT_INFO` | `stg` | `DBT_INFO_STG` |
-| dev | `DBT_INFO` | (none) | `DBT_INFO` |
+| dev | `DBT_USERNAME` | `stg` | `DBT_USERNAME_STG` |
+| dev | `DBT_USERNAME` | (none) | `DBT_USERNAME` |
 | prd | `_TMP` | `stg` | `_STG` |
 | prd | `_TMP` | (none) | `_TMP` |
 
@@ -533,7 +533,7 @@ data_tests:
 ```
 
 Use `severity: warn` on any non-critical test. Failures are stored (`+store_failures: true`) in
-the `_TMP` schema (`DBT_<NAME>_TMP` in dev), so you can query the offending rows.
+the `_TMP` schema (`DBT_<USERNAME>_TMP` in dev), so you can query the offending rows.
 
 Run tests with `just dbt test`, or as part of `just dbt build`, which seeds, runs and tests in
 dependency order.

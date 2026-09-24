@@ -20,6 +20,7 @@ bootstrap the `example` project and try everything; see [Prerequisites](docs/get
 git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
 just init              # uv, .venv (Python 3.13), .env, dbt packages
 just snowflake setup   # one-time login, key pair registered on your user, .env filled in
+just setup             # fresh account instead of the two lines above: also bootstraps Terraform and provisions the project
 just snowflake check   # proves key-pair login works (`just snowflake context` re-points .env at a project later)
 just start             # Dagster UI on http://localhost:3000
 ```
@@ -43,7 +44,7 @@ docs/ + mkdocs.yml           the documentation site
 
 Data flows KNMI API -> dlt -> `_SRC` -> dbt (`_STG`, `_INT`, `_MRT`, `_EXP`) inside the project
 database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both. In development every engineer
-works in personal schemas (`DBT_<NAME>_STG`) of the shared `DB_EXAMPLE_DEV`.
+works in personal schemas (`DBT_<USERNAME>_STG`) of the shared `DB_EXAMPLE_DEV`.
 
 ## For platform administrators
 

@@ -166,7 +166,7 @@ Users are the starter's first addition to the platform model. One file per perso
 under `terraform/config/users/` says which project roles a login may assume:
 
 ```yaml title="terraform/config/users/<name>.yaml"
-login: "engineer@example.com"
+login: "username@example.com"
 name: "Example Engineer"
 type: "person"
 create: false

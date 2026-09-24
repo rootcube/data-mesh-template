@@ -201,7 +201,7 @@ Snowflake settings
 
 Layer schemas
 :   `SnowflakeSettings.schema_for_layer("stg")` returns `_STG` in the shared environments and
-    `<SNOWFLAKE_SCHEMA>_STG` in dev (`DBT_INFO_STG`). It is the Python side of the rule that
+    `<SNOWFLAKE_SCHEMA>_STG` in dev (`DBT_USERNAME_STG`). It is the Python side of the rule that
     `dbt_common.generate_schema_name` implements for dbt. Never spell a layer schema by hand.
 
 dlt destination and dataset

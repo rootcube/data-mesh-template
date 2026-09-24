@@ -29,21 +29,21 @@ walks through four steps:
    an account policy says otherwise.
 4. **Context, verification and `.env`.** You confirm role, warehouse, database and the prefix
    of your personal schemas. The defaults are your user's default role, warehouse and database
-   in Snowflake, falling back to what `.env` already holds, and `DBT_<NAME>` for the prefix
-   (`DBT_ENGINEER` for `engineer@example.com`). Press Enter to keep a default, or type the
+   in Snowflake, falling back to what `.env` already holds, and `DBT_<USERNAME>` for the prefix
+   (`DBT_USERNAME` for `username@example.com`). Press Enter to keep a default, or type the
    values your administrator gave you. A fresh connection with the key proves it works, then
    the script writes everything to `.env`:
 
 ```dotenv
 ENVIRONMENT=dev
 SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
-SNOWFLAKE_USER=ENGINEER@EXAMPLE.COM
-SNOWFLAKE_PRIVATE_KEY_PATH=/Users/you/.snowflake/keys/myorg-myaccount__engineer_example.com.p8
+SNOWFLAKE_USER=USERNAME@EXAMPLE.COM
+SNOWFLAKE_PRIVATE_KEY_PATH=/Users/username/.snowflake/keys/myorg-myaccount__username_example.com.p8
 SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
 SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG
 SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV
 SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV
-SNOWFLAKE_SCHEMA=DBT_ENGINEER
+SNOWFLAKE_SCHEMA=DBT_USERNAME
 ```
 
 `dbt/profiles.yml`, the dlt destination and the Dagster resources all read exactly these
@@ -70,7 +70,7 @@ it that way when you edit by hand.
 
 `setup` derives your role, warehouse and database from the project roles granted to your user
 (`RL_<PROJECT>_<ENV>__<PURPOSE>`), preferring the engineer role in development, and proposes a
-personal schema prefix `DBT_<NAME>`. When a project is provisioned later, or when you move to
+personal schema prefix `DBT_<USERNAME>`. When a project is provisioned later, or when you move to
 another one, rerun only that part; it connects with your key pair, so there is no login:
 
 ```bash
@@ -90,7 +90,7 @@ just snowflake check
 
 connects with the key pair and prints your organization, account, user, role, warehouse,
 database and schema, the schemas that already exist in the database, and the layer schemas
-you will write to (`DBT_ENGINEER_SRC, DBT_ENGINEER_STG, ... (dev)`). Ad-hoc SQL works the same
+you will write to (`DBT_USERNAME_SRC, DBT_USERNAME_STG, ... (dev)`). Ad-hoc SQL works the same
 way:
 
 ```bash
@@ -105,14 +105,14 @@ generate a new one. Snowflake holds two key slots per user; `--slot 2` registers
 
 ## When registration is not allowed
 
-If step 3 fails with an insufficient-privileges error, an account policy blocks users from
+If the registration step fails with an insufficient-privileges error, an account policy blocks users from
 setting their own key. The script stops there and does not write `.env`. Then:
 
 1. Send your public key, `~/.snowflake/keys/<account>__<user>.pub`, to your platform
    administrator, who registers it for you (see [Onboarding](../administration/onboarding.md)).
 2. Fill in the Snowflake block of `.env` by hand: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` (exactly
    as `CURRENT_USER()` returns it), `SNOWFLAKE_PRIVATE_KEY_PATH` (the absolute path of the
-   `.p8` file), your role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<NAME>`.
+   `.p8` file), your role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`.
 3. Run `just snowflake check`.
 
 Next: [First run](first-run.md).

@@ -1,5 +1,7 @@
 """Snowflake key-pair authentication for the platform.
 
+    just snowflake bootstrap          fresh account, as ACCOUNTADMIN: Terraform service user, provisioning
+                                      (init.sql + terraform apply), your own key pair and .env, in one go
     just snowflake setup              one-time: log in interactively, create + register a key pair, write .env
     just snowflake context            pick the project you work in (from the roles granted to you) and write
                                       role, warehouse, database and schema prefix to .env; no login needed
@@ -15,7 +17,7 @@ connection settings to .env for dbt, dlt and Dagster.
 
 A person's SNOWFLAKE_ROLE is their engineer role in the project (RL_<PROJECT>_DEV__ENG),
 SNOWFLAKE_DATABASE the development database (DB_<PROJECT>_DEV) and SNOWFLAKE_SCHEMA the prefix
-of their personal schemas (DBT_<NAME>); see terraform/README.md for how those are provisioned.
+of their personal schemas (DBT_<USERNAME>); see terraform/README.md for how those are provisioned.
 Both `setup` and `context` derive those from the project roles granted to the user.
 """
 
@@ -28,6 +30,7 @@ import os
 import re
 import shutil
 import stat
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -47,6 +50,9 @@ PURPOSE_ORDER = ("ENG", "ANL", "TFM", "ING")
 ENV_FILE = ROOT / ".env"
 ENV_EXAMPLE = ROOT / ".env.example"
 KEY_DIR = Path.home() / ".snowflake" / "keys"
+TF_DIR = ROOT / "terraform"
+INIT_SQL = TF_DIR / "modules" / "snowflake" / "init.sql"
+TERRAFORM_KEY = "terraform"
 
 # --- console helpers ----------------------------------------------------------
 
@@ -246,7 +252,7 @@ def verify(settings: SnowflakeSettings) -> bool:
 
 
 def personal_prefix(user: str) -> str:
-    """Default prefix for personal schemas: DBT_<first part of the login>, e.g. DBT_INFO."""
+    """Default prefix for personal schemas: DBT_<first part of the login>, DBT_USERNAME for username@example.com."""
     return "DBT_" + re.sub(r"[^A-Za-z0-9]+", "_", user.split("@")[0]).strip("_").upper()
 
 
@@ -282,6 +288,79 @@ def write_settings(settings: SnowflakeSettings) -> None:
     print(f"Wrote {ENV_FILE}")
 
 
+# --- setup steps --------------------------------------------------------------
+
+
+def register_key_pair(conn: Any, user: str, key_name: str, slot: str, ask_passphrase: bool) -> tuple[Path, str] | None:
+    """Create (or keep) the key pair <key_name> and register its public key on `user`; None when Snowflake refuses."""
+    private_path, public_path = key_paths(key_name)
+    passphrase = ""
+    if private_path.exists() and confirm(f"{private_path} exists. Keep it and register it again?"):
+        if key_is_encrypted(private_path):
+            passphrase = getpass.getpass("Passphrase of the existing key: ")
+    else:
+        if ask_passphrase:
+            passphrase = getpass.getpass("Passphrase for the new key (empty for none): ")
+            if passphrase and passphrase != getpass.getpass("Repeat passphrase: "):
+                sys.exit("Passphrases differ, aborting.")
+        generate_key_pair(key_name, passphrase)
+        print(f"Wrote {private_path} and {public_path}")
+    try:
+        conn.cursor().execute(f"ALTER USER {quote_ident(user)} SET {slot} = '{public_key_body(public_path)}'")
+    except Exception as exc:  # noqa: BLE001 - surface the Snowflake error with guidance
+        print(f"Could not set {slot} on {user}: {exc}")
+        return None
+    print(f"{slot} set on {user}")
+    return private_path, passphrase
+
+
+def finish_settings(settings: SnowflakeSettings, args: argparse.Namespace) -> int:
+    """Discover the project context with the key pair, confirm it, verify the login and write .env."""
+    with settings.connect(role=None, warehouse=None, database=None) as conn:
+        settings = discover_context(conn, settings, args.role, interactive=not args.yes)
+    if not args.yes:
+        settings = prompt_context(settings)
+    if not verify(settings):
+        return 1
+    write_settings(settings)
+    return 0
+
+
+def provisioning_sql(public_key: str, slot: str) -> str:
+    """init.sql with the Terraform user's public key filled in (the commented RSA_PUBLIC_KEY line)."""
+    sql, count = re.subn(r"^\s*--RSA_PUBLIC_KEY = '.*$", f"  {slot} = '{public_key}'", INIT_SQL.read_text(), flags=re.M)
+    if count != 1:
+        sys.exit(f"Expected exactly one commented RSA_PUBLIC_KEY line in {INIT_SQL}, found {count}")
+    return sql
+
+
+def ensure_user_config(login: str) -> None:
+    """Write terraform/config/users/<login>.yaml (engineer in dev on every project) unless a file lists the login."""
+    users_dir, projects_dir = TF_DIR / "config" / "users", TF_DIR / "config" / "projects"
+    for existing in users_dir.glob("*.yaml"):
+        if re.search(rf'^login:\s*"?{re.escape(login)}"?\s*$', existing.read_text(), flags=re.M | re.I):
+            print(f"{existing} already lists {login}")
+            return
+    roles = "".join(
+        f"  - project: {project.stem}\n    role: engineer\n    environments:\n      - development\n"
+        for project in sorted(projects_dir.glob("*.yaml"))
+    )
+    path = users_dir / f"{safe_name(login)}.yaml"
+    path.write_text(
+        "# yaml-language-server: $schema=../_validation/schemas/user.schema.json\n"
+        f"# Written by `just snowflake bootstrap` for {login}.\n\n"
+        f'login: "{login}"\ncreate: false\nroles:\n{roles}'
+    )
+    print(f"Wrote {path}")
+
+
+def terraform(tf_vars: dict[str, str], auto_approve: bool) -> None:
+    env = {**os.environ, **{f"TF_VAR_{k}": v for k, v in tf_vars.items()}}
+    subprocess.run(["terraform", "init", "-input=false"], cwd=TF_DIR, env=env, check=True)
+    apply = ["terraform", "apply"] + (["-auto-approve"] if auto_approve else [])
+    subprocess.run(apply, cwd=TF_DIR, env=env, check=True)
+
+
 # --- subcommands --------------------------------------------------------------
 
 
@@ -291,46 +370,29 @@ def cmd_setup(args: argparse.Namespace) -> int:
         "Snowflake account (<organization>-<account>, e.g. MYORG-MYACCOUNT)", current.get("SNOWFLAKE_ACCOUNT") or None
     )
     user = args.user or ask("Snowflake user", current.get("SNOWFLAKE_USER") or None)
+    slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
 
-    step("1/4 One-time interactive login")
+    step("1/3 One-time interactive login")
     conn = interactive_connect(account, user, args.auth)
     try:
         exact_user, role, warehouse, database = conn.cursor().execute(CONTEXT_SQL).fetchone()
         print(f"Logged in as {exact_user} (role {role or 'none'})")
 
-        step("2/4 Key pair")
+        step("2/3 Key pair, registered on your user")
         key_name = args.key_name or f"{safe_name(account)}__{safe_name(exact_user)}"
-        private_path, public_path = key_paths(key_name)
-        passphrase = ""
-        if private_path.exists() and confirm(f"{private_path} exists. Keep it and register it again?"):
-            if key_is_encrypted(private_path):
-                passphrase = getpass.getpass("Passphrase of the existing key: ")
-        else:
-            if args.passphrase:
-                passphrase = getpass.getpass("Passphrase for the new key (empty for none): ")
-                if passphrase and passphrase != getpass.getpass("Repeat passphrase: "):
-                    print("Passphrases differ, aborting.")
-                    return 1
-            generate_key_pair(key_name, passphrase)
-            print(f"Wrote {private_path} and {public_path}")
-
-        step("3/4 Registering the public key on your user")
-        slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
-        try:
-            conn.cursor().execute(f"ALTER USER {quote_ident(exact_user)} SET {slot} = '{public_key_body(public_path)}'")
-        except Exception as exc:  # noqa: BLE001 - surface the Snowflake error with guidance
-            print(f"Could not set {slot} on {exact_user}: {exc}")
+        registered = register_key_pair(conn, exact_user, key_name, slot, args.passphrase)
+        if registered is None:
             print(
-                f"Your account does not let you set your own key. Send {public_path} to a platform "
+                f"Your account does not let you set your own key. Send {key_paths(key_name)[1]} to a platform "
                 "administrator to register (see terraform/README.md), fill in the Snowflake block of "
                 ".env by hand, then run `just snowflake check`."
             )
             return 1
-        print(f"{slot} set on {exact_user}")
+        private_path, passphrase = registered
     finally:
         conn.close()
 
-    step("4/4 Verifying key-pair login and writing .env")
+    step("3/3 Verifying key-pair login and writing .env")
     settings = SnowflakeSettings(
         account=account,
         user=exact_user,
@@ -341,13 +403,72 @@ def cmd_setup(args: argparse.Namespace) -> int:
         database=database or current.get("SNOWFLAKE_DATABASE", ""),
         schema=current.get("SNOWFLAKE_SCHEMA") or personal_prefix(exact_user),
     )
-    with settings.connect(role=None, warehouse=None, database=None) as conn:
-        settings = discover_context(conn, settings, args.role, interactive=not args.yes)
-    if not args.yes:
-        settings = prompt_context(settings)
-    if not verify(settings):
+    if finish_settings(settings, args):
         return 1
-    write_settings(settings)
+    print("\nDone. Next: `just snowflake check`, then `just start` for the Dagster UI.")
+    return 0
+
+
+def cmd_bootstrap(args: argparse.Namespace) -> int:
+    """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
+    if shutil.which("terraform") is None:
+        sys.exit("terraform not found on PATH; install it first (https://developer.hashicorp.com/terraform/install)")
+    account = args.account or ask("Snowflake account (<organization>-<account>, e.g. MYORG-MYACCOUNT)")
+    user = args.user or ask("Snowflake user (must hold ACCOUNTADMIN)")
+    slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
+
+    step("1/5 Logging in with your password")
+    conn = interactive_connect(account, user, "password")
+    try:
+        conn.cursor().execute("USE ROLE ACCOUNTADMIN")
+        exact_user, organization, account_name = (
+            conn.cursor()
+            .execute("SELECT CURRENT_USER(), CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME()")
+            .fetchone()
+        )
+        print(f"Logged in as {exact_user} on {organization}-{account_name} (role ACCOUNTADMIN)")
+
+        step("2/5 Terraform service user, provisioning role, warehouse and database (init.sql)")
+        tf_private, tf_public = key_paths(TERRAFORM_KEY)
+        if not tf_private.exists():
+            generate_key_pair(TERRAFORM_KEY)
+            print(f"Wrote {tf_private} and {tf_public}")
+        for cursor in conn.execute_string(provisioning_sql(public_key_body(tf_public), slot)):
+            cursor.close()
+        print(f"TERRAFORM_USER ready, {slot} set from {tf_public}")
+
+        step("3/5 Your own key pair")
+        key_name = args.key_name or f"{safe_name(account)}__{safe_name(exact_user)}"
+        registered = register_key_pair(conn, exact_user, key_name, slot, args.passphrase)
+        if registered is None:
+            return 1
+        private_path, passphrase = registered
+    finally:
+        conn.close()
+
+    step("4/5 Provisioning the projects with Terraform")
+    ensure_user_config(exact_user)
+    tf_vars = {
+        "SNOWFLAKE_ORGANIZATION": organization,
+        "SNOWFLAKE_ACCOUNT": account_name,
+        "SNOWFLAKE_USER": "TERRAFORM_USER",
+        "SNOWFLAKE_PRIVATE_KEY_PATH": str(tf_private),
+    }
+    if not ENV_FILE.exists():
+        shutil.copy(ENV_EXAMPLE, ENV_FILE)
+    update_env_file(ENV_FILE, {f"TF_VAR_{k}": v for k, v in tf_vars.items()})
+    terraform(tf_vars, auto_approve=args.yes)
+
+    step("5/5 Verifying key-pair login and writing .env")
+    settings = SnowflakeSettings(
+        account=account,
+        user=exact_user,
+        private_key_path=str(private_path),
+        private_key_passphrase=passphrase,
+        schema=personal_prefix(exact_user),
+    )
+    if finish_settings(settings, args):
+        return 1
     print("\nDone. Next: `just snowflake check`, then `just start` for the Dagster UI.")
     return 0
 
@@ -427,6 +548,20 @@ def main(argv: list[str] | None = None) -> int:
         prog="just snowflake", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    bootstrap = sub.add_parser("bootstrap", help="fresh account: Terraform user, provisioning, your key pair, .env")
+    bootstrap.add_argument("--account", help="<organization>-<account>; asked interactively when omitted")
+    bootstrap.add_argument("--user", help="Snowflake user holding ACCOUNTADMIN; asked interactively when omitted")
+    bootstrap.add_argument("--key-name", help="file name under ~/.snowflake/keys (default: <account>__<user>)")
+    bootstrap.add_argument("--passphrase", action="store_true", help="encrypt your private key with a passphrase")
+    bootstrap.add_argument(
+        "--slot", type=int, choices=(1, 2), default=1, help="RSA_PUBLIC_KEY (1) or RSA_PUBLIC_KEY_2 (2)"
+    )
+    bootstrap.add_argument("--role", help="project role to work as (default: your engineer role in dev)")
+    bootstrap.add_argument(
+        "--yes", action="store_true", help="terraform apply -auto-approve and skip the context prompt"
+    )
+    bootstrap.set_defaults(func=cmd_bootstrap)
 
     setup = sub.add_parser("setup", help="one-time key-pair setup for your own user")
     setup.add_argument("--account", help="<organization>-<account>; asked interactively when omitted")

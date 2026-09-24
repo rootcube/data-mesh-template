@@ -114,7 +114,7 @@ def source_dataset() -> str:
 `dlt_credentials()` translates them into what dlt's Snowflake destination expects: the account
 identifier, user name, private key path and passphrase, role, warehouse and database.
 `schema_for_layer("src")` applies the platform's schema rule: the dataset is `_SRC` in the
-shared environments and `<SNOWFLAKE_SCHEMA>_SRC` (for example `DBT_INFO_SRC`) in `dev`, where
+shared environments and `<SNOWFLAKE_SCHEMA>_SRC` (for example `DBT_USERNAME_SRC`) in `dev`, where
 dlt creates it on first load.
 
 Credentials are only validated when a pipeline runs, so importing the pipelines (which Dagster
@@ -182,7 +182,7 @@ resource.
 | Group | `dlt/ingest/<source>` |
 | Kinds | `dlt`, `snowflake` |
 | Job | `job_dlt_ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
-| Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_INFO_SRC.knmi__climate_hourly` in `dev` |
+| Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_USERNAME_SRC.knmi__climate_hourly` in `dev` |
 
 The asset key is what links ingestion to transformation. The dbt source in
 `dbt/dbt_example/sources/src_knmi.yml` declares the same key under

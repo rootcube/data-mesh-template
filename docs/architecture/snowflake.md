@@ -22,7 +22,7 @@ For every project in `terraform/config/projects/` and each of its environments:
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per layer schema (all and future tables, views, ...), grants per warehouse, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ANL`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` (X-Small, auto-suspend 60 s, created suspended) |
-| User | `GRANT ROLE ... TO USER`, and the user itself when `create: true` | `engineer@example.com` gets `RL_EXAMPLE_DEV__ENG` |
+| User | `GRANT ROLE ... TO USER`, and the user itself when `create: true` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
 
 The example project has two environments, so the same set exists once more with `PRD`:
 `DB_EXAMPLE_PRD`, `RL_EXAMPLE_PRD__*`, `WH_EXAMPLE_PRD`. Nothing is shared between the two.
@@ -45,7 +45,7 @@ flowchart LR
 |--------|---------|---------|
 | Database | `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
-| Personal schema (`dev` only) | `<SNOWFLAKE_SCHEMA>_<LAYER>` | `DBT_INFO_STG` |
+| Personal schema (`dev` only) | `<SNOWFLAKE_SCHEMA>_<LAYER>` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` with `ENG`, `ANL`, `ING`, `TFM` | `RL_EXAMPLE_PRD__TFM` |
 | Warehouse, default compute | `WH_<PROJECT>_<ENV>` | `WH_EXAMPLE_DEV` |
 | Warehouse, other computes | `WH_<PROJECT>_<ENV>__<COMPUTE>_<SIZE>` | `WH_EXAMPLE_PRD__TFM_M` |
@@ -67,12 +67,12 @@ SCHEMA]` in `roles/engineer.yaml`, one of the starter's additions), and each eng
 personal prefix in `.env`:
 
 ```dotenv
-SNOWFLAKE_SCHEMA=DBT_<NAME>
+SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 ```
 
 `just snowflake setup` proposes `DBT_` plus the part of your login before the `@`, uppercased
-(`DBT_INFO` for `info@example.com`). From then on dlt loads into `DBT_INFO_SRC`, dbt builds
-`DBT_INFO_STG`, `DBT_INFO_INT`, ... and the metadata upload writes `DBT_INFO_MTD`, all created on
+(`DBT_USERNAME` for `username@example.com`). From then on dlt loads into `DBT_USERNAME_SRC`, dbt builds
+`DBT_USERNAME_STG`, `DBT_USERNAME_INT`, ... and the metadata upload writes `DBT_USERNAME_MTD`, all created on
 first use. The provisioned `_<LAYER>` schemas of `DB_EXAMPLE_DEV` stay untouched by local runs.
 `tst`, `acc` and `prd` know no personal schemas; there the same code writes to `_<LAYER>`.
 
@@ -114,7 +114,7 @@ SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
 SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG
 SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV
 SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV
-SNOWFLAKE_SCHEMA=DBT_<NAME>
+SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 ```
 
 No quotes around values: `just` passes them literally. `*.p8` and `*.pub` files are

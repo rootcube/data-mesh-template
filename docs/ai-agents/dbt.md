@@ -42,7 +42,7 @@ Consult these pages instead of relying on memory; they are the single source of 
 Facts from `dbt/dbt_example/dbt_project.yml` and `dbt/dbt_common/dbt_project.yml` that shape every change:
 
 Schemas follow the environment
-:   Layer folders carry a `+schema`: `02_stg` is `stg`, `03_int` is `int`, `04_mrt` is `mrt`, `05_exp` is `exp`; seeds get `ref`, stored test failures `tmp` (`+store_failures: true`), run metadata `mtd`. `dbt_common.generate_schema_name` turns that into the schema of the project database `DB_<PROJECT>_<ENV>`: `_<LAYER>` (`_STG`) in `tst`, `acc` and `prd`, and `<target.schema>_<LAYER>` (`DBT_INFO_STG`) in `dev` and `dummy`, so several engineers share one development database. A model without a `+schema` lands in `target.schema` itself (`SNOWFLAKE_SCHEMA`). Never spell a schema out in a model.
+:   Layer folders carry a `+schema`: `02_stg` is `stg`, `03_int` is `int`, `04_mrt` is `mrt`, `05_exp` is `exp`; seeds get `ref`, stored test failures `tmp` (`+store_failures: true`), run metadata `mtd`. `dbt_common.generate_schema_name` turns that into the schema of the project database `DB_<PROJECT>_<ENV>`: `_<LAYER>` (`_STG`) in `tst`, `acc` and `prd`, and `<target.schema>_<LAYER>` (`DBT_USERNAME_STG`) in `dev` and `dummy`, so several engineers share one development database. A model without a `+schema` lands in `target.schema` itself (`SNOWFLAKE_SCHEMA`). Never spell a schema out in a model.
 
 Materialization defaults
 :   `dbt_example`: tables for STG, INT and MRT, views for EXP (`+materialized: view` at project level). `dbt_common`: tables for its STG and MRT models, views for INT. Every layer folder also gets a tag `layer=<code>`, and `persist_docs` is on for relations and columns. Override per model in the config block only when there is a reason.
@@ -266,7 +266,7 @@ just dbt build --select +stg__knmi__climate_hourly+  # with upstream and downstr
 just dbt build                                       # seeds, models, tests, everything
 ```
 
-In `dev` builds go into your personal schemas (`<SNOWFLAKE_SCHEMA>_STG`, ...) of the shared `DB_EXAMPLE_DEV`, so there is nothing to break for anyone else. Check the result with `just snowflake query "SELECT COUNT(1) FROM dbt_info_stg.stg__knmi__climate_hourly"`, with your own prefix instead of `dbt_info`. Materializing from the Dagster UI runs the same `dbt build` under the hood.
+In `dev` builds go into your personal schemas (`<SNOWFLAKE_SCHEMA>_STG`, ...) of the shared `DB_EXAMPLE_DEV`, so there is nothing to break for anyone else. Check the result with `just snowflake query "SELECT COUNT(1) FROM dbt_username_stg.stg__knmi__climate_hourly"`, with your own prefix instead of `dbt_username`. Materializing from the Dagster UI runs the same `dbt build` under the hood.
 
 ### 5. Full suite
 

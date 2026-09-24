@@ -6,7 +6,7 @@ from orchestrator.resources.snowflake import SnowflakeSettings
 def test_from_env_reads_prefixed_variables() -> None:
     env = {
         "SNOWFLAKE_ACCOUNT": "ORG-ACCOUNT",
-        "SNOWFLAKE_USER": "someone",
+        "SNOWFLAKE_USER": "username",
         "SNOWFLAKE_PRIVATE_KEY_PATH": "/keys/k.p8",
         "SNOWFLAKE_ROLE": "RL_EXAMPLE_DEV__ENG",
         "SNOWFLAKE_WAREHOUSE": "WH_EXAMPLE_DEV",
@@ -40,9 +40,9 @@ def test_dlt_credentials_drop_empty_values() -> None:
 
 
 def test_layer_schemas_are_personal_in_dev_and_shared_elsewhere() -> None:
-    dev = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "dbt_info", "ENVIRONMENT": "dev"})
-    assert dev.schema_for_layer("src") == "DBT_INFO_SRC"
-    assert dev.schema_for_layer("_stg") == "DBT_INFO_STG"
+    dev = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "dbt_username", "ENVIRONMENT": "dev"})
+    assert dev.schema_for_layer("src") == "DBT_USERNAME_SRC"
+    assert dev.schema_for_layer("_stg") == "DBT_USERNAME_STG"
     prd = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "_TMP", "ENVIRONMENT": "PRD"})
     assert prd.environment == "prd"
     assert prd.schema_for_layer("mrt") == "_MRT"
@@ -58,7 +58,9 @@ def test_connection_does_not_pass_the_personal_prefix_as_schema(tmp_path: Path) 
             serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
         )
     )
-    dev = SnowflakeSettings(account="a", user="u", private_key_path=str(key_path), schema="DBT_INFO", environment="dev")
+    dev = SnowflakeSettings(
+        account="a", user="u", private_key_path=str(key_path), schema="DBT_USERNAME", environment="dev"
+    )
     prd = SnowflakeSettings(account="a", user="u", private_key_path=str(key_path), schema="_TMP", environment="prd")
     assert "schema" not in dev.connection_kwargs()
     assert prd.connection_kwargs()["schema"] == "_TMP"

@@ -16,7 +16,7 @@ Platform administrators provision everything with Terraform from the YAML under 
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer and per warehouse | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>` for the default compute, `WH_<PROJECT>_<ENV>__<COMPUTE>_<SIZE>` for the others | `WH_EXAMPLE_DEV` |
-| User | role grants to a login (and optionally the user itself), `terraform/config/users/` | `engineer@example.com` gets `RL_EXAMPLE_DEV__ENG` |
+| User | role grants to a login (and optionally the user itself), `terraform/config/users/` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
 
 `terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep one day of Time Travel unless the module is told otherwise.
 
@@ -33,16 +33,16 @@ Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/ini
 
 ## Development: personal schemas in a shared database
 
-Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To keep people out of each other's way, `dev` does not use the `_<LAYER>` schemas; each engineer gets personal copies prefixed with `SNOWFLAKE_SCHEMA` (`DBT_<NAME>`, written by `just snowflake setup`), created on demand by dlt and dbt:
+Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To keep people out of each other's way, `dev` does not use the `_<LAYER>` schemas; each engineer gets personal copies prefixed with `SNOWFLAKE_SCHEMA` (`DBT_<USERNAME>`, written by `just snowflake setup`), created on demand by dlt and dbt:
 
-| Layer | `dev` (prefix `DBT_INFO`) | `tst`, `acc`, `prd` | Written by |
+| Layer | `dev` (prefix `DBT_USERNAME`) | `tst`, `acc`, `prd` | Written by |
 |---|---|---|---|
-| Source | `DBT_INFO_SRC` | `_SRC` | dlt: `<source>__<entity>` tables plus dlt's `_dlt_*` bookkeeping (`KNMI__CLIMATE_HOURLY`) |
-| Reference | `DBT_INFO_REF` | `_REF` | dbt seeds |
-| Staging, integration, mart, expose | `DBT_INFO_STG`, `_INT`, `_MRT`, `_EXP` | `_STG`, `_INT`, `_MRT`, `_EXP` | dbt models (`02_stg` to `05_exp`) |
-| Metadata | `DBT_INFO_MTD` | `_MTD` | dbt (`dbt_common` hook): `pre__dbt__*` run metadata, created on demand by the first real run |
-| Temporary | `DBT_INFO_TMP` | `_TMP` | dbt: stored test failures; also `target.schema` outside `dev` |
-| (no layer) | `DBT_INFO` | `_TMP` | dbt models without a `+schema` config (`target.schema`) |
+| Source | `DBT_USERNAME_SRC` | `_SRC` | dlt: `<source>__<entity>` tables plus dlt's `_dlt_*` bookkeeping (`KNMI__CLIMATE_HOURLY`) |
+| Reference | `DBT_USERNAME_REF` | `_REF` | dbt seeds |
+| Staging, integration, mart, expose | `DBT_USERNAME_STG`, `_INT`, `_MRT`, `_EXP` | `_STG`, `_INT`, `_MRT`, `_EXP` | dbt models (`02_stg` to `05_exp`) |
+| Metadata | `DBT_USERNAME_MTD` | `_MTD` | dbt (`dbt_common` hook): `pre__dbt__*` run metadata, created on demand by the first real run |
+| Temporary | `DBT_USERNAME_TMP` | `_TMP` | dbt: stored test failures; also `target.schema` outside `dev` |
+| (no layer) | `DBT_USERNAME` | `_TMP` | dbt models without a `+schema` config (`target.schema`) |
 
 Three pieces of code implement that one rule; keep them in step:
 
@@ -51,7 +51,7 @@ Three pieces of code implement that one rule; keep them in step:
 - The `schema` expression in `dbt/dbt_example/sources/src_knmi.yml`, spelled out with `env_var` because source YAML cannot call macros.
 
 !!! note "Qualify with the schema, not the database"
-    Your session database is the project database, so `dbt_info_src.knmi__climate_hourly` or `dbt_info_stg.stg__knmi__climate_hourly` is enough in `dev`. Fully qualified: `DB_EXAMPLE_DEV.DBT_INFO_STG.STG__KNMI__CLIMATE_HOURLY`. Snowflake folds unquoted identifiers to upper case, so `dbt_info_stg` and `DBT_INFO_STG` are the same schema.
+    Your session database is the project database, so `dbt_username_src.knmi__climate_hourly` or `dbt_username_stg.stg__knmi__climate_hourly` is enough in `dev`. Fully qualified: `DB_EXAMPLE_DEV.DBT_USERNAME_STG.STG__KNMI__CLIMATE_HOURLY`. Snowflake folds unquoted identifiers to upper case, so `dbt_username_stg` and `DBT_USERNAME_STG` are the same schema.
 
 Layer semantics and materialization defaults: [Layers in practice](../architecture/layers.md) and [Snowflake](../architecture/snowflake.md); the concepts: [Layer](../concepts/layer.md), [Role](../concepts/role.md), [Compute](../concepts/compute.md), [Environment](../concepts/environment.md).
 
@@ -111,12 +111,12 @@ No MCP server is configured for Snowflake; the recipes cover the same ground.
 
 ```bash
 just snowflake check                                                             # who am I, which schemas exist, which layer schemas apply
-just snowflake query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"    # did the load land
-just snowflake query "SELECT COUNT(1) FROM dbt_info_stg.stg__knmi__climate_hourly"  # did the model build
-just snowflake query "SHOW TABLES IN SCHEMA dbt_info_mtd"                        # run metadata tables
+just snowflake query "SELECT COUNT(1) FROM dbt_username_src.knmi__climate_hourly"    # did the load land
+just snowflake query "SELECT COUNT(1) FROM dbt_username_stg.stg__knmi__climate_hourly"  # did the model build
+just snowflake query "SHOW TABLES IN SCHEMA dbt_username_mtd"                        # run metadata tables
 ```
 
-`dbt_info` stands for your own `SNOWFLAKE_SCHEMA` prefix; outside `dev` the schemas are `_SRC`, `_STG` and `_MTD`. For anything larger, the run banner from `log_run_info` prints a Snowsight link filtered on the run's query tag; open it to see every statement dbt executed with timings.
+`dbt_username` stands for your own `SNOWFLAKE_SCHEMA` prefix; outside `dev` the schemas are `_SRC`, `_STG` and `_MTD`. For anything larger, the run banner from `log_run_info` prints a Snowsight link filtered on the run's query tag; open it to see every statement dbt executed with timings.
 
 ## What an agent may touch on the administrator side
 

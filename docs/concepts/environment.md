@@ -54,7 +54,7 @@ environment. Nothing is copied between environments by hand.
 Development is shared: several engineers work in one `DB_EXAMPLE_DEV`. To keep them out of
 each other's way, the engineer role holds `CREATE SCHEMA` on the development database
 (`privileges.database: dev: [CREATE SCHEMA]` in `roles/engineer.yaml`) and every engineer works
-in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_INFO_STG`. dlt and dbt
+in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_USERNAME_STG`. dlt and dbt
 create those on demand. The provisioned `_<LAYER>` schemas exist in `dev` too; the other
 environments use only those.
 

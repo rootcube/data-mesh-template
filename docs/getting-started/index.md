@@ -38,7 +38,7 @@ After setup, this is your context in the starter project:
 | Role | `RL_EXAMPLE_DEV__ENG`, the project's engineer role |
 | Database | `DB_EXAMPLE_DEV`, shared with every engineer of the project |
 | Warehouse | `WH_EXAMPLE_DEV` |
-| Your schemas | `DBT_<NAME>_SRC`, `DBT_<NAME>_STG`, `DBT_<NAME>_INT`, ..., created on demand by dlt and dbt |
+| Your schemas | `DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, `DBT_<USERNAME>_INT`, ..., created on demand by dlt and dbt |
 
 The names follow the platform model: one database per project and environment, one schema per
 layer, one role per purpose. [Concepts](../concepts/index.md) explains it; you do not need it

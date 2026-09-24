@@ -50,7 +50,7 @@ flowchart LR
    code locations. `workspace.yaml` lists those locations.
 
 Everything lands in one database per environment, `DB_EXAMPLE_<ENV>`. In development the
-database is shared and every engineer works in personal schemas, `DBT_<NAME>_<LAYER>`; in the
+database is shared and every engineer works in personal schemas, `DBT_<USERNAME>_<LAYER>`; in the
 other environments the tools write to the provisioned `_<LAYER>` schemas.
 
 ## Components

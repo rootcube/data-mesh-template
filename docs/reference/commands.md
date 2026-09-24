@@ -12,6 +12,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
+| `just setup` | Fresh account: `just init`, then `just snowflake bootstrap` (arguments pass through) |
 | `just init` | Install uv if missing, `uv sync`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
 
@@ -19,6 +20,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
+| `just snowflake bootstrap` | Fresh account, as `ACCOUNTADMIN` with a password: Terraform user and `init.sql`, your key pair, `config/users/<you>.yaml`, `TF_VAR_*` in `.env`, `terraform apply`, then the same context discovery and `.env` as `setup` (`--yes` auto-approves the plan) |
 | `just snowflake setup` | One-time interactive login, key pair, registration on your user, verification, `.env` |
 | `just snowflake setup --auth password` | Same, with password + MFA in the terminal instead of the browser |
 | `just snowflake context` | Pick the project you work in from the roles granted to you, then write role, warehouse, database and schema prefix to `.env`; no login needed (`--role`, `--yes`) |

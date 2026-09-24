@@ -15,13 +15,29 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_REF`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
-| User | role grants (and optionally the user itself) | `engineer@example.com` gets `RL_EXAMPLE_DEV__ENG` |
+| User | role grants (and optionally the user itself) | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
 
 Development is shared: engineers hold `CREATE SCHEMA` on `DB_<PROJECT>_DEV` and work in personal
-schemas `<PREFIX>_<LAYER>` (for example `DBT_INFO_STG`), which dlt and dbt create on demand. The
+schemas `<PREFIX>_<LAYER>` (for example `DBT_USERNAME_STG`), which dlt and dbt create on demand. The
 other environments only use the provisioned `_<LAYER>` schemas.
 
 ## One-time bootstrap
+
+On a fresh account (a trial works) one command does everything below plus your own key pair
+and `.env`; it needs the account identifier and the password of a user holding `ACCOUNTADMIN`:
+
+```bash
+just setup            # = just init + just snowflake bootstrap
+```
+
+It generates `~/.snowflake/keys/terraform.p8`, runs `init.sql` with that public key, registers
+a key pair on your own user, writes a `config/users/<you>.yaml` (engineer in development on
+every project) unless one lists your login, writes the `TF_VAR_*` block to `.env`, runs
+`terraform init` and `terraform apply` (you confirm the plan; `--yes` auto-approves) and ends
+like `just snowflake setup`. Rerunning it is safe: `init.sql` is idempotent, existing keys are
+kept when you say so, and Terraform applies only the difference.
+
+The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yourself:
 
 1. Generate a key pair for the Terraform service user; the command prints the public key body:
 
@@ -78,8 +94,8 @@ databases, schemas, roles and warehouses it adds.
 1. Add `config/users/<name>.yaml`:
 
     ```yaml
-    login: "someone@example.com"
-    name: "Someone"
+    login: "username@example.com"
+    name: "Username"
     type: "person"
     create: false        # true creates the user with a one-time password
     roles:
@@ -93,7 +109,7 @@ databases, schemas, roles and warehouses it adds.
 
 3. The person runs `just snowflake setup`, which logs in once, registers a key pair and writes
    their `.env` with `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
-   `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and a personal schema prefix such as `DBT_SOMEONE`.
+   `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and a personal schema prefix such as `DBT_USERNAME`.
 
 System users for deployed environments (the transform and ingest roles) are created by hand:
 `CREATE USER <login> TYPE = SERVICE`, then `just snowflake keygen <login>` and

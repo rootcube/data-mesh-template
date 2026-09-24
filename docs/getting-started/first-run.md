@@ -29,12 +29,12 @@ last 30 days, hourly).
 
 1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt/ingest/knmi`).
 2. **Materialize**. The run fetches the observations and merges them into the table
-   `knmi__climate_hourly` in your personal source schema `DBT_<NAME>_SRC`, creating the schema
+   `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, creating the schema
    on first use.
 3. Check:
 
     ```bash
-    just snowflake query "SELECT COUNT(*) FROM DBT_<NAME>_SRC.knmi__climate_hourly"
+    just snowflake query "SELECT COUNT(*) FROM DBT_<USERNAME>_SRC.knmi__climate_hourly"
     ```
 
 The same pipeline runs without Dagster, which is handy while developing a source:
@@ -73,14 +73,14 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 
 | Schema | Written by | Holds |
 |--------|------------|-------|
-| `DBT_<NAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded |
-| `DBT_<NAME>_REF` | `dbt seed` | the `dbt_common` seeds: `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` |
-| `DBT_<NAME>_STG` | dbt | `stg__knmi__climate_hourly` and the `stg__seed__*` models |
-| `DBT_<NAME>_INT` | dbt | the `int__common__*` models |
-| `DBT_<NAME>_MRT` | dbt | `dim__common__calendar`, `dim__common__time`, `dim__common__environment` |
-| `DBT_<NAME>_EXP` | dbt | nothing yet: `models/05_exp/` is empty in the starter |
-| `DBT_<NAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
-| `DBT_<NAME>_TMP` | dbt tests | stored test failures |
+| `DBT_<USERNAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded |
+| `DBT_<USERNAME>_REF` | `dbt seed` | the `dbt_common` seeds: `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` |
+| `DBT_<USERNAME>_STG` | dbt | `stg__knmi__climate_hourly` and the `stg__seed__*` models |
+| `DBT_<USERNAME>_INT` | dbt | the `int__common__*` models |
+| `DBT_<USERNAME>_MRT` | dbt | `dim__common__calendar`, `dim__common__time`, `dim__common__environment` |
+| `DBT_<USERNAME>_EXP` | dbt | nothing yet: `models/05_exp/` is empty in the starter |
+| `DBT_<USERNAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
+| `DBT_<USERNAME>_TMP` | dbt tests | stored test failures |
 
 `just snowflake check` lists the schemas. In `prd` (and `tst`, `acc` once enabled) the same
 objects live in the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../concepts/layer.md).

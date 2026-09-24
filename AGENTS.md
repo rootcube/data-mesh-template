@@ -68,7 +68,7 @@ Sources (KNMI API, ...) -> dlt -> _SRC -> dbt (_STG -> _INT -> _MRT -> _EXP) -> 
 Snowflake naming: database `DB_<PROJECT>_<ENV>`, layer schemas `_SRC`, `_REF`, `_STG`, `_INT`,
 `_MRT`, `_EXP`, `_MTD` (run metadata), `_TMP` (test failures), roles `RL_<PROJECT>_<ENV>__<PURPOSE>`
 (`ENG`, `ANL`, `ING`, `TFM`), warehouses `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]`. In `dev` every
-engineer works in personal schemas prefixed with `SNOWFLAKE_SCHEMA` (`DBT_INFO_STG`); the other
+engineer works in personal schemas prefixed with `SNOWFLAKE_SCHEMA` (`DBT_USERNAME_STG`); the other
 environments use the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
 `dbt_common.generate_schema_name` implement that rule; dbt source YAML repeats it with `env_var`.
 Detail: [Architecture](docs/architecture/index.md), [Concepts](docs/concepts/index.md).
@@ -104,6 +104,7 @@ the dlt asset key `dlt/ingest/<source>/<entity>`). dbt keys follow the file path
 ```bash
 just init             # uv + .venv + .env + dbt deps
 just snowflake setup  # one-time key-pair setup (interactive login)
+just setup            # fresh account: init + Terraform user + provisioning + key pair + .env (ACCOUNTADMIN password)
 just snowflake context # (re)point .env at a project from the roles granted to you, no login
 just start            # Dagster UI on :3000
 just validate         # dagster definitions validate -w workspace.yaml

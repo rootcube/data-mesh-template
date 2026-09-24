@@ -29,7 +29,7 @@ graph TD
     PRD --> RPRD["Roles<br/>eng anl ing tfm"]
     PRD --> CPRD["Computes<br/>default"]
 
-    USR["User<br/>engineer@example.com"] -. is granted .-> RDEV
+    USR["User<br/>username@example.com"] -. is granted .-> RDEV
 ```
 
 The diagram shows the project the starter ships with. Every box is a YAML file under

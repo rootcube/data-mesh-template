@@ -20,7 +20,7 @@ that folder's `_conf/`. This page builds the first intermediate model of `dbt_ex
 | EXP | `models/05_exp/<domain>/` | `_EXP` | Published, consumer-shaped views: the project's contract with the outside | `int__`, mart models |
 
 The schema column is the provisioned name in `tst`, `acc` and `prd`. In dev you build into your
-personal copies, `DBT_<NAME>_STG` and so on, in the shared `DB_<PROJECT>_DEV`;
+personal copies, `DBT_<USERNAME>_STG` and so on, in the shared `DB_<PROJECT>_DEV`;
 `dbt_common.generate_schema_name` does the renaming.
 
 !!! danger "Reference only the layer below"
@@ -179,7 +179,7 @@ just dbt ls --select tag:layer=int                       # what is in the layer 
 `just dbt` runs from `dbt/dbt_example` with `DBT_PROFILES_DIR` set; the target follows
 `ENVIRONMENT` in `.env` (`dev`). The run starts with the run-info banner and ends with the
 summary; a failing test leaves its rows in your `_TMP` schema. `03_int` is configured as `table`
-with `+schema: int`, so the result is `DBT_<NAME>_INT.INT__WEATHER__STATION_DAY` in
+with `+schema: int`, so the result is `DBT_<USERNAME>_INT.INT__WEATHER__STATION_DAY` in
 `DB_EXAMPLE_DEV` (and `_INT.INT__WEATHER__STATION_DAY` once it runs in a shared environment).
 
 Lint before handing over:

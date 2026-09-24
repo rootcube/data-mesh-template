@@ -139,7 +139,7 @@ Layer
 Layer schema
 :   The schema a layer lives in. In `tst`, `acc` and `prd` the provisioned `_<LAYER>` schema
     (`_STG`); in `dev` the engineer's personal schema `<SNOWFLAKE_SCHEMA>_<LAYER>`
-    (`DBT_INFO_STG`). Implemented by `SnowflakeSettings.schema_for_layer()` and
+    (`DBT_USERNAME_STG`). Implemented by `SnowflakeSettings.schema_for_layer()` and
     `dbt_common.generate_schema_name`; dbt source YAML repeats the rule with `env_var`.
 
 Load package, `_dlt_load_id` (dlt)
@@ -175,7 +175,7 @@ Package (dbt)
 
 Personal schema
 :   An engineer's private copy of a layer schema in the development database:
-    `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_INFO_SRC` and `DBT_INFO_STG`. Created on
+    `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_USERNAME_SRC` and `DBT_USERNAME_STG`. Created on
     demand by dlt and dbt; possible because the engineer role holds `CREATE SCHEMA` on
     `DB_<PROJECT>_DEV`. Lets several engineers share one development database.
 

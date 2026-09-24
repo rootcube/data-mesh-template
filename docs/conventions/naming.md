@@ -104,7 +104,7 @@ in `pipelines.py`:
 | dlt resource name | `<entity>` | `climate_hourly` |
 | Snowflake table (`table_name`) | `<source>__<entity>` | `knmi__climate_hourly` |
 | Pipeline name | `ingest_<source>` | `ingest_knmi` |
-| Dataset (Snowflake schema) | `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (`source_dataset()`) | `DBT_INFO_SRC` |
+| Dataset (Snowflake schema) | `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (`source_dataset()`) | `DBT_USERNAME_SRC` |
 | Dagster asset key | `dlt/ingest/<source>/<entity>` | `dlt/ingest/knmi/climate_hourly` |
 | Dagster group | `dlt/ingest/<source>` | `dlt/ingest/knmi` |
 | Kind tags | `dlt`, `snowflake` | same |
@@ -149,14 +149,14 @@ environment:
 |---|---|---|
 | Database | `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
-| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<NAME>` | `DBT_INFO_STG` |
+| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
 | Provisioning (bootstrap) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
 `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
-prefix `SNOWFLAKE_SCHEMA=DBT_<NAME>`. `just snowflake setup` proposes `DBT_` plus the first part
+prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just snowflake setup` proposes `DBT_` plus the first part
 of your login.
 
 Schemas inside a project database:
@@ -169,9 +169,9 @@ Schemas inside a project database:
 | `_TMP` | dbt tests | Stored test failures; also dbt's default schema in `tst`, `acc` and `prd` |
 | `_MTD` | `dbt_common` on-run-end hook | Run metadata (`pre__dbt__*`) |
 
-In `dev` the same set exists per engineer under the personal prefix (`DBT_INFO_SRC`,
-`DBT_INFO_STG`, ...), created on demand by dlt and dbt; a model without `+schema` lands in the
-prefix itself (`DBT_INFO`). `SnowflakeSettings.schema_for_layer()` and
+In `dev` the same set exists per engineer under the personal prefix (`DBT_USERNAME_SRC`,
+`DBT_USERNAME_STG`, ...), created on demand by dlt and dbt; a model without `+schema` lands in the
+prefix itself (`DBT_USERNAME`). `SnowflakeSettings.schema_for_layer()` and
 `dbt_common.generate_schema_name` implement the rule; source YAML repeats it with `env_var`.
 
 Snowflake folds unquoted identifiers to uppercase, so `knmi__climate_hourly` and

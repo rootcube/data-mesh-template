@@ -134,6 +134,7 @@ nav:
       - administration/index.md
       - Snowflake provisioning: administration/snowflake-provisioning.md
       - Onboarding: administration/onboarding.md
+      - Snowflake Trial Account setup: administration/snowflake-trial-account-setup.md
   - Reference:
       - reference/index.md
       - Commands: reference/commands.md

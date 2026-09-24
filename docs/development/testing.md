@@ -44,7 +44,7 @@ just dbt test --select stg__knmi__climate_hourly      # tests only
 In Dagster, materializing a dbt asset runs `dbt build` for the selection, and failing tests
 show on the asset. Failures are stored: `dbt_example` sets `+store_failures: true` with
 `+schema: tmp`, so every failing test leaves a table with the offending rows in the temporary
-layer (`DBT_<NAME>_TMP` in dev, `_TMP` elsewhere). `has_data` is the one exception; its failure
+layer (`DBT_<USERNAME>_TMP` in dev, `_TMP` elsewhere). `has_data` is the one exception; its failure
 row is a constant, so it switches storing off.
 
 Tests available: dbt's built-ins (`not_null`, `unique`, `accepted_values`, `relationships`),

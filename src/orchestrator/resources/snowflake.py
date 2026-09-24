@@ -95,7 +95,7 @@ class SnowflakeSettings:
             "role": self.role,
             "warehouse": self.warehouse,
             "database": self.database,
-            # In dev SNOWFLAKE_SCHEMA is a prefix (DBT_INFO), not a schema: leave the session's schema unset.
+            # In dev SNOWFLAKE_SCHEMA is a prefix (DBT_USERNAME), not a schema: leave the session's schema unset.
             "schema": "" if self.is_personal else self.schema,
             "application": APPLICATION,
         }

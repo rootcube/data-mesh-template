@@ -24,7 +24,7 @@ All of this sits inside the project database, `DB_EXAMPLE_<ENV>`.
 | Metadata | `dbt_common` `on-run-end` hook | none | `mtd` (in the macro) | `_MTD` | `<PREFIX>_MTD` | tables created on demand | `pre__dbt__<dataset>` |
 | Temporary | dbt data tests | none | `tmp` | `_TMP` | `<PREFIX>_TMP` | `store_failures` tables | test names |
 
-`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<NAME>` by convention (`DBT_INFO`).
+`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`).
 Materializations come from `dbt/dbt_example/dbt_project.yml` (`dbt_common` builds `03_int`
 as `view` by default, with the date, calendar, time and holiday models overriding to
 `table`); a model can override its folder default with `config(materialized=...)`.
@@ -45,8 +45,8 @@ A layer's schema depends on the environment. The rule lives in
 
 | Target | `target.schema` | `+schema` | Result |
 |--------|-----------------|-----------|--------|
-| `dev` | `DBT_INFO` | `stg` | `DBT_INFO_STG` |
-| `dev` | `DBT_INFO` | (none) | `DBT_INFO` |
+| `dev` | `DBT_USERNAME` | `stg` | `DBT_USERNAME_STG` |
+| `dev` | `DBT_USERNAME` | (none) | `DBT_USERNAME` |
 | `prd` | `_TMP` | `stg` | `_STG` |
 | `prd` | `_TMP` | (none) | `_TMP` |
 

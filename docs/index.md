@@ -38,8 +38,8 @@ flowchart LR
     DAGSTER -.orchestrates.- DLT & DBT
 ```
 
-In development every engineer gets personal copies of those schemas (`DBT_<NAME>_SRC`,
-`DBT_<NAME>_STG`, ...) inside the shared `DB_EXAMPLE_DEV`. The other environments use the
+In development every engineer gets personal copies of those schemas (`DBT_<USERNAME>_SRC`,
+`DBT_<USERNAME>_STG`, ...) inside the shared `DB_EXAMPLE_DEV`. The other environments use the
 provisioned `_<LAYER>` schemas.
 
 ## Two kinds of readers
@@ -146,6 +146,7 @@ The starter ships one organisation (`example`), one team (`platform`) and one pr
     git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
     just init              # uv, .venv, .env, dbt packages
     just snowflake setup   # one-time login, key pair registered on your user, .env filled in
+    just setup             # fresh account instead of the two lines above: also bootstraps Terraform and provisions the project
     just snowflake check   # proves key-pair login works
     just start             # Dagster UI on http://localhost:3000
     ```

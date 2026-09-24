@@ -40,24 +40,23 @@ project in development. Ask for:
 
 !!! tip "No platform yet? A Snowflake trial account works"
     For a first test drive, sign up for a free [Snowflake trial](https://signup.snowflake.com/)
-    (30 days, no card). Your trial login is `ACCOUNTADMIN`, which is all the
-    [bootstrap](../administration/snowflake-provisioning.md) needs: run it, apply the Terraform
-    for the `example` project, add yourself under `terraform/config/users/`, and the table below
-    answers itself: the account identifier from the trial's welcome mail, your login,
-    `RL_EXAMPLE_DEV__ENG`, `DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV`.
+    (30 days, no card). Your trial login is `ACCOUNTADMIN`, so `just setup` bootstraps the
+    account, provisions the `example` project and fills in `.env` from just the account
+    identifier, your username and password. Step by step:
+    [Snowflake Trial Account setup](../administration/snowflake-trial-account-setup.md).
 
 | What | Example | Ends up in |
 |------|---------|------------|
 | Account identifier, `<organization>-<account>` | `MYORG-MYACCOUNT` | `SNOWFLAKE_ACCOUNT` |
-| Your login | `engineer@example.com` | the one-time interactive login, then `SNOWFLAKE_USER` |
+| Your login | `username@example.com` | the one-time interactive login, then `SNOWFLAKE_USER` |
 | Your engineer role | `RL_EXAMPLE_DEV__ENG` | `SNOWFLAKE_ROLE` |
 | The development database | `DB_EXAMPLE_DEV` | `SNOWFLAKE_DATABASE` |
 | The warehouse | `WH_EXAMPLE_DEV` | `SNOWFLAKE_WAREHOUSE` |
 | A one-time password | only when the administrator created your user | the first login, then you change it |
 
 The development database is shared by every engineer of the project. The engineer role holds
-`CREATE SCHEMA` on it, and dlt and dbt create your personal schemas (`DBT_<NAME>_SRC`,
-`DBT_<NAME>_STG`, ...) on first use. Other engineers use their own prefix, so nobody steps on
+`CREATE SCHEMA` on it, and dlt and dbt create your personal schemas (`DBT_<USERNAME>_SRC`,
+`DBT_<USERNAME>_STG`, ...) on first use. Other engineers use their own prefix, so nobody steps on
 anyone else's tables.
 
 ## Terraform

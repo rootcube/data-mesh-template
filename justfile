@@ -67,13 +67,17 @@ init:
     uv run python scripts/dbt_all.py deps --quiet
     Write-Host ""; Write-Host "Done. Next: just snowflake setup"
 
+# fresh Snowflake account: `just init`, then bootstrap it (Terraform user, provisioning, your key pair, .env)
+setup *args: init
+    uv run python scripts/snowflake.py bootstrap {{args}}
+
 # show tool versions and whether .env and your key pair are in place
 info:
     uv run python scripts/info.py
 
 # --- Snowflake --------------------------------------------------------------
 
-# key-pair auth: `just snowflake setup` (one-time), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+# key-pair auth: `just snowflake setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
 snowflake cmd *args:
     uv run python scripts/snowflake.py {{cmd}} {{args}}
 

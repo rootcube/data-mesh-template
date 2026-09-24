@@ -122,7 +122,7 @@ it.
 The dbt keys come from `DataMeshDbtTranslator` in `src/orchestrator/locations/dbt/shared.py`:
 the project name, the node's path inside the project (`models/02_stg/knmi`), then its name; a
 node from an installed package gets `packages/<package>` after the project name. Nothing in
-the key depends on the physical schema, so it is the same in every environment: `DBT_INFO_STG`
+the key depends on the physical schema, so it is the same in every environment: `DBT_USERNAME_STG`
 in `dev` and `_STG` in `prd` both show up under `dbt_example/models/02_stg/...`. The group is
 the key without its last segment, so the UI nests assets by project, package, layer and domain.
 Search the asset catalog for the model name; when you need the full key in code, it is

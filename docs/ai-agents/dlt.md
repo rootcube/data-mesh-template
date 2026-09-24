@@ -32,7 +32,7 @@ Every source lands in the **source layer** of the project database as one table 
 
 | Environment | Schema | Example table |
 |---|---|---|
-| `dev` | `<SNOWFLAKE_SCHEMA>_SRC`, your personal source schema, created on first load | `DB_EXAMPLE_DEV.DBT_INFO_SRC.KNMI__CLIMATE_HOURLY` |
+| `dev` | `<SNOWFLAKE_SCHEMA>_SRC`, your personal source schema, created on first load | `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.KNMI__CLIMATE_HOURLY` |
 | `tst`, `acc`, `prd` | `_SRC`, provisioned by Terraform | `DB_EXAMPLE_PRD._SRC.KNMI__CLIMATE_HOURLY` |
 
 `source_dataset()` in `dlt_pipelines/utils/destination.py` is `SnowflakeSettings.from_env().schema_for_layer("src")`, so dlt follows exactly the rule dbt uses (`dbt_common.generate_schema_name`) and the source YAML repeats with `env_var`. The role that owns this layer in deployed environments is `RL_<PROJECT>_<ENV>__ING` ("used by ingestion tooling to load data into the SRC layer" in `terraform/config/roles/ingest.yaml`); in `dev` your engineer role inherits it.
@@ -139,7 +139,7 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 
     `just start`, then materialize `dlt/ingest/knmi/climate_hourly` in the UI, or launch `job_dlt_ingest_all`. Same `source` and `pipeline` objects, so the two paths cannot drift.
 
-Check the result either way with `just snowflake query "SELECT COUNT(1) FROM dbt_info_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_info` (`just snowflake check` prints the layer schemas it resolved).
+Check the result either way with `just snowflake query "SELECT COUNT(1) FROM dbt_username_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_username` (`just snowflake check` prints the layer schemas it resolved).
 
 ## Runtime configuration
 

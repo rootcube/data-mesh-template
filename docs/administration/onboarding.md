@@ -16,8 +16,8 @@ Create `terraform/config/users/<name>.yaml`. The file name is only the Terraform
 starter ships one user file under `terraform/config/users/` to copy from:
 
 ```yaml
-login: "someone@example.com"   # exact, as CURRENT_USER() returns it
-name: "Someone"
+login: "username@example.com"   # exact, as CURRENT_USER() returns it
+name: "Username"
 type: "person"
 create: false                  # true creates the user with a one-time password
 roles:
@@ -84,21 +84,21 @@ side of this is [Snowflake authentication](../getting-started/snowflake-auth.md)
 ```dotenv
 ENVIRONMENT=dev
 SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
-SNOWFLAKE_USER=SOMEONE@EXAMPLE.COM
-SNOWFLAKE_PRIVATE_KEY_PATH=/Users/someone/.snowflake/keys/myorg-myaccount__someone_example.com.p8
+SNOWFLAKE_USER=USERNAME@EXAMPLE.COM
+SNOWFLAKE_PRIVATE_KEY_PATH=/Users/username/.snowflake/keys/myorg-myaccount__username_example.com.p8
 SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
 SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG
 SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV
 SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV
-SNOWFLAKE_SCHEMA=DBT_SOMEONE
+SNOWFLAKE_SCHEMA=DBT_USERNAME
 ```
 
 ### 5. Personal schemas in development
 
 The engineer role holds `CREATE SCHEMA` on `DB_<PROJECT>_DEV` (`privileges.database.dev` in
 `terraform/config/roles/engineer.yaml`). dlt and dbt create `<SNOWFLAKE_SCHEMA>_<LAYER>` schemas
-on demand: `DBT_SOMEONE_SRC` on the first load, `DBT_SOMEONE_STG` and the other layers on the
-first `dbt build`, `DBT_SOMEONE_MTD` for run metadata. Several engineers share the one
+on demand: `DBT_USERNAME_SRC` on the first load, `DBT_USERNAME_STG` and the other layers on the
+first `dbt build`, `DBT_USERNAME_MTD` for run metadata. Several engineers share the one
 development database without stepping on each other. The rule lives in
 `SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; every environment
 other than `dev` ignores the prefix and uses the provisioned `_<LAYER>` schemas.
@@ -109,7 +109,7 @@ role that created them, and anyone with that role can drop them when a person le
 ## Key registration fallback
 
 `ALTER USER ... SET RSA_PUBLIC_KEY` on your own user is allowed by default. If an account
-policy blocks it, `just snowflake setup` stops at step 3 with the Snowflake error and does not
+policy blocks it, `just snowflake setup` stops at the registration step with the Snowflake error and does not
 write `.env`. Then:
 
 1. The person sends you `~/.snowflake/keys/<account>__<user>.pub`.
@@ -117,11 +117,11 @@ write `.env`. Then:
    `-----BEGIN` and `-----END` markers, joined into one string):
 
     ```sql
-    ALTER USER "someone@example.com" SET RSA_PUBLIC_KEY = '<public key body>';
+    ALTER USER "username@example.com" SET RSA_PUBLIC_KEY = '<public key body>';
     ```
 
 3. The person fills in the Snowflake block of `.env` by hand (account, login, private key
-   path, role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<NAME>`) and runs
+   path, role, warehouse, database and `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`) and runs
    `just snowflake check`.
 
 `RSA_PUBLIC_KEY_2` is the second slot, for rotating a key without a gap.

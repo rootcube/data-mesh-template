@@ -19,6 +19,7 @@ never need any of this; they get their access from you and then follow
 | Key registration for people who cannot set their own key, and for service users | `ALTER USER ... SET RSA_PUBLIC_KEY` | [Onboarding](onboarding.md) |
 | Account settings the tooling relies on: the Anaconda terms for Python models | Snowsight, as `ORGADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
 | Terraform state | local `terraform.tfstate` until you move it to a remote backend | [Snowflake provisioning](snowflake-provisioning.md) |
+| A test drive on a fresh account: sign-up, MFA, `just setup` | a Snowflake trial | [Snowflake Trial Account setup](snowflake-trial-account-setup.md) |
 
 ## How provisioning works
 
@@ -43,7 +44,7 @@ Everything is derived from the YAML. A new project is a copy of
 
 ## Before the first engineer starts
 
-- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in (`just snowflake keygen terraform` creates the pair and prints the key body)
+- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in (`just setup` does this for you on a fresh account; by hand, `just snowflake keygen terraform` creates the pair and prints the key body)
 - [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` (see [Environment variables](../reference/environment-variables.md))
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
 - [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)

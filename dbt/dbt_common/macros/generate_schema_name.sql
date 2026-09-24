@@ -8,8 +8,8 @@
 
     | target  | target.schema | +schema | Result        |
     |---------|---------------|---------|---------------|
-    | dev     | DBT_INFO      | stg     | DBT_INFO_STG  |
-    | dev     | DBT_INFO      | (none)  | DBT_INFO      |
+    | dev     | DBT_USERNAME      | stg     | DBT_USERNAME_STG  |
+    | dev     | DBT_USERNAME      | (none)  | DBT_USERNAME      |
     | prd     | _TMP          | stg     | _STG          |
     | prd     | _TMP          | (none)  | _TMP          |
 

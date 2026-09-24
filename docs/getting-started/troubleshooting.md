@@ -30,9 +30,9 @@ icon: material/lifebuoy
     `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your administrator can list your grants
     with `just tf output -json user_role_grants`.
 
-**dbt builds into `DBT_STG` instead of `DBT_<NAME>_STG`**
+**dbt builds into `DBT_STG` instead of `DBT_<USERNAME>_STG`**
 :   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`. Set it
-    to your prefix (`DBT_<NAME>`), the same value `just snowflake setup` proposes.
+    to your prefix (`DBT_<USERNAME>`), the same value `just snowflake setup` proposes.
 
 **`FileNotFoundError: .../.venv/bin/dbt` (or "bad interpreter") although the file exists**
 :   The checkout was moved or renamed after `.venv` was created; the scripts in it still name

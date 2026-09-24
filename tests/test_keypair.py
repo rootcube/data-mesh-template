@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -47,3 +48,24 @@ def test_project_role_discovery_prefers_engineer_in_dev() -> None:
         "warehouse": "WH_EXAMPLE_DEV",
         "environment": "dev",
     }
+
+
+def test_provisioning_sql_fills_in_the_terraform_key() -> None:
+    script = load_script()
+    sql = script.provisioning_sql("MIIBkey", "RSA_PUBLIC_KEY")
+    assert "  RSA_PUBLIC_KEY = 'MIIBkey'" in sql
+    assert "--RSA_PUBLIC_KEY" not in sql and "INSERT_YOUR" not in sql
+
+
+def test_ensure_user_config_writes_engineer_grants_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    (tmp_path / "config" / "users").mkdir(parents=True)
+    (tmp_path / "config" / "projects").mkdir()
+    (tmp_path / "config" / "projects" / "example.yaml").write_text("code: example\n")
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    script.ensure_user_config("USERNAME")
+    written = tmp_path / "config" / "users" / "username.yaml"
+    assert 'login: "USERNAME"' in written.read_text()
+    assert "  - project: example\n    role: engineer\n    environments:\n      - development\n" in written.read_text()
+    script.ensure_user_config("username")
+    assert len(list((tmp_path / "config" / "users").glob("*.yaml"))) == 1

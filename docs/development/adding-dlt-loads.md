@@ -11,7 +11,7 @@ second REST source end to end, up to the dbt staging model that reads it. Backgr
 [Ingestion](../architecture/ingestion.md).
 
 Every load lands in the **source layer** of the project database: schema `_SRC`, or your
-personal `<SNOWFLAKE_SCHEMA>_SRC` in dev (`DBT_<NAME>_SRC`), as a table named
+personal `<SNOWFLAKE_SCHEMA>_SRC` in dev (`DBT_<USERNAME>_SRC`), as a table named
 `<source>__<entity>`. The schema comes from `source_dataset()` in
 `dlt_pipelines/utils/destination.py`; you never spell it out.
 
@@ -202,7 +202,7 @@ without it the component invents an upstream placeholder asset per resource.
 ```bash
 just dlt list                   # airquality now listed next to knmi
 just dlt run airquality
-just snowflake query "SELECT COUNT(1) FROM DBT_<NAME>_SRC.airquality__measurement_hourly"
+just snowflake query "SELECT COUNT(1) FROM DBT_<USERNAME>_SRC.airquality__measurement_hourly"
 ```
 
 `just snowflake check` prints your layer schemas if you are unsure of the prefix. In dev the
@@ -355,7 +355,7 @@ just dbt build --select stg__airquality__measurement_hourly
 just sqlfluff lint models
 ```
 
-The model lands as `DBT_<NAME>_STG.STG__AIRQUALITY__MEASUREMENT_HOURLY` in your dev database.
+The model lands as `DBT_<USERNAME>_STG.STG__AIRQUALITY__MEASUREMENT_HOURLY` in your dev database.
 After `just validate` (or a reload of the `dbt_example` location in the UI), the graph shows
 `dlt/ingest/airquality/measurement_hourly` feeding
 `dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly`.
