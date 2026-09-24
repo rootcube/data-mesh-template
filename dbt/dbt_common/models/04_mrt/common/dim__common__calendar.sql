@@ -1,12 +1,12 @@
 {{
     config(
         enabled=true,
-        tags=['owner=public', 'system=generic', 'category=calendar']
+        tags=['owner=public', 'system=common', 'category=calendar']
     )
 }}
 
 SELECT
-  cal.date_simple AS id_dim__generic__calendar
+  cal.date_simple AS id_dim__common__calendar
 
 -- Dates
 , cal.date
@@ -32,4 +32,4 @@ SELECT
 , cal.is_high_consumption_day
 
 FROM
-  {{ ref('int__generic__calendar') }} AS cal
+  {{ ref('int__common__calendar') }} AS cal

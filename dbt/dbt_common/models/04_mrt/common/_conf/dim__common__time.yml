@@ -2,24 +2,24 @@ version: 2
 
 
 models:
-  - name: dim__generic__time
-    description: A generic dimension table with clock/time related attributes
+  - name: dim__common__time
+    description: A common dimension table with clock/time related attributes
 
     data_tests:
       - has_data:
-          name: dim__generic__time__has_data
+          name: dim__common__time__has_data
 
     columns:
-      - name: id_dim__generic__time
+      - name: id_dim__common__time
         description: Surrogate key for the time dimension, based on the simple time integer
         data_type: integer
 
         data_tests:
           - not_null:
-              name: dim__generic__time__id_dim__generic__time__not_null
+              name: dim__common__time__id_dim__common__time__not_null
 
           - unique:
-              name: dim__generic__time__id_dim__generic__time__unique
+              name: dim__common__time__id_dim__common__time__unique
 
       - name: time
         description: The time value (HH:MM:SS)
@@ -27,10 +27,10 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__time__not_null
+              name: dim__common__time__time__not_null
 
           - unique:
-              name: dim__generic__time__time__unique
+              name: dim__common__time__time__unique
 
       - name: time_simple
         description: The time represented as an integer in HHMMSS format
@@ -38,7 +38,7 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__time_simple__not_null
+              name: dim__common__time__time_simple__not_null
 
       - name: time_hour
         description: The time truncated to the hour (HH:00:00)
@@ -58,10 +58,10 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__hour_nr__not_null
+              name: dim__common__time__hour_nr__not_null
 
           - not_negative:
-              name: dim__generic__time__hour_nr__not_negative
+              name: dim__common__time__hour_nr__not_negative
 
       - name: hour_code
         description: Code representation of the hour
@@ -81,10 +81,10 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__minute_nr__not_null
+              name: dim__common__time__minute_nr__not_null
 
           - not_negative:
-              name: dim__generic__time__minute_nr__not_negative
+              name: dim__common__time__minute_nr__not_negative
 
       - name: minute_code
         description: Code representation of the minute
@@ -104,10 +104,10 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__second_nr__not_null
+              name: dim__common__time__second_nr__not_null
 
           - not_negative:
-              name: dim__generic__time__second_nr__not_negative
+              name: dim__common__time__second_nr__not_negative
 
       - name: second_code
         description: Code representation of the second
@@ -127,7 +127,7 @@ models:
 
         data_tests:
           - not_null:
-              name: dim__generic__time__day_part__not_null
+              name: dim__common__time__day_part__not_null
 
       - name: day_part_sort
         description: Sort order for the part of the day
@@ -143,5 +143,5 @@ models:
 
     constraints:
       - columns:
-          - id_dim__generic__time
+          - id_dim__common__time
         type: primary_key

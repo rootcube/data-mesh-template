@@ -2,12 +2,12 @@ version: 2
 
 
 models:
-  - name: int__generic__environment
+  - name: int__common__environment
     description: Collection of Environments
 
     data_tests:
       - has_data:
-          name: int__generic__environment__has_data
+          name: int__common__environment__has_data
 
     columns:
       - name: environment_code
@@ -16,13 +16,13 @@ models:
 
         data_tests:
           - not_null:
-              name: int__generic__environment__environment_code__not_null
+              name: int__common__environment__environment_code__not_null
 
           - unique:
-              name: int__generic__environment__environment_code__unique
+              name: int__common__environment__environment_code__unique
 
           - not_empty:
-              name: int__generic__environment__environment_code__not_empty
+              name: int__common__environment__environment_code__not_empty
 
       - name: environment_name
         description: Unique name for the environment
@@ -30,13 +30,13 @@ models:
 
         data_tests:
           - not_null:
-              name: int__generic__environment__environment_name__not_null
+              name: int__common__environment__environment_name__not_null
 
           - unique:
-              name: int__generic__environment__environment_name__unique
+              name: int__common__environment__environment_name__unique
 
           - not_empty:
-              name: int__generic__environment__environment_name__not_empty
+              name: int__common__environment__environment_name__not_empty
 
       - name: environment_alias
         description: Short alias for the environment

@@ -2,7 +2,7 @@
     config(
         enabled=true,
         materialized='table',
-        tags=['owner=public', 'system=generic', 'category=time'],
+        tags=['owner=public', 'system=common', 'category=time'],
         unique_key=['time']
     )
 }}

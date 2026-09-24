@@ -129,7 +129,7 @@ models:
       +tags: ["layer=stg"]
     # 03_int, 04_mrt, 05_exp unchanged
 
-  # dbt_example builds the shared generic models; this project only uses the macros.
+  # dbt_example builds the shared dbt_common models; this project only uses the macros.
   dbt_common:
     +enabled: false             # was true
 
@@ -146,7 +146,7 @@ The `name`
 
 `dbt_common: +enabled: false`
 :   Every project installs `dbt_common`, but exactly one builds its models. Two projects building
-    `dim__generic__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
+    `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
     write the same table into the one database `.env` points at. The macros, the dispatch
     overrides and the `on-run-start` / `on-run-end` hooks keep working with the models disabled.
 
@@ -239,7 +239,7 @@ and switch `.env` to move. The locations of other projects still load (parsing n
 
 ## Sharing data between projects
 
-With `dbt_common` disabled, `ref('dim__generic__calendar')` does not resolve in the new project,
+With `dbt_common` disabled, `ref('dim__common__calendar')` does not resolve in the new project,
 and the tables `dbt_example` builds live in `DB_EXAMPLE_<ENV>`, not in yours. That is the point
 of the mesh: a project publishes through its `_EXP` layer and other projects read that contract
 (the `import` layer under `terraform/config/layers/` exists for received contracts). The starter

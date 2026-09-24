@@ -2,17 +2,12 @@ import holidays
 import pandas as pd
 
 
-def get_holiday_name(date_col):
-    # Netherlands holidays
-    dutch_holidays = holidays.Netherlands()
-    # Return the name of the holiday if it exists, otherwise return None
-    return dutch_holidays.get(date_col)
-
-
 def model(dbt, _session):
     dbt.config(enabled=True, materialized="table", packages=["holidays"])
+    # ISO 3166-1 alpha-2 code from the `holiday_country` var (dbt_project.yml of dbt_common).
+    country_holidays = holidays.country_holidays(dbt.config.get("holiday_country") or "NL")
 
-    df_dates = dbt.ref("int__generic__date").select("DATE")
+    df_dates = dbt.ref("int__common__date").select("DATE")
     df = df_dates.to_pandas()
 
     print("Original DataFrame schema and sample data:")
@@ -25,8 +20,8 @@ def model(dbt, _session):
     else:
         raise ValueError("Expected column 'DATE' not found.")
 
-    # Apply function to get holiday names
-    df["HOLIDAY_NAME"] = df["DATE"].apply(get_holiday_name)
+    # The holiday name per date, None when the date is not a holiday
+    df["HOLIDAY_NAME"] = df["DATE"].apply(country_holidays.get)
 
     # Filter dataframe to keep only rows containing a holiday name
     df = df[df["HOLIDAY_NAME"].notnull()]

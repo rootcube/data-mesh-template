@@ -1,12 +1,12 @@
 {{
     config(
         enabled=true,
-        tags=['owner=public', 'system=generic', 'category=time']
+        tags=['owner=public', 'system=common', 'category=time']
     )
 }}
 
 SELECT
-  time_simple AS id_dim__generic__time
+  time_simple AS id_dim__common__time
 
 , time
 , time_simple
@@ -35,4 +35,4 @@ SELECT
 , day_part_alt_sort
 
 FROM
-  {{ ref('int__generic__time') }}
+  {{ ref('int__common__time') }}

@@ -19,7 +19,7 @@ dbt/
 │   ├── macros/               #   generate_schema_name, set_query_tag, log_run_*, dbt_artifacts/, ...
 │   ├── tests/generic/        #   has_data, rows_expected, not_empty, not_negative
 │   ├── seeds/                #   seed_environment, seed_month, seed_weekday, seed_unknown
-│   └── models/               #   02_stg/seed, 03_int/generic, 04_mrt/generic
+│   └── models/               #   02_stg/seed, 03_int/common, 04_mrt/common
 └── dbt_example/              # project: the first mesh node
     ├── dbt_project.yml       #   dispatch order, layers, hooks
     ├── packages.yml          #   local ../dbt_common + dbt_utils
@@ -112,12 +112,12 @@ model's `_conf/` YAML:
 `stg__knmi__climate_hourly` uses `has_data` and `not_negative` next to dbt's `not_null` and
 `dbt_utils.unique_combination_of_columns`.
 
-### Seeds and generic models
+### Seeds and common models
 
 Four seeds (`seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`), their typed
-`stg__seed__*` models, the `int__generic__*` chain and three dimensions
-(`dim__generic__calendar`, `dim__generic__time`, `dim__generic__environment`). The whole chain
-is drawn on [Layers in practice](layers.md#the-generic-dimensions-from-dbt_common). Each project
+`stg__seed__*` models, the `int__common__*` chain and three dimensions
+(`dim__common__calendar`, `dim__common__time`, `dim__common__environment`). The whole chain
+is drawn on [Layers in practice](layers.md#the-common-dimensions-from-dbt_common). Each project
 that installs `dbt_common` builds its own copy; in Dagster they show up under the group
 `dbt_common`.
 
@@ -127,9 +127,10 @@ that installs `dbt_common` builds its own copy; in Dagster they show up under th
     in its `dbt_project.yml`). Every other project disables them and, if it needs a shared
     dimension, reads it as a source. See [Adding a project](../development/adding-projects.md).
 
-`int__generic__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
-the `holidays` package from the Anaconda channel. An administrator accepts the Anaconda terms
-once per account, or you disable the model
+`int__common__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
+the `holidays` package from the Anaconda channel; the country comes from the `holiday_country`
+var (`NL` by default) in the project's `dbt_project.yml`. An administrator accepts the Anaconda
+terms once per account, or you disable the model
 ([Snowflake provisioning](../administration/snowflake-provisioning.md)).
 
 ### The hooks and the metadata layer

@@ -17,7 +17,7 @@ Two related pages carry the rules this page does not repeat:
 !!! info "Which project?"
     A model belongs to the project that owns its data. The starter ships one, **`dbt_example`**
     (`dbt/dbt_example/`). **`dbt_common`** (`dbt/dbt_common/`) is the shared package every
-    project installs: macros, the generic calendar/time/environment dimensions and the reference
+    project installs: macros, the common calendar/time/environment dimensions and the reference
     seeds. It is not a place for domain models. A new node in the mesh gets its own project next
     to `dbt_example`, see [Adding a project](../development/adding-projects.md). Project layout:
     [Transformation](../architecture/transformation.md).
@@ -125,7 +125,7 @@ dbt/dbt_example/
 ```
 
 `<domain>` is the source system in staging (`02_stg/knmi/`) and the business domain from
-integration up (`03_int/generic/` in `dbt_common`).
+integration up (`03_int/common/` in `dbt_common`).
 
 !!! warning "YAML never sits next to SQL"
     Always in `_conf/`. Sources live in `sources/`, never inside model folders.
@@ -198,7 +198,7 @@ FROM
 
 ### INT (`03_int`)
 
-Organized by business domain (`generic/` in `dbt_common` is the example). This is where business
+Organized by business domain (`common/` in `dbt_common` is the example). This is where business
 logic lives: joining staging models, deriving attributes, enriching. CTEs do the work, one logical
 step each. Default materialization in `dbt_example` is `table`; `dbt_common` builds its
 intermediate models as views. `cluster_by` and `unique_key` go in the config when it helps.
@@ -245,20 +245,20 @@ The dimensional model: dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) 
 
 **Dimensions** carry a surrogate key named `id_dim__<domain>__<entity>` and union in the unknown
 member from `stg__seed__unknown`, so a fact whose lookup misses can still point at a row. The key
-can be a natural integer (`date_simple` in `dim__generic__calendar`), a hash of the business key
-(`SHA1(environment_code)` in `dim__generic__environment`) or
+can be a natural integer (`date_simple` in `dim__common__calendar`), a hash of the business key
+(`SHA1(environment_code)` in `dim__common__environment`) or
 `{{ dbt_utils.generate_surrogate_key([...]) }}`.
 
-```sql title="dbt/dbt_common/models/04_mrt/generic/dim__generic__environment.sql"
+```sql title="dbt/dbt_common/models/04_mrt/common/dim__common__environment.sql"
 {{
     config(
         enabled=true,
-        tags=['owner=public', 'system=generic', 'category=environment']
+        tags=['owner=public', 'system=common', 'category=environment']
     )
 }}
 
 SELECT
-  SHA1(environment_code) AS id_dim__generic__environment
+  SHA1(environment_code) AS id_dim__common__environment
 
 , environment_code
 , environment_name
@@ -267,12 +267,12 @@ SELECT
 , environment_sort
 
 FROM
-  {{ ref('int__generic__environment') }}
+  {{ ref('int__common__environment') }}
 
 UNION ALL
 
 SELECT
-  CAST(unknown_id AS VARCHAR) AS id_dim__generic__environment
+  CAST(unknown_id AS VARCHAR) AS id_dim__common__environment
 
 -- Attributes
 , unknown_code                AS environment_code
@@ -490,18 +490,18 @@ model in the repo names every test:
   uniqueness test
 - Column-level: `<model_name>__<column_name>__<test_type>`
 
-```yaml title="dbt/dbt_common/models/04_mrt/generic/_conf/dim__generic__calendar.yml (excerpt)"
+```yaml title="dbt/dbt_common/models/04_mrt/common/_conf/dim__common__calendar.yml (excerpt)"
 columns:
-  - name: id_dim__generic__calendar
+  - name: id_dim__common__calendar
     description: Surrogate key for the calendar dimension, based on the simple date integer
     data_type: integer
 
     data_tests:
       - not_null:
-          name: dim__generic__calendar__id_dim__generic__calendar__not_null
+          name: dim__common__calendar__id_dim__common__calendar__not_null
 
       - unique:
-          name: dim__generic__calendar__id_dim__generic__calendar__unique
+          name: dim__common__calendar__id_dim__common__calendar__unique
 ```
 
 Per-layer requirements:
@@ -524,10 +524,10 @@ Per-layer requirements:
 ```yaml title="relationships test"
 data_tests:
   - relationships:
-      name: fct__<domain>__<entity>__id_dim__generic__calendar__relationships
+      name: fct__<domain>__<entity>__id_dim__common__calendar__relationships
       arguments:
-        to: ref('dim__generic__calendar')
-        field: id_dim__generic__calendar
+        to: ref('dim__common__calendar')
+        field: id_dim__common__calendar
       config:
         severity: warn
 ```
@@ -570,8 +570,8 @@ dependency order.
 - **Macros**: `generate_schema_name`, `set_query_tag`, `log_run_info`, `log_run_summary`,
   `format_duration`, `search_optimization`, `terminal_colors`, `utc_now`, `utc_today`, and the
   vendored `dbt_artifacts` upload machinery behind the `on-run-end` hook.
-- **Generic models**: `stg__seed__*`, `int__generic__{calendar,date,environment,holiday,time}`,
-  `dim__generic__{calendar,environment,time}`.
+- **Common models**: `stg__seed__*`, `int__common__{calendar,date,environment,holiday,time}`,
+  `dim__common__{calendar,environment,time}`.
 - **Seeds**: `seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`.
 - **Generic tests**: `has_data`, `rows_expected`, `not_empty`, `not_negative`.
 
@@ -585,7 +585,7 @@ Macros, hooks and generic tests keep working either way.
 own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
 
 !!! note "One Python model"
-    `int__generic__holiday.py` is a Snowpark model (Dutch holidays via the `holidays` package). It
+    `int__common__holiday.py` is a Snowpark model (the public holidays of the `holiday_country` var, `NL` by default, via the `holidays` package). It
     runs inside Snowflake and needs the Anaconda channel enabled on the account; see
     [Troubleshooting](../getting-started/troubleshooting.md). ruff and ty skip `dbt/` for this
     reason. Keep Python models rare and simple; logic belongs in SQL, see

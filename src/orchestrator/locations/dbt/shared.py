@@ -9,7 +9,7 @@ cross-project lineage resolves through shared asset keys (dbt sources with
 
 Asset keys mirror the repository layout so the Dagster UI groups assets by project, package,
 layer and domain: `<project>/models/02_stg/knmi/stg__knmi__climate_hourly`, or
-`<project>/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar` for a model that
+`<project>/packages/dbt_common/models/04_mrt/common/dim__common__calendar` for a model that
 comes from a package. The group is the key without its last segment.
 """
 

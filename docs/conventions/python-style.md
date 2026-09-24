@@ -231,7 +231,7 @@ the logic:
 | Use | When |
 |---|---|
 | SQL (dbt model) | Joins, filters, aggregations, window functions, casting, CTEs (the default) |
-| Python (Snowpark dbt model) | Logic SQL handles poorly, such as a library lookup; `int__generic__holiday.py` in `dbt_common` is the one example |
+| Python (Snowpark dbt model) | Logic SQL handles poorly, such as a library lookup; `int__common__holiday.py` in `dbt_common` is the one example |
 | Python (dlt pipeline or Dagster asset) | External APIs and non-database data, such as the KNMI load |
 
 If in doubt, use SQL.

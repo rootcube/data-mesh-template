@@ -116,7 +116,7 @@ it.
 | Kind | Key | Example | Group |
 |------|-----|---------|-------|
 | dlt resource | `dlt/ingest/<source>/<entity>` (from `defs.yaml`: `key_prefix` + lowercased resource name) | `dlt/ingest/knmi/climate_hourly` | `dlt/ingest/<source>` |
-| dbt model, seed | `<project>/<path in the project>/<node name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/seeds/seed_month`, `dbt_example/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar` | the key without its last segment: `dbt_example/models/02_stg/knmi` |
+| dbt model, seed | `<project>/<path in the project>/<node name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/seeds/seed_month`, `dbt_example/packages/dbt_common/models/04_mrt/common/dim__common__calendar` | the key without its last segment: `dbt_example/models/02_stg/knmi` |
 | dbt source | `config.meta.dagster.asset_key` from the source YAML | `dlt/ingest/knmi/climate_hourly` | the upstream asset's group |
 
 The dbt keys come from `DataMeshDbtTranslator` in `src/orchestrator/locations/dbt/shared.py`:
@@ -150,8 +150,8 @@ sources:
 
 Dagster resolves both locations' definitions into one global graph and joins on equal keys.
 The same mechanism works in the other direction: a Python asset or a second dbt project that
-depends on `dim__generic__calendar` names
-`AssetKey(["dbt_example", "packages", "dbt_common", "models", "04_mrt", "generic", "dim__generic__calendar"])`
+depends on `dim__common__calendar` names
+`AssetKey(["dbt_example", "packages", "dbt_common", "models", "04_mrt", "common", "dim__common__calendar"])`
 and gets the edge. Two locations declaring the *same materializable* key is an error; the
 project prefix keeps dbt keys apart, so the reason only one dbt project builds the `dbt_common`
 models is the tables, which would otherwise be built twice in the same database.

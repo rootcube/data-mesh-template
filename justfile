@@ -79,19 +79,26 @@ snowflake cmd *args:
 
 # --- Dagster ----------------------------------------------------------------
 
-# start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop)
-start: _dirs
+# start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop); stops a previous instance first
+start: stop _dirs
     uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
 
-# stop whatever is listening on the Dagster port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [unix]
 stop:
-    @lsof -ti :{{port}} | xargs kill -9 2>/dev/null || echo "nothing listening on port {{port}}"
+    #!/usr/bin/env bash
+    # `dagster dev` shuts its daemon and code servers down on SIGTERM; a second instance would
+    # otherwise fight the first one's daemon ("Another ... daemon is still sending heartbeats").
+    if pkill -TERM -f "dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}" 2>/dev/null; then
+        echo "stopping dagster dev on port {{port}}"
+        for _ in $(seq 1 20); do lsof -ti :{{port}} >/dev/null 2>&1 || break; sleep 0.5; done
+    fi
+    lsof -ti :{{port}} | xargs kill -9 2>/dev/null || true
 
-# stop whatever is listening on the Dagster port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [windows]
 stop:
-    @$p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force } else { Write-Host "nothing listening on port {{port}}" }
+    @Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
 
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 dagster *args:

@@ -47,7 +47,7 @@ Everything is derived from the YAML. A new project is a copy of
 - [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` (see [Environment variables](../reference/environment-variables.md))
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
 - [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)
-- [ ] An `ORGADMIN` accepted the Anaconda terms, or `int__generic__holiday` is disabled in the project
+- [ ] An `ORGADMIN` accepted the Anaconda terms, or `int__common__holiday` is disabled in the project
 - [ ] Every engineer has a `terraform/config/users/<name>.yaml` with the `engineer` role in `development`, applied
 - [ ] Every engineer knows the account identifier, their login, `RL_<PROJECT>_DEV__ENG`, `DB_<PROJECT>_DEV` and `WH_<PROJECT>_DEV`
 - [ ] You know whether users may set their own `RSA_PUBLIC_KEY`; if not, plan to register keys for them

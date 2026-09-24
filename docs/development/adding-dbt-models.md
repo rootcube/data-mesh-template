@@ -197,13 +197,13 @@ project), so it renders `ref()` and `source()` without a connection.
 The next layer turns the daily model into a fact. The house pattern, visible in
 `dbt_common`'s dimensions:
 
-- The first column is a surrogate key named `id_<model>`. `dim__generic__calendar` uses the
-  `YYYYMMDD` integer (`date_simple`); `dim__generic__environment` uses `SHA1(environment_code)`.
+- The first column is a surrogate key named `id_<model>`. `dim__common__calendar` uses the
+  `YYYYMMDD` integer (`date_simple`); `dim__common__environment` uses `SHA1(environment_code)`.
 - Dimensions end with `UNION ALL` on `stg__seed__unknown`, so facts can point at the unknown
   member (`-1`, `-2`, `-3`) instead of `NULL`.
 - Facts carry the dimension keys they join to. A `fct__weather__station_day` would compute
-  `CAST(REPLACE(CAST(observation_date AS VARCHAR), '-', '') AS INTEGER) AS id_dim__generic__calendar`
-  and get a `relationships` test to `dim__generic__calendar`.
+  `CAST(REPLACE(CAST(observation_date AS VARCHAR), '-', '') AS INTEGER) AS id_dim__common__calendar`
+  and get a `relationships` test to `dim__common__calendar`.
 
 Mart models live in `models/04_mrt/<domain>/`, materialize as tables, and reference INT models
 plus the dimensions they key into. A published view in `models/05_exp/<domain>/`

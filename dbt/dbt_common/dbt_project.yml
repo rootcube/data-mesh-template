@@ -24,7 +24,7 @@ clean-targets:
 
 # dbt_common is installed as a local package by every domain project (packages.yml:
 # `- local: ../dbt_common`). It carries the shared macros (schema naming, query tag, run
-# logging, run-metadata upload) and the shared generic objects (calendar/time/environment
+# logging, run-metadata upload) and the shared objects (calendar/time/environment
 # dims, the unknown-member seed and their upstream chain), so every project can ref() them
 # without cross-project sources. Each installing project builds its own copy; a project can
 # opt out with `models: dbt_common: +enabled: false` in its dbt_project.yml.
@@ -45,6 +45,11 @@ models:
       +schema: int
       +materialized: view
       +tags: ["layer=int"]
+      common:
+        int__common__holiday:
+          # Country whose public holidays the calendar carries, as an ISO 3166-1 alpha-2 code.
+          # Installing projects set `holiday_country` under `vars:` in their dbt_project.yml.
+          +holiday_country: "{{ var('holiday_country', 'NL') }}"
 
     04_mrt:
       +schema: mrt

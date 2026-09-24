@@ -2,7 +2,7 @@
     config(
         enabled=true,
         materialized='table',
-        tags=['owner=public', 'system=generic', 'category=date'],
+        tags=['owner=public', 'system=common', 'category=date'],
         unique_key=['date']
     )
 }}
@@ -13,7 +13,7 @@ WITH cte_date_range AS (
   , date
   , date_time
   FROM
-    {{ ref('int__generic__date') }}
+    {{ ref('int__common__date') }}
 
   UNION ALL
 
@@ -53,7 +53,7 @@ WITH cte_date_range AS (
     date         AS date
   , holiday_name AS holiday_name
   FROM
-    {{ ref('int__generic__holiday') }}
+    {{ ref('int__common__holiday') }}
 )
 
 , cte_calendar AS (

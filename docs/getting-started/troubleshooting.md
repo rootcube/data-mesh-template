@@ -53,9 +53,10 @@ icon: material/lifebuoy
     `dbt deps` has not run yet (`just dbt-all deps`).
 
 **Port 3000 already in use**
-:   `just stop`, then `just start` again. Or run on another port: `just port=3001 start`.
+:   `just start` stops a previous `dagster dev` of this checkout by itself. When something else
+    holds the port, `just stop` frees it, or run on another port: `just port=3001 start`.
 
-**`int__generic__holiday` fails with a package error**
+**`int__common__holiday` fails with a package error**
 :   This Python model needs the Anaconda terms accepted on the Snowflake account (an `ORGADMIN`
     does that once, see [Snowflake provisioning](../administration/snowflake-provisioning.md)).
     Until then, disable the model in `dbt/dbt_example/dbt_project.yml`:
@@ -64,8 +65,8 @@ icon: material/lifebuoy
     models:
       dbt_common:
         03_int:
-          generic:
-            int__generic__holiday:
+          common:
+            int__common__holiday:
               +enabled: false
     ```
 

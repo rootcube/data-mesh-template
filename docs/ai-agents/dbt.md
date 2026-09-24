@@ -54,16 +54,16 @@ Hooks
 :   `on-run-start` calls `dbt_common.log_run_info()` (a banner with links to the query history in Snowsight). `dbt_common`'s own `on-run-end` hooks run in every project that installs it: `upload_results` writes run metadata into `pre__dbt__*` tables in the metadata layer (`_MTD`, or `<prefix>_MTD` in `dev`) for `run`, `build`, `test`, `seed` and `freshness`, skipped on the `dummy` target; then `log_run_summary` prints totals, slowest models and failed tests.
 
 The `dbt_common` models
-:   `models: dbt_common: +enabled: true` in `dbt_example` builds the shared seeds (`seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday`), the staging models over them (`stg__seed__*`), `int__generic__{date,calendar,holiday,time,environment}` and `dim__generic__{calendar,time,environment}`.
+:   `models: dbt_common: +enabled: true` in `dbt_example` builds the shared seeds (`seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday`), the staging models over them (`stg__seed__*`), `int__common__{date,calendar,holiday,time,environment}` and `dim__common__{calendar,time,environment}`.
 
 Generic tests
 :   `dbt/dbt_common/tests/generic/` ships four tests: `has_data` and `rows_expected` on a model, `not_empty` and `not_negative` on a column. From a project they are called namespaced (`dbt_common.has_data`); `has_data` sets `store_failures=false` because its failure row is a constant.
 
 !!! danger "Exactly one project builds the `dbt_common` models"
-    Each dbt project is its own Dagster code location. Two projects that both build `dim__generic__calendar` get distinct asset keys (`<project>/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar`) but write the same table into the one database `.env` points at. Every project after the first sets `models: dbt_common: +enabled: false` (the opt-out documented in `dbt_common/dbt_project.yml`).
+    Each dbt project is its own Dagster code location. Two projects that both build `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/models/04_mrt/common/dim__common__calendar`) but write the same table into the one database `.env` points at. Every project after the first sets `models: dbt_common: +enabled: false` (the opt-out documented in `dbt_common/dbt_project.yml`).
 
-!!! warning "`int__generic__holiday` is a Python model"
-    It runs as Snowpark inside Snowflake and imports the `holidays` package from the Anaconda channel, which an `ORGADMIN` has to accept once per account. If it fails with a package error, ask a platform administrator or disable the model in `dbt/dbt_example/dbt_project.yml`; the snippet is in [Snowflake provisioning](../administration/snowflake-provisioning.md).
+!!! warning "`int__common__holiday` is a Python model"
+    It runs as Snowpark inside Snowflake and imports the `holidays` package from the Anaconda channel, which an `ORGADMIN` has to accept once per account. The country comes from the `holiday_country` var (`vars:` in the project's `dbt_project.yml`, `NL` by default). If it fails with a package error, ask a platform administrator or disable the model in `dbt/dbt_example/dbt_project.yml`; the snippet is in [Snowflake provisioning](../administration/snowflake-provisioning.md).
 
 ## The staging pattern
 
@@ -286,7 +286,7 @@ just pre-commit    # all hooks: ruff, ty, dbt parse, sqlfluff, Dagster, Terrafor
 | Schemas come out as `_TMP_STG` instead of `_STG` in `tst`, `acc` or `prd` | The project lacks the `dispatch` block that puts `dbt_common` first, so dbt's default `<target>_<custom>` naming runs. Copy the block from `dbt_example/dbt_project.yml`. |
 | Source table not found while the dlt load succeeded | `ENVIRONMENT` or `SNOWFLAKE_SCHEMA` differs between the dlt run and the dbt run; both derive the source schema from the same two variables. |
 | Duplicate asset keys across code locations | Two projects build the `dbt_common` models. Disable them in all but one. |
-| `int__generic__holiday` fails with a package error | Anaconda terms not accepted on the account. Ask a platform administrator, or disable the model. |
+| `int__common__holiday` fails with a package error | Anaconda terms not accepted on the account. Ask a platform administrator, or disable the model. |
 
 ## Related pages
 

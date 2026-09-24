@@ -37,8 +37,8 @@ Uppercased in Snowflake object names, lowercase everywhere in the repo.
 |---|---|---|
 | Staging | `stg__<source>__<entity>` | `stg__knmi__climate_hourly` |
 | Staging (seed) | `stg__seed__<name>` | `stg__seed__unknown` |
-| Intermediate | `int__<domain>__<entity>` | `int__generic__calendar` |
-| Mart dimension | `dim__<domain>__<entity>` | `dim__generic__calendar` |
+| Intermediate | `int__<domain>__<entity>` | `int__common__calendar` |
+| Mart dimension | `dim__<domain>__<entity>` | `dim__common__calendar` |
 | Mart fact | `fct__<domain>__<entity>` | `fct__weather__observation` |
 | Mart bridge | `brg__<domain>__<entity>` | `brg__weather__station_region` |
 | Mart aggregate | `agg__<domain>__<entity>` | `agg__weather__station_daily` |
@@ -48,7 +48,7 @@ Uppercased in Snowflake object names, lowercase everywhere in the repo.
 
 Double underscores (`__`) separate the structural segments (layer, source or domain, entity);
 single underscores separate words within a segment. In staging, `<source>` is the dlt source
-folder name (`knmi`). From integration up, `<domain>` is a business domain (`generic` for the
+folder name (`knmi`). From integration up, `<domain>` is a business domain (`common` for the
 shared calendar and time models). The `fct__`, `brg__`, `agg__` and `exp__` examples are
 illustrative; `dbt_example` has only the staging model so far.
 
@@ -61,10 +61,10 @@ names across the repo keep the catalog searchable.
 
 | Type | Pattern | Example |
 |---|---|---|
-| Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__generic__calendar` |
+| Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__observation` |
-| Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__generic__calendar` |
-| Role-played foreign key (same dim twice) | `id_dim__<domain>__<entity>__<role>` | `id_dim__generic__calendar__observed` |
+| Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
+| Role-played foreign key (same dim twice) | `id_dim__<domain>__<entity>__<role>` | `id_dim__common__calendar__observed` |
 | Column in a role or context | `<column>__<context>` | `station_code__nearest` |
 | Boolean | `is_` / `has_` prefix | `is_holiday`, `is_weekend` |
 | Timestamp | `<event>_at` | `observed_at` |
@@ -83,7 +83,7 @@ Every test is named, so a failure reads as a sentence in the terminal and in `_T
   `stg__knmi__climate_hourly__station_code__observed_at__unique`.
 - Column-level: `<model_name>__<column_name>__<test_type>`, e.g.
   `stg__knmi__climate_hourly__station_code__not_null`,
-  `dim__generic__calendar__id_dim__generic__calendar__unique`.
+  `dim__common__calendar__id_dim__common__calendar__unique`.
 
 ### Tags
 
@@ -126,7 +126,7 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Python module of a dbt location | `orchestrator.locations.dbt.dbt_<project>.definitions` | `orchestrator.locations.dbt.dbt_example.definitions` |
 | Job (dlt) | `job_dlt_ingest_all` | same |
 | Job (dbt) | `job_<project>_build_all` | `job_dbt_example_build_all` |
-| Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/generic/dim__generic__calendar` |
+| Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/common/dim__common__calendar` |
 | Asset key (dbt seed) | `<project>/seeds/<name>`, or `<project>/packages/<package>/seeds/<name>` | `dbt_example/packages/dbt_common/seeds/seed_month` |
 | Asset group (dbt) | the key without its last segment | `dbt_example/models/02_stg/knmi` |
 | Asset key (dbt source) | `config.meta.dagster.asset_key` from the source YAML | `dlt/ingest/knmi/climate_hourly` |

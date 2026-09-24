@@ -2,12 +2,12 @@ version: 2
 
 
 models:
-  - name: int__generic__time
+  - name: int__common__time
     description: Collection of times of day at second-level granularity, used to support time dimensions
 
     data_tests:
       - has_data:
-          name: int__generic__time__has_data
+          name: int__common__time__has_data
 
     columns:
       - name: time
@@ -16,10 +16,10 @@ models:
 
         data_tests:
           - not_null:
-              name: int__generic__time__time__not_null
+              name: int__common__time__time__not_null
 
           - unique:
-              name: int__generic__time__time__unique
+              name: int__common__time__time__unique
 
       - name: time_simple
         description: Time represented as an integer in HHMMSS format
@@ -27,7 +27,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__time_simple__not_negative
+              name: int__common__time__time_simple__not_negative
 
       - name: time_hour
         description: Time truncated to the hour (HH:00:00)
@@ -47,7 +47,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__hour_nr__not_negative
+              name: int__common__time__hour_nr__not_negative
 
       - name: hour_code
         description: Hour code in format HXX (e.g. H08)
@@ -63,7 +63,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__hour_sort__not_negative
+              name: int__common__time__hour_sort__not_negative
 
       - name: minute_nr
         description: Minute number (0-59)
@@ -71,7 +71,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__minute_nr__not_negative
+              name: int__common__time__minute_nr__not_negative
 
       - name: minute_code
         description: Minute code in format MXX (e.g. M30)
@@ -87,7 +87,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__minute_sort__not_negative
+              name: int__common__time__minute_sort__not_negative
 
       - name: second_nr
         description: Second number (0-59)
@@ -95,7 +95,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__second_nr__not_negative
+              name: int__common__time__second_nr__not_negative
 
       - name: second_code
         description: Second code in format SXX (e.g. S45)
@@ -111,7 +111,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__second_sort__not_negative
+              name: int__common__time__second_sort__not_negative
 
       - name: day_part
         description: Part of the day (morning, afternoon, evening, night)
@@ -123,7 +123,7 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__day_part_sort__not_negative
+              name: int__common__time__day_part_sort__not_negative
 
       - name: day_part_alt
         description: Detailed part of the day with early/late distinction
@@ -135,4 +135,4 @@ models:
 
         data_tests:
           - not_negative:
-              name: int__generic__time__day_part_alt_sort__not_negative
+              name: int__common__time__day_part_alt_sort__not_negative

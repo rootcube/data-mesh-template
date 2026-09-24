@@ -144,7 +144,7 @@ Materialized as `table`. No joins, no business logic, read only by INT.
 Organized by domain, not by source. Joins, enrichment, derived measures, reusable building
 blocks. `dbt_example` has no INT models yet (the folder holds a `.gitkeep`); the
 [Adding a dbt model](../development/adding-dbt-models.md) walkthrough builds the first one.
-`dbt_common` contributes the generic chain described below.
+`dbt_common` contributes the common chain described below.
 
 Materialized as `table` in `dbt_example`. Read by MRT and other INT models.
 
@@ -152,7 +152,7 @@ Materialized as `table` in `dbt_example`. Read by MRT and other INT models.
 
 Dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) and aggregates (`agg__`). The
 `dbt_common` dimensions show the house pattern: a surrogate key named `id_<model>` as the first
-column (`id_dim__generic__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
+column (`id_dim__common__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
 `stg__seed__unknown` so every fact can point at an unknown member instead of a `NULL`.
 
 Materialized as `table`. Consumer-specific shaping belongs one layer up.
@@ -178,7 +178,7 @@ connects, so it skips the upload.
 `+schema: tmp` for all data tests, so a failing test leaves a table you can query. The
 `has_data` test opts out (`store_failures=false`), because its failure row is a constant.
 
-## The generic dimensions from dbt_common
+## The common dimensions from dbt_common
 
 `dbt_common` is installed as a package and its models build as part of `dbt_example`, in the
 same layers, under the Dagster group `dbt_common`:
@@ -198,16 +198,16 @@ flowchart LR
         U[stg__seed__unknown]
     end
     subgraph INT["_INT"]
-        D[int__generic__date]
-        H["int__generic__holiday (Python)"]
-        C[int__generic__calendar]
-        T[int__generic__time]
-        IE[int__generic__environment]
+        D[int__common__date]
+        H["int__common__holiday (Python)"]
+        C[int__common__calendar]
+        T[int__common__time]
+        IE[int__common__environment]
     end
     subgraph MRT["_MRT"]
-        DC[dim__generic__calendar]
-        DT[dim__generic__time]
-        DE[dim__generic__environment]
+        DC[dim__common__calendar]
+        DT[dim__common__time]
+        DE[dim__common__environment]
     end
     SM --> M --> C
     SW --> W --> C
@@ -218,10 +218,11 @@ flowchart LR
     T --> DT
 ```
 
-`int__generic__date` generates a window of ten calendar years back and ten forward around the
-current year; `int__generic__calendar` decorates it with ISO weeks, month and weekday labels
-and Dutch holidays; `int__generic__time` is one row per second of the day.
-`int__generic__holiday` is a Python (Snowpark) model that imports the `holidays` package from
+`int__common__date` generates a window of ten calendar years back and ten forward around the
+current year; `int__common__calendar` decorates it with ISO weeks, month and weekday labels
+and the public holidays of the `holiday_country` var; `int__common__time` is one row per second
+of the day.
+`int__common__holiday` is a Python (Snowpark) model that imports the `holidays` package from
 the Snowflake Anaconda channel, which an `ORGADMIN` has to accept once per account. If that is
 not possible, disable the model in `dbt/dbt_example/dbt_project.yml` as shown in
 [Snowflake provisioning](../administration/snowflake-provisioning.md).

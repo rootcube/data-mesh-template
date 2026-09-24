@@ -1,12 +1,12 @@
 {{
     config(
         enabled=true,
-        tags=['owner=public', 'system=generic', 'category=environment']
+        tags=['owner=public', 'system=common', 'category=environment']
     )
 }}
 
 SELECT
-  SHA1(environment_code) AS id_dim__generic__environment
+  SHA1(environment_code) AS id_dim__common__environment
 
 , environment_code
 , environment_name
@@ -15,12 +15,12 @@ SELECT
 , environment_sort
 
 FROM
-  {{ ref('int__generic__environment') }}
+  {{ ref('int__common__environment') }}
 
 UNION ALL
 
 SELECT
-  CAST(unknown_id AS VARCHAR) AS id_dim__generic__environment
+  CAST(unknown_id AS VARCHAR) AS id_dim__common__environment
 
 -- Attributes
 , unknown_code                AS environment_code

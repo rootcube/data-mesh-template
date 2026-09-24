@@ -67,7 +67,7 @@ FROM
   cte_source AS obs
 ```
 
-A model with a join follows the same layout; `dbt/dbt_common/models/04_mrt/generic/dim__generic__environment.sql` (two `SELECT`s over `ref()`s with a `UNION ALL`) and `int__generic__calendar.sql` (a `cte_` chain) are the in-repo examples for marts and multi-CTE models. Which config keys each layer needs: [dbt style guide](../conventions/dbt-style-guide.md).
+A model with a join follows the same layout; `dbt/dbt_common/models/04_mrt/common/dim__common__environment.sql` (two `SELECT`s over `ref()`s with a `UNION ALL`) and `int__common__calendar.sql` (a `cte_` chain) are the in-repo examples for marts and multi-CTE models. Which config keys each layer needs: [dbt style guide](../conventions/dbt-style-guide.md).
 
 ## Jinja you will use
 

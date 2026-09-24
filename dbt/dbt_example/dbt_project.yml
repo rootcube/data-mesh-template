@@ -31,6 +31,12 @@ dispatch:
 # Layers of the project database: dlt lands sources in _SRC, dbt builds _STG -> _INT -> _MRT -> _EXP
 # (seeds in _REF, run metadata in _MTD, test failures in _TMP). In dev every engineer gets
 # personal copies prefixed with SNOWFLAKE_SCHEMA (dbt_common's generate_schema_name).
+# Settings of the installed dbt_common package.
+vars:
+  # ISO 3166-1 alpha-2 code of the country whose public holidays the calendar carries
+  # (int__common__holiday, dim__common__calendar).
+  holiday_country: NL
+
 models:
   dbt_example:
     +materialized: view
@@ -58,7 +64,7 @@ models:
       +materialized: view
       +tags: ["layer=exp"]
 
-  # Shared generic objects from the dbt_common package (calendar, time, environment dims).
+  # Shared objects from the dbt_common package (calendar, time, environment dims).
   dbt_common:
     +enabled: true
 

@@ -61,7 +61,7 @@ and environment dimensions from `dbt_common`. Every run starts with a run-info b
 to the query history in Snowsight) and ends with a summary; run metadata lands in the
 `pre__dbt__*` tables of your metadata schema.
 
-!!! note "`int__generic__holiday` needs Anaconda packages"
+!!! note "`int__common__holiday` needs Anaconda packages"
     That `dbt_common` model is a Python (Snowpark) model that imports `holidays` from
     Snowflake's Anaconda channel. If it fails with a package error, an `ORGADMIN` has not
     accepted the Anaconda terms yet. Ask your administrator, or disable the model; see
@@ -76,8 +76,8 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 | `DBT_<NAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded |
 | `DBT_<NAME>_REF` | `dbt seed` | the `dbt_common` seeds: `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` |
 | `DBT_<NAME>_STG` | dbt | `stg__knmi__climate_hourly` and the `stg__seed__*` models |
-| `DBT_<NAME>_INT` | dbt | the `int__generic__*` models |
-| `DBT_<NAME>_MRT` | dbt | `dim__generic__calendar`, `dim__generic__time`, `dim__generic__environment` |
+| `DBT_<NAME>_INT` | dbt | the `int__common__*` models |
+| `DBT_<NAME>_MRT` | dbt | `dim__common__calendar`, `dim__common__time`, `dim__common__environment` |
 | `DBT_<NAME>_EXP` | dbt | nothing yet: `models/05_exp/` is empty in the starter |
 | `DBT_<NAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
 | `DBT_<NAME>_TMP` | dbt tests | stored test failures |
@@ -101,8 +101,8 @@ run history.
 
 ## Stopping
 
-++ctrl+c++ in the terminal running `just start`. If a stray process keeps port 3000 busy,
-`just stop` kills it.
+++ctrl+c++ in the terminal running `just start`. `just start` stops a forgotten instance
+first, and `just stop` does the same on its own.
 
 Ready to change things? Head to [Development](../development/index.md). Want the model behind
 the names first? [Concepts](../concepts/index.md).

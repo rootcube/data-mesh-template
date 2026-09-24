@@ -54,7 +54,7 @@ FROM
 **Joins indented under `FROM`, with explicit `AS` names** (AL01), unique per query (AL04). When
 more than one table is referenced, qualify every column (RF02):
 
-```sql title="dbt/dbt_common/models/03_int/generic/int__generic__calendar.sql (excerpt)"
+```sql title="dbt/dbt_common/models/03_int/common/int__common__calendar.sql (excerpt)"
 FROM
   cte_calendar AS cal
 
@@ -120,7 +120,7 @@ file.
     FROM
       cte_warm_hours AS hrs
 
-      LEFT JOIN {{ ref('dim__generic__calendar') }} AS cal
+      LEFT JOIN {{ ref('dim__common__calendar') }} AS cal
         ON cal.date = CAST(hrs.observed_at AS DATE)
     ```
 
@@ -132,7 +132,7 @@ file.
         cal.year_nr
     from (select * from {{ ref('stg__knmi__climate_hourly') }}
           where temperature_celsius > 25) hrs              -- subquery, table name without AS
-    right join {{ ref('dim__generic__calendar') }} cal     -- RIGHT JOIN, no AS
+    right join {{ ref('dim__common__calendar') }} cal     -- RIGHT JOIN, no AS
         on hrs.observed_at::date = cal.date                -- earlier table first
     ```
 
@@ -189,7 +189,7 @@ Common patterns, all from this repo:
 ```sql
 {{ ref('stg__knmi__climate_hourly') }}                      -- reference a model
 {{ source('knmi', 'climate_hourly') }}                      -- reference a source table
-{{ ref('dim__generic__calendar') }}                         -- a shared dbt_common model
+{{ ref('dim__common__calendar') }}                         -- a shared dbt_common model
 {{ dbt_common.utc_now() }}                                  -- a shared macro
 {{ dbt_utils.generate_surrogate_key(['station_code']) }}    -- dbt_utils
 ```
@@ -206,9 +206,9 @@ When a Jinja block genuinely cannot be made lint-clean, fence it:
 
 | Type | Pattern | Example |
 |---|---|---|
-| Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__generic__calendar` |
+| Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__observation` |
-| Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__generic__calendar` |
+| Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Boolean | `is_<condition>` / `has_<thing>` | `is_holiday`, `is_weekend` |
 | Timestamp | `<event>_at` | `observed_at` |
 | Date | `<event>_date` | `first_date_of_month` |

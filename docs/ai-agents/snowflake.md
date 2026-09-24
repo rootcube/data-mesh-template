@@ -103,7 +103,7 @@ Read a macro's header comment before using it; each documents its inputs.
 Defaults come from `dbt/dbt_example/dbt_project.yml`: tables for `_STG`, `_INT` and `_MRT`, views for `_EXP`; `dbt_common` builds its `_INT` models as views. Heavy logic in an `_EXP` view is not a reason to materialize it as a table; push the logic down to `_INT` or `_MRT`.
 
 !!! warning "Python models run inside Snowflake"
-    `int__generic__holiday` in `dbt_common` is a Snowpark model that imports `holidays` from the Anaconda channel. That works only after an `ORGADMIN` accepted the Anaconda terms once per account. `dbt/` is excluded from ruff and ty for this reason: those files run in Snowflake's Python, not in the repo's venv. Failing with a package error? [Snowflake provisioning](../administration/snowflake-provisioning.md) has the opt-out snippet.
+    `int__common__holiday` in `dbt_common` is a Snowpark model that imports `holidays` from the Anaconda channel. That works only after an `ORGADMIN` accepted the Anaconda terms once per account. `dbt/` is excluded from ruff and ty for this reason: those files run in Snowflake's Python, not in the repo's venv. Failing with a package error? [Snowflake provisioning](../administration/snowflake-provisioning.md) has the opt-out snippet.
 
 ## Checking your work
 

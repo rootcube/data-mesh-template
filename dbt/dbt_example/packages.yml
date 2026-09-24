@@ -1,6 +1,6 @@
 packages:
   # Shared macros (schema naming, query tag, run logging, run-metadata upload) and the shared
-  # generic models/seeds (calendar, time, environment, unknown member).
+  # shared models/seeds (calendar, time, environment, unknown member).
   - local: ../dbt_common
 
   - package: dbt-labs/dbt_utils

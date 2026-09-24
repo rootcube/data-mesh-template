@@ -33,9 +33,9 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground |
+| `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground; runs `just stop` first so a forgotten instance never doubles the daemon |
 | `just port=3001 start` | Same on another port |
-| `just stop` | Kill whatever listens on the Dagster port |
+| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers), then anything else still on the port |
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | Load every code location like `start` does, without the UI |
 

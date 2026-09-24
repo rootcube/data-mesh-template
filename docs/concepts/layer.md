@@ -111,11 +111,11 @@ Project must never read another Project's non-expose layers.
 
 `int`, Integration
 :   Reusable, joined and enriched datasets that are not yet facts or dimensions. Organised by
-    domain, not by source. Here: the generic calendar chain from `dbt_common`.
+    domain, not by source. Here: the common calendar chain from `dbt_common`.
 
 `mrt`, Mart
 :   Modelled, analytics-ready data: dimensions, facts, bridges, aggregates. Here:
-    `dim__generic__calendar`, `dim__generic__time`, `dim__generic__environment`.
+    `dim__common__calendar`, `dim__common__time`, `dim__common__environment`.
 
 `exp`, Expose
 :   The publication boundary. Whatever is here is a contract; the owning Team keeps it
