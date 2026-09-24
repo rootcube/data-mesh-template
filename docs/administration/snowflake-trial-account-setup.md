@@ -61,7 +61,7 @@ just setup
 ```
 
 `just setup` runs `just init` (uv, the virtual environment, `.env`, dbt packages) and then
-`just snowflake bootstrap`, which asks for the organization name, the account name, your
+`just sf bootstrap`, which asks for the organization name, the account name, your
 username, your password and an MFA passcode (leave it empty for a push notification), then:
 
 1. logs in to `<organization>-<account>` and switches to `ACCOUNTADMIN`;
@@ -85,7 +85,7 @@ keys, and Terraform applies only the difference.
 ## 5. Check and run
 
 ```bash
-just snowflake check   # user, role, warehouse, database and your personal layer schemas
+just sf check   # user, role, warehouse, database and your personal layer schemas
 just start             # Dagster UI on http://localhost:3000
 ```
 
@@ -102,8 +102,8 @@ the dbt models.
 
 | Trial | Real account |
 |-------|--------------|
-| Your login holds `ACCOUNTADMIN`, so one person does bootstrap, provisioning and engineering | An administrator bootstraps and provisions ([Snowflake provisioning](snowflake-provisioning.md)); engineers only run `just snowflake setup` |
-| Password plus MFA is the only login | Usually SSO; `just snowflake setup` opens the browser instead |
+| Your login holds `ACCOUNTADMIN`, so one person does bootstrap, provisioning and engineering | An administrator bootstraps and provisions ([Snowflake provisioning](snowflake-provisioning.md)); engineers only run `just sf setup` |
+| Password plus MFA is the only login | Usually SSO; `just sf setup` opens the browser instead |
 | Terraform state is a local `terraform.tfstate` | Move it to a remote backend before a second administrator applies |
 | The account expires after 30 days, with everything in it | Nothing expires; `just tf destroy` removes what Terraform created |
 
