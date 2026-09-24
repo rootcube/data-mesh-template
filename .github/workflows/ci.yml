@@ -4,14 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow dispatches CI on release-please's branch: GitHub runs no workflows for
+  # pull requests opened with GITHUB_TOKEN, except through workflow_dispatch.
+  workflow_dispatch:
+
+# Read-only token: the jobs only check out and test. Dependabot and fork pull requests get the same.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the run still going for the previous one.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python:
     name: Python (ruff, ty, pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - run: uv run ruff format --check .
       - run: uv run ruff check .
@@ -22,8 +34,8 @@ jobs:
     name: dbt parse + Dagster definitions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - run: uv run python scripts/dbt_all.py deps --quiet
       - run: uv run python scripts/dbt_all.py parse --target dummy --quiet
@@ -42,12 +54,12 @@ jobs:
     name: Terraform fmt + validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
       - run: terraform fmt -check -recursive terraform
       - run: terraform -chdir=terraform init -backend=false
       - run: terraform -chdir=terraform validate
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - run: uv run python terraform/config/_validation/validate_configs.py
 
@@ -55,7 +67,7 @@ jobs:
     name: Docs build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --group docs
       - run: uv run --group docs mkdocs build --strict
