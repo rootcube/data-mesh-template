@@ -6,10 +6,8 @@ icon: material/clipboard-check
 
 ## Tools
 
-You install two things yourself; `just init` takes care of the rest (uv, Python 3.13, the
-virtual environment, the dbt packages). Tools that uv does not manage have `just install`:
-`just install direnv`, `just install terraform` or `just install all` (Homebrew on macOS and
-Linux, winget on Windows). Engineers need none of them.
+Two tools you install yourself, [`just`](https://github.com/casey/just) and git. `just init`
+takes care of everything else (uv, Python 3.13, the virtual environment, the dbt packages).
 
 === "macOS / Linux"
 
@@ -31,9 +29,19 @@ Linux, winget on Windows). Engineers need none of them.
     `.python-version`) inside the project's `.venv`. You never activate it by hand: every
     command runs through `uv run`.
 
-[direnv](https://direnv.net/) is optional (`just install direnv`). The repo ships an `.envrc`
-that activates `.venv` and loads `.env` when you `cd` into it, but `just` does the same for its
-own recipes.
+### Optional tools
+
+Once the checkout exists, `just install <tool>` installs the tools uv does not manage, through
+Homebrew on macOS and Linux and winget on Windows:
+
+| Tool | Needed for |
+|------|------------|
+| `terraform` | The fresh-account path of `just setup`, which installs it for you when missing, and everything under [Administration](../administration/index.md); Homebrew installs it through tfenv |
+| `direnv` | Optional: activates `.venv` and loads `.env` when you `cd` into the checkout (the repo ships an `.envrc`), which `just` already does for its own recipes |
+| `gh` | The GitHub CLI, for pull requests from the terminal |
+| `all` | All of the above |
+
+Engineers on a provisioned platform need none of them.
 
 ## Access to Snowflake
 
@@ -44,9 +52,10 @@ project in development. Ask for:
 !!! tip "No platform yet? A Snowflake trial account works"
     For a first test drive, sign up for a free [Snowflake trial](https://signup.snowflake.com/)
     (30 days, no card). Your trial login is `ACCOUNTADMIN`, so `just setup` bootstraps the
-    account, provisions the `example` project and fills in `.env` from just the account
-    identifier, your username and password. Step by step:
-    [Snowflake Trial Account setup](../administration/snowflake-trial-account-setup.md).
+    account, provisions the `example` project and fills in `.env` from the organization name,
+    the account name, your username and password, and installs Terraform when it is missing.
+    Step by step: [Snowflake Trial Account setup](../administration/snowflake-trial-account-setup.md),
+    and the table below then answers itself.
 
 | What | Example | Ends up in |
 |------|---------|------------|
@@ -64,8 +73,9 @@ anyone else's tables.
 
 ## Terraform
 
-Not needed for engineers. Only platform administrators run Terraform (1.5 or newer,
-`just install terraform`, see
-[Snowflake provisioning](../administration/snowflake-provisioning.md)).
+Not needed for engineers on a provisioned platform. Platform administrators and the
+fresh-account path of `just setup` run Terraform 1.5 or newer; `just setup` installs it when
+missing, `just install terraform` does the same by hand. See
+[Snowflake provisioning](../administration/snowflake-provisioning.md).
 
 Next: [Installation](installation.md).

@@ -12,18 +12,44 @@ multi-project mesh: one dbt project and one Dagster code location per project, a
 
 ## Quickstart (engineer)
 
-Prerequisites: [`just`](https://github.com/casey/just) and git. Everything else is installed for you.
-No Snowflake platform yet? A free [trial account](https://signup.snowflake.com/) is enough to
-bootstrap the `example` project and try everything; see [Prerequisites](docs/getting-started/prerequisites.md).
+### Install
+
+Two tools by hand, [`just`](https://github.com/casey/just) and git; `just init` installs the rest
+(uv, Python 3.13, the virtual environment, the dbt packages).
+
+```bash
+# macOS / Linux (Homebrew)
+brew install just git
+
+# Windows (winget, PowerShell)
+winget install --id Casey.Just -e
+winget install --id Git.Git -e
+```
+
+Inside the checkout, `just install <tool>` adds the optional extras: `terraform` (needed for the
+fresh-account path), `direnv`, `gh`, or `all`. Details and alternatives:
+[Prerequisites](docs/getting-started/prerequisites.md).
+
+### Run
 
 ```bash
 git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
-just init              # uv, .venv (Python 3.13), .env, dbt packages
-just sf setup   # one-time login, key pair registered on your user, .env filled in
-just setup             # fresh account instead of the two lines above: also bootstraps Terraform and provisions the project
-just sf check   # proves key-pair login works (`just sf context` re-points .env at a project later)
-just start             # Dagster UI on http://localhost:3000
+just setup       # init, then a one-question wizard (see below), then your .env
+just start       # Dagster UI on http://localhost:3000
 ```
+
+`just setup` runs `just init` and then asks which kind of account this is:
+
+1. **Fresh**, you hold `ACCOUNTADMIN` and nothing is provisioned yet (a free
+   [trial](https://signup.snowflake.com/) is enough): it installs Terraform if missing, creates the
+   Terraform service user, provisions the `example` project, registers your key pair and writes
+   `.env`. It asks for the organization, account name, user and password. Step by step:
+   [Snowflake Trial Account setup](docs/administration/snowflake-trial-account-setup.md).
+2. **Provisioned**, an administrator ran Terraform and granted you a project role: one interactive
+   login, your key pair registered on your user, `.env` filled in. Same as `just sf setup`.
+
+`just sf check` proves the key-pair login works; `just sf context` re-points `.env` at another
+project later.
 
 Run bare `just` for the full recipe list, or see the docs page *Reference > Commands*.
 
@@ -38,23 +64,29 @@ src/orchestrator/            Dagster package
 dlt_pipelines/               dlt package: pipelines/ingest/<source>/ (knmi to start with)
 dbt/                         profiles.yml (shared) + dbt_common (package) + dbt_example (project)
 terraform/                   Snowflake provisioning from terraform/config (administrators)
-scripts/                     snowflake.py (key-pair setup), info.py, dbt_all.py
+scripts/                     snowflake.py (bootstrap, key-pair setup, check, query), info.py, dbt_all.py
 docs/ + mkdocs.yml           the documentation site
+.github/                     CI, release-please, Dependabot, the exported `main` ruleset
 ```
 
-Data flows KNMI API -> dlt -> `_SRC` -> dbt (`_STG`, `_INT`, `_MRT`, `_EXP`) inside the project
-database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both. In development every engineer
+Data flows KNMI API -> dlt -> `_SRC` (through the internal stage `_SRC.ST_DLT`) -> dbt (`_STG`,
+`_INT`, `_MRT`, `_EXP`) inside the project database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both. In development every engineer
 works in personal schemas (`DBT_<USERNAME>_STG`) of the shared `DB_EXAMPLE_DEV`.
 
 ## For platform administrators
 
 `terraform/README.md` (also in the docs under *Administration*) walks through the one-time
-Snowflake bootstrap, the YAML configuration under `terraform/config`, and onboarding people.
+Snowflake bootstrap (`just setup` on a fresh account, or by hand), the YAML configuration under
+`terraform/config`, and onboarding people. Every `just tf plan` shows exactly what changes.
 
 ## Working with AI agents
 
 `AGENTS.md` is the canonical instruction set (`CLAUDE.md` is a symlink to it); the docs section
 *AI agents* carries the per-technology guides and standards.
+
+## Contributing
+
+See `CONTRIBUTING.md`; security issues go through `SECURITY.md`, never a public issue.
 
 ## License
 

@@ -33,12 +33,12 @@ default:
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [unix]
 init: _init
-    @echo ""; echo "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+    @echo ""; echo "Done. Next: just setup"
 
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [windows]
 init: _init
-    @Write-Host ""; Write-Host "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+    @Write-Host ""; Write-Host "Done. Next: just setup"
 
 [unix]
 [private]
@@ -74,9 +74,9 @@ _init:
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
 
-# fresh Snowflake account: `just init`, then bootstrap it (Terraform user, provisioning, your key pair, .env)
-setup *args: _init
-    uv run python scripts/snowflake.py bootstrap {{args}}
+# everything in one go: `just init`, then the wizard (fresh account -> bootstrap incl. Terraform install; provisioned -> key pair + .env)
+setup: _init
+    uv run python scripts/snowflake.py wizard
 
 # show tool versions and whether .env and your key pair are in place
 info:

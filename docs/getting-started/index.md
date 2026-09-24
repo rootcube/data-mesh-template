@@ -17,7 +17,9 @@ Something off? [Troubleshooting](troubleshooting.md) covers the usual suspects.
 !!! info "Engineers only"
     These pages are for engineers who work in the repository. Nothing here needs Terraform.
     If you are setting up the Snowflake account or onboarding people, go to
-    [Administration](../administration/index.md).
+    [Administration](../administration/index.md). No platform yet? On a fresh account, `just setup`
+    replaces steps 2 and 3 and provisions the project as well:
+    [Snowflake Trial Account setup](../administration/snowflake-trial-account-setup.md).
 
 ## Checklist
 
