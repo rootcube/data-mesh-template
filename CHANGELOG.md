@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.4](https://github.com/rootcube/data-mesh-template/compare/v0.1.3...v0.1.4) (2026-09-24)
+
+
+### Bug Fixes
+
+* update CI configuration and documentation references to use Zensical ([52bb01d](https://github.com/rootcube/data-mesh-template/commit/52bb01d91f367bd5ea68f6b4693b7c9261600a89))
+
+
+### Documentation
+
+* add note about Zensical template overrides in index.md ([fd01945](https://github.com/rootcube/data-mesh-template/commit/fd019452e77adcaada0a29ebe2e0d754c77c201c))
+
 ## [0.1.3](https://github.com/rootcube/data-mesh-template/compare/v0.1.2...v0.1.3) (2026-09-24)
 
 
