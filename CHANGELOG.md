@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.3](https://github.com/rootcube/data-mesh-template/compare/v0.1.2...v0.1.3) (2026-09-24)
+
+
+### Features
+
+* enhance setup instructions for clarity and usability, including Terraform installation guidance ([b7d73f2](https://github.com/rootcube/data-mesh-template/commit/b7d73f265ff5fa5b537f9e53750d021049174c6a))
+* enhance user configuration handling with warnings for missing account logins ([e527773](https://github.com/rootcube/data-mesh-template/commit/e527773df165180968504ac6a7edca7f4e339ec9))
+* improve setup experience ([a4f2c87](https://github.com/rootcube/data-mesh-template/commit/a4f2c87d74a80d179dd33ddf0bdce4393f62174d))
+* improve setup experience with clearer instructions and tool installation guidance ([8cb48df](https://github.com/rootcube/data-mesh-template/commit/8cb48df770d4dd4a971cb1d8fe0f0288b4fac08d))
+
 ## [0.1.2](https://github.com/rootcube/data-mesh-template/compare/v0.1.1...v0.1.2) (2026-09-24)
 
 
