@@ -56,6 +56,10 @@ Snowflake bootstrap, the YAML configuration under `terraform/config`, and onboar
 `AGENTS.md` is the canonical instruction set (`CLAUDE.md` is a symlink to it); the docs section
 *AI agents* carries the per-technology guides and standards.
 
+## Contributing
+
+See `CONTRIBUTING.md`; security issues go through `SECURITY.md`, never a public issue.
+
 ## License
 
 GPL-3.0, see `LICENSE`.

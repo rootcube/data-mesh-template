@@ -110,13 +110,13 @@ gh api -X POST repos/rootcube/data-mesh-template/rulesets --input .github/rulese
 Approvals are set to zero for a single maintainer; raise `required_approving_review_count`
 in the ruleset when there are reviewers.
 
-The required CI checks need one secret: release-please opens its pull request with
-`GITHUB_TOKEN`, and GitHub runs no workflows for events that token causes, so without help the
-release pull request never gets its checks and cannot be merged. `RELEASE_PLEASE_TOKEN`, a
-fine-grained personal access token for this repository with *Contents* and *Pull requests* set
-to read and write, makes the pull request count as opened by a person, and CI runs on it.
-Without the secret the workflow falls back to `GITHUB_TOKEN`; close and reopen the release
-pull request to trigger CI by hand.
+The required CI checks have one wrinkle: release-please opens its pull request with
+`GITHUB_TOKEN`, and GitHub runs no workflows for events that token causes, so on its own the
+release pull request would never get its checks. `workflow_dispatch` is the exception to that
+rule, so the release workflow's last step runs `gh workflow run ci.yml` on the release branch.
+The check runs attach to the pull request's head commit under the same job names and satisfy
+the ruleset. No personal access token or secret is involved; if a release pull request ever
+shows missing checks, `gh workflow run ci.yml --ref <its branch>` is the manual equivalent.
 
 ## What runs when
 
