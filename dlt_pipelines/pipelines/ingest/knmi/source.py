@@ -12,7 +12,13 @@ from datetime import UTC, datetime, timedelta
 
 from dlt.sources.helpers import requests as dlt_requests
 
-from dlt_pipelines.pipelines.ingest.knmi.constants import CHUNK_DAYS, DAYS_BACK, KNMI_UURGEGEVENS_URL, STATIONS
+from dlt_pipelines.pipelines.ingest.knmi.constants import (
+    CHUNK_DAYS,
+    DAYS_BACK,
+    KNMI_UURGEGEVENS_URL,
+    START_DATE,
+    STATIONS,
+)
 
 LOGGER = logging.getLogger(__name__)
 DATE_FORMAT = "%Y%m%d"
@@ -27,10 +33,14 @@ def date_chunks(start: datetime, end: datetime, days: int) -> Iterator[tuple[str
         current = chunk_end + timedelta(days=1)
 
 
+def load_window(now: datetime, days_back: int = DAYS_BACK) -> tuple[datetime, datetime]:
+    """The dates to fetch: the last `days_back` days, never earlier than START_DATE."""
+    return max(now - timedelta(days=days_back), START_DATE), now
+
+
 def fetch_hourly_observations(days_back: int = DAYS_BACK) -> Iterator[dict]:
-    """Yield one dict per station per hour for the last `days_back` days."""
-    end = datetime.now(tz=UTC)
-    start = end - timedelta(days=days_back)
+    """Yield one dict per station per hour for the last `days_back` days (from START_DATE at the earliest)."""
+    start, end = load_window(datetime.now(tz=UTC), days_back)
     stations = ":".join(str(code) for code in STATIONS)  # the API separates station codes with ':'
 
     total = 0

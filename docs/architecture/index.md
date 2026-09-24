@@ -39,7 +39,7 @@ flowchart LR
     DAGSTER -. orchestrates .- DBT
 ```
 
-1. **dlt** fetches the last 30 days of hourly observations for seven KNMI stations and merges
+1. **dlt** fetches the last 30 days of hourly observations (never before 2026-01-01) for seven KNMI stations and merges
    them into `knmi__climate_hourly` in the source layer. The pipeline is
    `dlt_pipelines/pipelines/ingest/knmi/`.
 2. **dbt** declares that table as a source and builds the layers `_STG`, `_INT`, `_MRT` and
