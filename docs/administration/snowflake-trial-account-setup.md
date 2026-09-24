@@ -79,8 +79,9 @@ username, your password and an MFA passcode (leave it empty for a push notificat
    `.env`.
 
 `just setup --yes` auto-approves the Terraform plan and skips the context confirmation.
-Rerunning `just setup` is safe: `init.sql` is idempotent, the script offers to keep existing
-keys, and Terraform applies only the difference.
+Rerunning `just setup` is safe: the prompts offer the organization, account and user from your
+`.env` as defaults (Enter keeps them), `init.sql` is idempotent, the script offers to keep
+existing keys, and Terraform applies only the difference.
 
 ## 5. Check and run
 

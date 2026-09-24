@@ -413,10 +413,24 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
     if shutil.which("terraform") is None:
         sys.exit("terraform not found on PATH; install it first (https://developer.hashicorp.com/terraform/install)")
-    organization = (args.organization or ask("Snowflake organization (e.g. MYORG)")).upper()
-    account_name = (args.account or ask("Snowflake account name within the organization (e.g. MYACCOUNT)")).upper()
+    # A rerun offers what the previous run wrote to .env as defaults (Enter keeps them).
+    current = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
+    previous_org, _, previous_account = current.get("SNOWFLAKE_ACCOUNT", "").partition("-")
+    organization = (
+        args.organization
+        or ask(
+            "Snowflake organization (e.g. MYORG)", current.get("TF_VAR_SNOWFLAKE_ORGANIZATION") or previous_org or None
+        )
+    ).upper()
+    account_name = (
+        args.account
+        or ask(
+            "Snowflake account name within the organization (e.g. MYACCOUNT)",
+            current.get("TF_VAR_SNOWFLAKE_ACCOUNT") or previous_account or None,
+        )
+    ).upper()
     account = f"{organization}-{account_name}"
-    user = args.user or ask("Snowflake user (must hold ACCOUNTADMIN)")
+    user = args.user or ask("Snowflake user (must hold ACCOUNTADMIN)", current.get("SNOWFLAKE_USER") or None)
     slot = "RSA_PUBLIC_KEY" if args.slot == 1 else "RSA_PUBLIC_KEY_2"
 
     step("1/5 Logging in with your password")

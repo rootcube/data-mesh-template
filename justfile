@@ -32,7 +32,17 @@ default:
 
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [unix]
-init:
+init: _init
+    @echo ""; echo "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+
+# bootstrap: install uv if missing, create .venv, create .env, install dbt packages
+[windows]
+init: _init
+    @Write-Host ""; Write-Host "Done. Next: just sf setup (account already provisioned) or just setup (fresh account)"
+
+[unix]
+[private]
+_init:
     #!/usr/bin/env bash
     set -euo pipefail
     if ! command -v uv >/dev/null 2>&1; then
@@ -45,30 +55,27 @@ init:
         echo "checkout moved since .venv was created, recreating it"
         rm -rf .venv
     fi
-    uv sync
+    uv sync --all-groups
     # An installed git hook also carries the venv path; refresh it in the same case.
     if [ -f .git/hooks/pre-commit ]; then uv run pre-commit install >/dev/null; fi
     if [ ! -f .env ]; then cp .env.example .env && echo "created .env from .env.example"; fi
     mkdir -p .dagster .dlt/data
     uv run python scripts/dbt_all.py deps --quiet
     if command -v direnv >/dev/null 2>&1; then direnv allow . >/dev/null 2>&1 || true; fi
-    echo ""
-    echo "Done. Next: just sf setup"
 
-# bootstrap: install uv if missing, create .venv, create .env, install dbt packages
 [windows]
-init:
+[private]
+_init:
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"; $env:Path = "$env:USERPROFILE\.local\bin;$env:Path" }
     if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "VIRTUAL_ENV=$PWD\.venv" -Quiet)) { Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
-    uv sync
+    uv sync --all-groups
     if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
-    Write-Host ""; Write-Host "Done. Next: just sf setup"
 
 # fresh Snowflake account: `just init`, then bootstrap it (Terraform user, provisioning, your key pair, .env)
-setup *args: init
+setup *args: _init
     uv run python scripts/snowflake.py bootstrap {{args}}
 
 # show tool versions and whether .env and your key pair are in place

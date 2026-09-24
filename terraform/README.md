@@ -36,8 +36,9 @@ It generates `~/.snowflake/keys/terraform.p8`, runs `init.sql` with that public 
 a key pair on your own user, writes a `config/users/<you>.yaml` (engineer in development on
 every project) unless one lists your login, writes the `TF_VAR_*` block to `.env`, runs
 `terraform init` and `terraform apply` (you confirm the plan; `--yes` auto-approves) and ends
-like `just sf setup`. Rerunning it is safe: `init.sql` is idempotent, existing keys are
-kept when you say so, and Terraform applies only the difference.
+like `just sf setup`. Rerunning it is safe: the prompts default to the values already in
+`.env`, `init.sql` is idempotent, existing keys are kept when you say so, and Terraform applies
+only the difference.
 
 The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yourself:
 

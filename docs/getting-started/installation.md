@@ -13,7 +13,7 @@ just init
 `just init` is idempotent and does, in order:
 
 1. Installs **uv** if it is missing (macOS/Linux via the official install script, Windows via PowerShell).
-2. Runs `uv sync`: creates `.venv/` with Python 3.13 and installs the locked dependencies
+2. Runs `uv sync --all-groups`: creates `.venv/` with Python 3.13 and installs the locked dependencies, the docs tooling included
    (Dagster, dlt, dbt, the Snowflake connector, ruff, ty, pytest, sqlfluff, and dbt-duckdb for
    offline dbt parsing and linting).
 3. Copies `.env.example` to `.env` if you have no `.env` yet.
@@ -21,7 +21,7 @@ just init
 5. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
 6. Runs `direnv allow` when direnv is installed.
 
-It ends with `Done. Next: just sf setup`.
+It ends with `Done. Next: just sf setup (account already provisioned) or just setup (fresh account)`.
 
 ## Verify
 
