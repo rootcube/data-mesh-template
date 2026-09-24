@@ -34,6 +34,12 @@ icon: material/lifebuoy
 :   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`. Set it
     to your prefix (`DBT_<NAME>`), the same value `just snowflake setup` proposes.
 
+**`FileNotFoundError: .../.venv/bin/dbt` (or "bad interpreter") although the file exists**
+:   The checkout was moved or renamed after `.venv` was created; the scripts in it still name
+    the old absolute path. Run `just init`: it notices the stale `.venv`, rebuilds it and
+    reinstalls the git hook, which stores the same path (its symptom is
+    `` `pre-commit` not found. Did you forget to activate your virtualenv? `` on every commit).
+
 **Everything lands in `_STG`, `_SRC`, ... while you expected personal schemas**
 :   `ENVIRONMENT` in `.env` is not `dev`. On a laptop it should be; the other environments
     are for deployed service users.

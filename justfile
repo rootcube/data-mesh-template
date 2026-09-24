@@ -40,7 +40,14 @@ init:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         export PATH="$HOME/.local/bin:$PATH"
     fi
+    # A moved or renamed checkout leaves .venv scripts pointing at the old path; rebuild it.
+    if [ -f .venv/bin/activate ] && ! grep -q "^VIRTUAL_ENV='$PWD/.venv'$" .venv/bin/activate; then
+        echo "checkout moved since .venv was created, recreating it"
+        rm -rf .venv
+    fi
     uv sync
+    # An installed git hook also carries the venv path; refresh it in the same case.
+    if [ -f .git/hooks/pre-commit ]; then uv run pre-commit install >/dev/null; fi
     if [ ! -f .env ]; then cp .env.example .env && echo "created .env from .env.example"; fi
     mkdir -p .dagster .dlt/data
     uv run python scripts/dbt_all.py deps --quiet
@@ -52,7 +59,9 @@ init:
 [windows]
 init:
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"; $env:Path = "$env:USERPROFILE\.local\bin;$env:Path" }
+    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "VIRTUAL_ENV=$PWD\.venv" -Quiet)) { Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
     uv sync
+    if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
