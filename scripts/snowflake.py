@@ -1,9 +1,12 @@
 """Snowflake key-pair authentication for the platform.
 
     just setup                 everything: `just init`, then this wizard, which asks whether the account is
-                               fresh (-> bootstrap) or already provisioned (-> setup)
+                               fresh (-> bootstrap), already provisioned (-> setup) or provisioned from
+                               another checkout (-> bootstrap, syncing or wiping what exists)
     just sf bootstrap          fresh account, as ACCOUNTADMIN: Terraform service user, provisioning
-                                      (init.sql + terraform apply), your own key pair and .env, in one go
+                                      (init.sql + terraform apply), your own key pair and .env, in one go;
+                                      objects that already exist are synced into the state or wiped
+                                      (--existing ask|sync|wipe)
     just sf setup              one-time: log in interactively, create + register a key pair, write .env
     just sf context            pick the project you work in (from the roles granted to you) and write
                                       role, warehouse, database and schema prefix to .env; no login needed
@@ -28,12 +31,14 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import getpass
+import json
 import os
 import re
 import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +61,8 @@ KEY_DIR = Path.home() / ".snowflake" / "keys"
 TF_DIR = ROOT / "terraform"
 INIT_SQL = TF_DIR / "modules" / "snowflake" / "init.sql"
 TERRAFORM_KEY = "terraform"
+# Import blocks for objects an earlier Terraform state created; lives for one `terraform apply`.
+ADOPT_FILE = TF_DIR / "adopt_imports.tf"
 
 # --- console helpers ----------------------------------------------------------
 
@@ -307,7 +314,7 @@ def write_settings(settings: SnowflakeSettings) -> None:
         {
             "SNOWFLAKE_ACCOUNT": settings.account,
             "SNOWFLAKE_USER": settings.user,
-            "SNOWFLAKE_PRIVATE_KEY_PATH": str(settings.key_path()),
+            "SNOWFLAKE_PRIVATE_KEY_PATH": settings.key_path().as_posix(),
             "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE": settings.private_key_passphrase,
             "SNOWFLAKE_ROLE": settings.role,
             "SNOWFLAKE_WAREHOUSE": settings.warehouse,
@@ -401,11 +408,140 @@ def ensure_user_config(login: str, account_users: set[str]) -> None:
     ok(f"Wrote {path}")
 
 
-def terraform(tf_vars: dict[str, str], auto_approve: bool) -> None:
-    env = {**os.environ, **{f"TF_VAR_{k}": v for k, v in tf_vars.items()}}
-    subprocess.run(["terraform", "init", "-input=false"], cwd=TF_DIR, env=env, check=True)
-    apply = ["terraform", "apply"] + (["-auto-approve"] if auto_approve else [])
-    subprocess.run(apply, cwd=TF_DIR, env=env, check=True)
+def refresh_windows_path() -> None:
+    """Pick up PATH entries an installer (winget) wrote to the registry after this shell started."""
+    if sys.platform != "win32":
+        return
+    import winreg
+
+    keys = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"),
+        (winreg.HKEY_CURRENT_USER, "Environment"),
+    ]
+    current = os.environ.get("PATH", "").split(os.pathsep)
+    for hive, subkey in keys:
+        try:
+            with winreg.OpenKey(hive, subkey) as key:
+                value = os.path.expandvars(winreg.QueryValueEx(key, "Path")[0])
+        except OSError:
+            continue
+        current += [p for p in value.split(os.pathsep) if p and p not in current]
+    os.environ["PATH"] = os.pathsep.join(current)
+
+
+def terraform(env: dict[str, str], *args: str) -> None:
+    subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, check=True)
+
+
+# Resource types an earlier Terraform state may already have created in the account: type -> (label, the
+# plan attributes that name the object, outermost first). Grants are left out: granting again is a no-op.
+ADOPTABLE = {
+    "snowflake_database": ("database", ("name",)),
+    "snowflake_schema": ("schema", ("database", "name")),
+    "snowflake_stage_internal": ("stage", ("database", "schema", "name")),
+    "snowflake_warehouse": ("warehouse", ("name",)),
+    "snowflake_account_role": ("role", ("name",)),
+    "snowflake_user": ("user", ("name",)),
+}
+
+
+def object_path(resource: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(str(resource[attr]) for attr in ADOPTABLE[resource["type"]][1])
+
+
+def planned_creates(env: dict[str, str]) -> list[dict[str, Any]]:
+    """The adoptable resources `terraform plan` would create: address, type and planned attributes."""
+
+    def run(*args: str) -> str:
+        result = subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, capture_output=True, encoding="utf-8")
+        if result.returncode != 0:
+            print(result.stdout + result.stderr)
+            sys.exit(f"terraform {args[0]} failed")
+        return result.stdout
+
+    with tempfile.TemporaryDirectory() as tmp:
+        plan = str(Path(tmp) / "plan")
+        run("plan", "-input=false", "-no-color", f"-out={plan}")
+        shown = run("show", "-json", plan)
+    return [
+        {"address": change["address"], "type": change["type"], **(change["change"]["after"] or {})}
+        for change in json.loads(shown).get("resource_changes", [])
+        if change["type"] in ADOPTABLE and change["change"]["actions"] == ["create"]
+    ]
+
+
+def existing_objects(conn: Any, creates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The planned creates that already exist in the account (run as ACCOUNTADMIN, which sees everything)."""
+
+    def names(sql: str, *columns: str) -> set[tuple[str, ...]]:
+        cursor = conn.cursor().execute(sql)
+        header = [d[0].lower() for d in cursor.description]
+        return {tuple(str(row[header.index(c)]) for c in columns) for row in cursor.fetchall()}
+
+    found = {
+        "snowflake_database": names("SHOW DATABASES", "name"),
+        "snowflake_schema": names("SHOW SCHEMAS IN ACCOUNT", "database_name", "name"),
+        "snowflake_stage_internal": names("SHOW STAGES IN ACCOUNT", "database_name", "schema_name", "name"),
+        "snowflake_warehouse": names("SHOW WAREHOUSES", "name"),
+        "snowflake_account_role": names("SHOW ROLES", "name"),
+        "snowflake_user": names("SHOW USERS", "name"),
+    }
+    return [r for r in creates if object_path(r) in found[r["type"]]]
+
+
+def write_imports(resources: list[dict[str, Any]]) -> None:
+    """Import blocks so the next `terraform apply` adopts `resources` instead of creating them."""
+    blocks = "".join(
+        f"import {{\n  to = {r['address']}\n  id = {json.dumps('.'.join(map(quote_ident, object_path(r))))}\n}}\n\n"
+        for r in resources
+    )
+    ADOPT_FILE.write_text(f"# Written by `just sf bootstrap` for one apply; deleted afterwards.\n\n{blocks}")
+
+
+def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str) -> None:
+    """DROP the objects, innermost first (a database takes its schemas and stages with it)."""
+    order = ["snowflake_stage_internal", "snowflake_schema", "snowflake_database"]
+    order += ["snowflake_warehouse", "snowflake_account_role", "snowflake_user"]
+    for resource in sorted(resources, key=lambda r: order.index(r["type"])):
+        kind = ADOPTABLE[resource["type"]][0].upper()
+        path = object_path(resource)
+        if kind == "USER" and path[0].upper() == current_user.upper():
+            continue
+        conn.cursor().execute(f"DROP {kind} IF EXISTS {'.'.join(map(quote_ident, path))}")
+        ok(f"Dropped {kind.lower()} {'.'.join(path)}")
+
+
+def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: str, yes: bool) -> bool:
+    """Handle objects Terraform would create that already exist (an account provisioned from another checkout).
+
+    `mode` is sync (adopt them into this checkout's state), wipe (drop them, then create them anew) or ask.
+    Returns False when the user aborts.
+    """
+    print("Looking for objects in the account that this checkout's Terraform state does not track...")
+    existing = existing_objects(conn, planned_creates(env))
+    if not existing:
+        ok("None found; Terraform creates everything.")
+        return True
+    warn(f"{len(existing)} objects Terraform would create already exist (provisioned from another checkout?):")
+    for resource in existing:
+        print(f"    {ADOPTABLE[resource['type']][0]:<10} {'.'.join(object_path(resource))}")
+    if mode == "ask":
+        if yes:
+            mode = "sync"
+        else:
+            print("  sync  adopt them into this checkout's Terraform state; data and grants stay as they are")
+            print("  wipe  drop them (databases with all their schemas and data), then provision from scratch")
+            choice = ask("sync, wipe or abort?", "sync").lower()
+            mode = {"s": "sync", "w": "wipe"}.get(choice[:1], "abort")
+    if mode == "sync":
+        write_imports(existing)
+        ok(f"Wrote {ADOPT_FILE.name}: the apply below imports them before provisioning the rest")
+        return True
+    if mode == "wipe" and (yes or ask('Type "wipe" to drop them for good') == "wipe"):
+        drop_objects(conn, existing, current_user)
+        return True
+    print("Aborted; nothing was changed in Snowflake.")
+    return False
 
 
 # --- subcommands --------------------------------------------------------------
@@ -458,9 +594,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
+    refresh_windows_path()  # installed by an earlier run, but this shell predates it
     if shutil.which("terraform") is None:
         step("Installing Terraform (just install terraform)")
         subprocess.run(["just", "install", "terraform"], cwd=ROOT, check=True)
+        refresh_windows_path()
         if shutil.which("terraform") is None:
             sys.exit("terraform still not on PATH; open a new shell or install it by hand, then rerun `just setup`")
     # A rerun offers what the previous run wrote to .env as defaults (Enter keeps them).
@@ -505,22 +643,29 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         if registered is None:
             return 1
         private_path, passphrase = registered
-        existing_users = account_users(conn)
+
+        step("4/5 Provisioning the projects with Terraform")
+        ensure_user_config(exact_user, account_users(conn))
+        tf_vars = {
+            "SNOWFLAKE_ORGANIZATION": organization,
+            "SNOWFLAKE_ACCOUNT": account_name,
+            "SNOWFLAKE_USER": "TERRAFORM_USER",
+            "SNOWFLAKE_PRIVATE_KEY_PATH": tf_private.as_posix(),
+        }
+        if not ENV_FILE.exists():
+            shutil.copy(ENV_EXAMPLE, ENV_FILE)
+        update_env_file(ENV_FILE, {f"TF_VAR_{k}": v for k, v in tf_vars.items()})
+        env = {**os.environ, **{f"TF_VAR_{k}": v for k, v in tf_vars.items()}}
+        terraform(env, "init", "-input=false")
+        # Still logged in as ACCOUNTADMIN here, which can see (and drop) whatever an earlier state created.
+        if not reconcile_existing(conn, env, args.existing, exact_user, args.yes):
+            return 1
     finally:
         conn.close()
-
-    step("4/5 Provisioning the projects with Terraform")
-    ensure_user_config(exact_user, existing_users)
-    tf_vars = {
-        "SNOWFLAKE_ORGANIZATION": organization,
-        "SNOWFLAKE_ACCOUNT": account_name,
-        "SNOWFLAKE_USER": "TERRAFORM_USER",
-        "SNOWFLAKE_PRIVATE_KEY_PATH": str(tf_private),
-    }
-    if not ENV_FILE.exists():
-        shutil.copy(ENV_EXAMPLE, ENV_FILE)
-    update_env_file(ENV_FILE, {f"TF_VAR_{k}": v for k, v in tf_vars.items()})
-    terraform(tf_vars, auto_approve=args.yes)
+    try:
+        terraform(env, "apply", *(["-auto-approve"] if args.yes else []))
+    finally:
+        ADOPT_FILE.unlink(missing_ok=True)
 
     step("5/5 Verifying key-pair login and writing .env")
     settings = SnowflakeSettings(
@@ -541,14 +686,20 @@ def cmd_wizard(_args: argparse.Namespace) -> int:
     step("Snowflake setup")
     fresh = style(f"{BOLD};{CYAN}", "Fresh account")
     provisioned = style(f"{BOLD};{CYAN}", "Provisioned account")
+    existing = style(f"{BOLD};{CYAN}", "Existing account")
     print(f"  {style(BOLD, '1')}  {fresh}: nothing provisioned yet, you hold ACCOUNTADMIN (a trial, for example).")
     print(style(DIM, "     Installs Terraform if missing, bootstraps the service user, provisions the projects,"))
     print(style(DIM, "     registers your key pair and writes .env."))
     print(f"  {style(BOLD, '2')}  {provisioned}: an administrator ran Terraform and granted you a project role.")
     print(style(DIM, "     Registers your key pair and writes .env."))
+    print(f"  {style(BOLD, '3')}  {existing}: you hold ACCOUNTADMIN and provisioned it before, from another")
+    print(style(DIM, "     checkout or machine, so this checkout's Terraform state does not know the objects."))
+    print(style(DIM, "     Like 1, but first asks to sync the existing objects into Terraform or wipe them."))
     print()
-    choice = ask("Which one is this? (1/2)", "1")
-    return main(["bootstrap"] if choice.strip() == "1" else ["setup"])
+    choice = ask("Which one is this? (1/2/3)", "1").strip()
+    if choice == "3":
+        return main(["bootstrap", "--existing", "ask"])
+    return main(["bootstrap"] if choice == "1" else ["setup"])
 
 
 def cmd_context(args: argparse.Namespace) -> int:
@@ -642,6 +793,13 @@ def main(argv: list[str] | None = None) -> int:
     bootstrap.add_argument("--role", help="project role to work as (default: your engineer role in dev)")
     bootstrap.add_argument(
         "--yes", action="store_true", help="terraform apply -auto-approve and skip the context prompt"
+    )
+    bootstrap.add_argument(
+        "--existing",
+        choices=("ask", "sync", "wipe"),
+        default="ask",
+        help="objects Terraform would create that already exist: adopt them (sync), drop them first (wipe), "
+        "or ask (default; --yes picks sync)",
     )
     bootstrap.set_defaults(func=cmd_bootstrap)
 

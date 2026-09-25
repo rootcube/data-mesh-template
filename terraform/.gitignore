@@ -26,3 +26,5 @@ Thumbs.db
 *.tfstate.*
 *.tfstate
 .terraform/
+# Import blocks `just sf bootstrap` writes for one apply when adopting existing objects
+adopt_imports.tf

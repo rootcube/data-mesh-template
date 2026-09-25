@@ -36,7 +36,9 @@ def test_blank_values_keep_defaults_and_show_up_as_missing() -> None:
 def test_dlt_credentials_drop_empty_values() -> None:
     settings = SnowflakeSettings(account="ORG-ACCOUNT", user="u", private_key_path="/keys/k.p8", role="r")
     creds = settings.dlt_credentials()
-    assert creds == {"host": "ORG-ACCOUNT", "username": "u", "private_key_path": "/keys/k.p8", "role": "r"}
+    # The key path comes back in the OS's native form (backslashes on Windows).
+    key_path = str(Path("/keys/k.p8"))
+    assert creds == {"host": "ORG-ACCOUNT", "username": "u", "private_key_path": key_path, "role": "r"}
 
 
 def test_layer_schemas_are_personal_in_dev_and_shared_elsewhere() -> None:

@@ -10,10 +10,12 @@ def update_env_file(path: Path, updates: Mapping[str, str]) -> Path:
     """Set `KEY=value` lines in a dotenv file: replace existing keys in place, append new ones.
 
     Values are written unquoted (the repo convention: `just`, Docker and python-dotenv then all
-    read the same bytes). Existing comments and unrelated lines are left untouched.
+    read the same bytes), except values with a backslash: `just` reads an unquoted backslash as an
+    escape and refuses the whole file, so those go in single quotes, which every reader takes literally.
+    Existing comments and unrelated lines are left untouched.
     """
     lines = path.read_text().splitlines() if path.exists() else []
-    pending = dict(updates)
+    pending = {key: f"'{value}'" if "\\" in value and "'" not in value else value for key, value in updates.items()}
     for index, line in enumerate(lines):
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
