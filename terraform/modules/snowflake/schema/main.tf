@@ -24,8 +24,4 @@ resource "snowflake_schema" "this" {
   is_transient                = var.is_transient
   with_managed_access         = var.with_managed_access
   data_retention_time_in_days = var.data_retention_time_in_days
-
-  #lifecycle {
-  #  prevent_destroy = true
-  #}
 }

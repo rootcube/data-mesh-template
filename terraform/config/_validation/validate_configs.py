@@ -10,6 +10,7 @@ Usage:
     python validate_configs.py --file projects/fundana.yaml  # Validate specific file
 """
 
+import io
 import json
 import sys
 from pathlib import Path
@@ -80,13 +81,20 @@ def validate_yaml_against_schema(yaml_path: Path, schema_path: Path) -> tuple[bo
     return len(errors) == 0, errors
 
 
+def config_key(config_type: str, relative_path: Path) -> str:
+    """Terraform's key of a config file: its path under the type folder without .yaml; users by file name alone."""
+    if config_type == "users":
+        return relative_path.stem
+    return relative_path.with_suffix("").as_posix()
+
+
 def load_all_configs(config_dir: Path) -> dict[str, dict[str, dict]]:
     """
-    Load all configuration files from the split structure.
+    Load all configuration files from the split structure, sub-folders included (like Terraform).
 
     Returns:
         Dictionary with keys for each config type
-        Each value is a dict mapping filename (without extension) to content
+        Each value is a dict mapping the Terraform key (see config_key) to content
     """
     configs = {
         "projects": {},
@@ -97,16 +105,17 @@ def load_all_configs(config_dir: Path) -> dict[str, dict[str, dict]]:
         "teams": {},
         "organisations": {},
         "privileges": {},
+        "users": {},
     }
 
     for config_type in configs.keys():
         type_dir = config_dir / config_type
         if type_dir.exists():
-            for yaml_file in type_dir.glob("*.yaml"):
+            for yaml_file in sorted(type_dir.rglob("*.yaml")):
                 try:
                     content = load_yaml(yaml_file)
                     if content:
-                        configs[config_type][yaml_file.stem] = content
+                        configs[config_type][config_key(config_type, yaml_file.relative_to(type_dir))] = content
                 except yaml.YAMLError:
                     pass  # Errors will be caught during schema validation
 
@@ -206,6 +215,10 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
         if project_team and project_team not in valid_team_keys:
             project_errors.append(f"Non-existent team reference: '{project_team}'")
 
+        # Terraform names every object after the file name, so the code has to match it
+        if project.get("code") != project_key:
+            project_errors.append(f"Code '{project.get('code')}' differs from the file name '{project_key}'")
+
         if project_errors or project_warnings:
             if project_errors:
                 print(f" ❌ projects/{project_key}")
@@ -283,6 +296,92 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
                 print(f"    ❌ {error}")
         else:
             print(f" ✅ teams/{team_key}")
+
+    return len(errors) == 0, errors, warnings
+
+
+def project_environments(project: dict, configs: dict[str, dict[str, dict]]) -> set[str]:
+    """The environment keys Terraform deploys a project to: all enabled ones for "*" or none, else listed enabled."""
+    enabled = {key for key, cfg in configs["environments"].items() if not cfg.get("disabled", False)}
+    raw = project.get("environments", "*")
+    return enabled if raw == "*" else set(raw) & enabled
+
+
+def project_roles(project: dict, configs: dict[str, dict[str, dict]]) -> set[str]:
+    """The role keys Terraform creates for a project: all enabled project roles for "*", else listed plus required."""
+    enabled = {
+        key for key, cfg in configs["roles"].items() if cfg.get("level") == "project" and not cfg.get("disabled", False)
+    }
+    required = {key for key in enabled if configs["roles"][key].get("required", False)}
+    raw = project.get("roles", [])
+    return enabled if raw == "*" else (set(raw) | required) & enabled
+
+
+def assignment_problems(assignment: dict, configs: dict[str, dict[str, dict]]) -> list[str]:
+    """Why a user's role assignment would not (fully) be granted; Terraform skips such grants without an error."""
+    project_key, role_key = assignment.get("project"), assignment.get("role")
+    project, role = configs["projects"].get(project_key), configs["roles"].get(role_key)
+    if project is None:
+        return [f"Non-existent project '{project_key}'"]
+
+    problems = []
+    if role is None:
+        problems.append(f"Non-existent role '{role_key}'")
+    elif role.get("level") != "project":
+        problems.append(f"Role '{role_key}' is not a project-level role")
+    elif role_key not in project_roles(project, configs):
+        problems.append(f"Role '{role_key}' is not a role of project '{project_key}'")
+
+    environments = assignment.get("environments", "*")
+    if environments == "*":
+        return problems
+    nonexistent_envs = set(environments) - set(configs["environments"])
+    outside_envs = set(environments) - nonexistent_envs - project_environments(project, configs)
+    if nonexistent_envs:
+        problems.append(f"Non-existent environment keys: {', '.join(sorted(nonexistent_envs))}")
+    if outside_envs:
+        problems.append(f"Environments not (enabled) in project '{project_key}': {', '.join(sorted(outside_envs))}")
+    return problems
+
+
+def duplicate_user_files(config_dir: Path) -> dict[str, list[str]]:
+    """User files that share a file name: Terraform keys users by file name alone, so it fails on them."""
+    users_dir = config_dir / "users"
+    paths_by_key: dict[str, list[str]] = {}
+    for yaml_file in sorted(users_dir.rglob("*.yaml")):
+        paths_by_key.setdefault(yaml_file.stem, []).append(f"users/{yaml_file.relative_to(users_dir).as_posix()}")
+    return {key: paths for key, paths in paths_by_key.items() if len(paths) > 1}
+
+
+def validate_user_references(config_dir: Path) -> tuple[bool, list[str], list[str]]:
+    """
+    Validate the role assignments of every user file and that no two user files share a file name.
+
+    Problems in a disabled user file are warnings, since Terraform ignores that file.
+
+    Returns:
+        Tuple of (is_valid, list_of_errors, list_of_warnings)
+    """
+    errors = []
+    warnings = []
+
+    configs = load_all_configs(config_dir)
+
+    for user_key, user in sorted(configs["users"].items()):
+        problems = [problem for a in user.get("roles", []) for problem in assignment_problems(a, configs)]
+        if not problems:
+            print(f" ✅ users/{user_key}")
+            continue
+        messages, icon = (warnings, "⚠️ ") if user.get("disabled", False) else (errors, "❌")
+        print(f" {icon} users/{user_key}")
+        for problem in problems:
+            messages.append(f"  [users/{user_key}]: {problem}")
+            print(f"    {icon} {problem}")
+
+    for user_key, paths in sorted(duplicate_user_files(config_dir).items()):
+        error_msg = f"Several user files with this file name: {', '.join(paths)}"
+        errors.append(f"  [users/{user_key}]: {error_msg}")
+        print(f" ❌ users/{user_key}: {error_msg}")
 
     return len(errors) == 0, errors, warnings
 
@@ -439,23 +538,24 @@ def validate_schema(config_dir: Path, validation_dir: Path, specific_file: str |
             print(f" ⚠️  {config_type}/: Schema not found at {schema_file}, skipping")
             continue
 
-        yaml_files = list(type_dir.glob("*.yaml"))
+        yaml_files = sorted(type_dir.rglob("*.yaml"))
         if not yaml_files:
             print(f" ⚠️  {config_type}/: No YAML files found")
             continue
 
         # type_valid = True
         for yaml_file in yaml_files:
+            file_name = f"{config_type}/{yaml_file.relative_to(type_dir).as_posix()}"
             # Skip if specific file requested and this isn't it
-            if specific_file and f"{config_type}/{yaml_file.name}" != specific_file:
+            if specific_file and file_name != specific_file:
                 continue
 
             is_valid, errors = validate_yaml_against_schema(yaml_file, schema_path)
 
             if is_valid:
-                print(f" ✅ {config_type}/{yaml_file.name}: Valid")
+                print(f" ✅ {file_name}: Valid")
             else:
-                print(f" ❌ {config_type}/{yaml_file.name}: Invalid")
+                print(f" ❌ {file_name}: Invalid")
                 for error in errors:
                     print(f"   {error}")
                 # type_valid = False
@@ -486,6 +586,14 @@ def validate_all_configs(config_dir: Path, validation_dir: Path, specific_file: 
         if not is_valid:
             all_valid = False
 
+        # User role assignments and duplicate user file names
+        print("\n User Validation:")
+
+        is_valid, errors, warnings = validate_user_references(config_dir)
+
+        if not is_valid:
+            all_valid = False
+
         # Required+Disabled conflict validation
         print("\n Required vs Disabled Validation:")
 
@@ -505,9 +613,13 @@ def validate_all_configs(config_dir: Path, validation_dir: Path, specific_file: 
     return all_valid
 
 
-def main():
+def main() -> None:
     """Main entry point for CLI usage."""
     import argparse
+
+    # The report prints emoji; a Windows pipe (pre-commit, `| tail`) defaults to cp1252, which cannot encode them.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
 
     parser = argparse.ArgumentParser(description="Validate YAML configuration files against JSON schemas")
     parser.add_argument(

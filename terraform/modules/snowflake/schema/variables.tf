@@ -43,9 +43,9 @@ variable "with_managed_access" {
 }
 
 variable "data_retention_time_in_days" {
-  description = "Number of days for which Snowflake retains historical data (inherits from database if null)"
+  description = "Number of days for which Snowflake retains historical data; null (the default) inherits the database's Time Travel, set per environment in the database module"
   type        = number
-  default     = 1
+  default     = null
 
   validation {
     condition     = var.data_retention_time_in_days == null ? true : (var.data_retention_time_in_days >= 0 && var.data_retention_time_in_days <= 90)

@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Users: who may assume which project roles (config/users/*.yaml)
+# Users: who may assume which project roles (config/users/**/*.yaml, keyed by file name)
 # -----------------------------------------------------------------------------
 # A user lists project roles per environment. The role must exist for that
 # project (see the project's `roles`), the environment must be one of the

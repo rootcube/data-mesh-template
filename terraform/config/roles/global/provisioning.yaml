@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# yaml-language-server: $schema=../../_validation/schemas/role.schema.json
 # Role: Provisioning
 # ==================
 
 code: "prv"
 name: "Provisioning"
 type: "system"
-level: "global"
+level: "platform"
 desc: "Scoped access for infrastructure provisioning and maintenance (Terraform)"
 disabled: true
 required: false
