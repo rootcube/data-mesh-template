@@ -106,14 +106,14 @@ dlt_pipelines/                    # dlt package
 ├── pipelines/ingest/knmi/        #   constants.py, source.py, pipelines.py, defs.yaml
 └── utils/destination.py          #   the Snowflake destination and the source-layer dataset
 dbt/
-├── profiles.yml                  #   shared profile `default`: dev, prd + dummy
+├── profiles.yml                  #   shared profile `default`: dev, tst, acc, prd + dummy
 ├── .sqlfluff                     #   shared lint config: dbt templater with the dummy target
 ├── dbt_common/                   #   package: macros, generic tests, seeds, generic dims
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/
 terraform/                        # platform administrators: config/*.yaml -> Snowflake
 ├── README.md                     #   the runbook
 ├── config/                       #   organisations, teams, projects, environments, layers, roles, computes, users, privileges
-├── modules/snowflake/            #   database, schema, role, warehouse and grant modules; init.sql (bootstrap)
+├── modules/snowflake/            #   database, schema, role, warehouse and grant modules; init.sql and account_settings.sql (bootstrap)
 └── main.tf users.tf personal.tf stages.tf variables.tf outputs.tf providers.tf
 scripts/                          # snowflake.py (key pairs), info.py, dbt_all.py
 tests/                            # pytest, offline only
@@ -139,8 +139,9 @@ One environment file
 
 One schema rule, implemented twice
 :   `SnowflakeSettings.schema_for_layer()` (Python) and `dbt_common.generate_schema_name`
-    (Jinja) both map a layer to `_<LAYER>`, or to `<SNOWFLAKE_SCHEMA>_<LAYER>` in `dev`. The
-    dbt source YAML repeats the rule with `env_var`, because source YAML cannot call macros.
+    (Jinja) both map a layer to `_<LAYER>`, or to `<SNOWFLAKE_SCHEMA>_<LAYER>` in `dev` (the
+    unprovisioned `DBT_<LAYER>` when the prefix is blank). The dbt source YAML repeats the rule
+    from the dbt `target`, because source YAML cannot call macros.
 
 Shared asset keys, no imports
 :   The Dagster code locations load in separate subprocesses and never import each other. The

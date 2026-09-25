@@ -84,7 +84,7 @@ There are no schedules or sensors yet. Job names carry the `job_` prefix; the na
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | `uv run dagster definitions validate -w workspace.yaml`: loads every location like `start` does, without the UI |
 
-`DAGSTER_HOME` is `.dagster/` inside the repo (set by the `justfile` and `.envrc`). `.dagster/dagster.yaml` is versioned: telemetry off, `DefaultRunCoordinator` and `DefaultRunLauncher` (runs start immediately in a subprocess, no daemon queue), `max_concurrent_runs: 4`. Everything else in `.dagster/` is run history and safe to delete. The component cache lands in `.local_defs_state/`, also git-ignored.
+`DAGSTER_HOME` is `.dagster/` inside the repo (set by the `justfile` and `.envrc`). `.dagster/dagster.yaml` is versioned: telemetry off, `DefaultRunCoordinator` and `DefaultRunLauncher` (runs start immediately in a subprocess, no daemon queue and no limit on concurrent runs; a limit needs the `QueuedRunCoordinator` and the daemon). Everything else in `.dagster/` is run history and safe to delete. The component cache lands in `.local_defs_state/`, also git-ignored.
 
 CI runs `just validate`'s command with `DBT_TARGET=dummy`, because the `dbt_example` location parses the dbt project on load and CI has no `.env`. Do the same locally if your `.env` is not filled in yet.
 

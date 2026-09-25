@@ -392,9 +392,10 @@ Sources are the tables dlt writes into the source layer: the entry point of the 
 
 1. Source files live in `dbt/<project>/sources/` as `src_<source>.yml`, never inside model
    folders.
-2. `schema` is the source layer, spelled out with `env_var` because source YAML cannot call
-   macros: `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in `dev` and `dummy`. Copy the line from
-   `src_knmi.yml` and keep it in step with `dbt_common.generate_schema_name`.
+2. `schema` is the source layer, spelled out from the dbt `target` because source YAML cannot
+   call macros: `_SRC`, or `<target.schema>_SRC` in `dev` and `dummy` (`DBT_SRC` when it is
+   blank). Copy the line from `src_knmi.yml` and keep it in step with
+   `dbt_common.generate_schema_name`.
 3. The table `name` is the entity (what `source()` refers to); `identifier` is the physical
    table, `<source>__<entity>`.
 4. Every table declares `config.meta.dagster.asset_key` equal to the dlt asset key
@@ -412,9 +413,10 @@ sources:
       KNMI hourly weather observations, loaded into the source layer by the dlt pipeline
       `ingest_knmi` (dlt_pipelines/pipelines/ingest/knmi). Field names are the KNMI API codes,
       lowercased by dlt.
-    # The source layer: _SRC, or <SNOWFLAKE_SCHEMA>_SRC in dev (same rule as dbt_common's
-    # generate_schema_name; source YAML can only use env_var, not macros).
-    schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+    # The source layer: _SRC, or <target.schema>_SRC in dev and dummy (DBT_SRC when it is blank).
+    # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
+    # source YAML cannot call macros.
+    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
     tables:
       - name: climate_hourly
         identifier: knmi__climate_hourly
@@ -612,10 +614,12 @@ Macros, hooks and generic tests keep working either way.
 own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
 
 !!! note "One Python model"
-    `int__common__holiday.py` is a Snowpark model (the public holidays of the `holiday_country` var, `NL` by default, via the `holidays` package). It
+    `int__common__holiday.py` is a Snowpark model (the public holidays of the country in the `holiday_country` model config, `NL` by default, via the `holidays` package). The consuming project sets that config as a literal in its `dbt_project.yml` (`models: dbt_common: 03_int: common: int__common__holiday: +holiday_country: NL`), not as a var. It
     runs inside Snowflake and needs the Anaconda channel enabled on the account; see
     [Troubleshooting](../getting-started/troubleshooting.md). ruff and ty skip `dbt/` for this
-    reason. Keep Python models rare and simple; logic belongs in SQL, see
+    reason. In a Python model, read a config with `dbt.config.get()` as a statement of its own:
+    dbt only passes the configs whose `get()` calls its parser finds, and it misses one nested
+    in an `or` inside another call's arguments. Keep Python models rare and simple; logic belongs in SQL, see
     [Python or SQL?](python-style.md#python-or-sql).
 
 ## Related pages

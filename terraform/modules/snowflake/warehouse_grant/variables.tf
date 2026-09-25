@@ -32,6 +32,6 @@ variable "privileges" {
       for privilege in var.privileges :
       contains(["USAGE", "OPERATE", "MONITOR", "MODIFY", "ALL"], privilege)
     ])
-    error_message = "Warehouse privileges must be one of: USAGE, OPERATE, MONITOR, MODIFY, ALL PRIVILEGES."
+    error_message = "Warehouse privileges must be one of: USAGE, OPERATE, MONITOR, MODIFY, ALL."
   }
 }

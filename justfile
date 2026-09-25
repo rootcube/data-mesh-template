@@ -150,19 +150,20 @@ start: stop _dirs
 start: stop _dirs
     $env:PYTHONLEGACYWINDOWSSTDIO = "1"; $env:PYTHONIOENCODING = "utf-8"; uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
 
-# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else listening on the port
 [unix]
 stop:
     #!/usr/bin/env bash
     # `dagster dev` shuts its daemon and code servers down on SIGTERM; a second instance would
     # otherwise fight the first one's daemon ("Another ... daemon is still sending heartbeats").
+    # Only listeners: a plain `lsof -i :port` also lists clients, such as a browser showing the UI.
     if pkill -TERM -f "dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}" 2>/dev/null; then
         echo "stopping dagster dev on port {{port}}"
-        for _ in $(seq 1 20); do lsof -ti :{{port}} >/dev/null 2>&1 || break; sleep 0.5; done
+        for _ in $(seq 1 20); do lsof -ti tcp:{{port}} -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 0.5; done
     fi
-    lsof -ti :{{port}} | xargs kill -9 2>/dev/null || true
+    lsof -ti tcp:{{port}} -sTCP:LISTEN | xargs kill -9 2>/dev/null || true
 
-# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else listening on the port
 [windows]
 stop:
     @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -gt 4 -and $_ -ne $PID }; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }; exit 0
@@ -172,11 +173,18 @@ dagster *args:
     uv run dagster {{args}}
 
 # `dagster definitions validate` is superseded by `dg check defs`, which does not read workspace.yaml;
-# PYTHONWARNINGS drops that one nag (the same filter sits in .pre-commit-config.yaml and ci.yml).
+# PYTHONWARNINGS adds a filter for that one nag to the global one (the pre-commit hook runs this
+# recipe; ci.yml sets the same filter).
 
 # load every code location exactly like `just start` does, without the UI
+[unix]
 validate:
-    PYTHONWARNINGS='ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
+    PYTHONWARNINGS='{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
+
+# load every code location exactly like `just start` does, without the UI
+[windows]
+validate:
+    $env:PYTHONWARNINGS = '{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`'; uv run dagster definitions validate -w workspace.yaml
 
 # --- dlt --------------------------------------------------------------------
 

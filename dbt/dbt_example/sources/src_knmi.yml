@@ -6,9 +6,10 @@ sources:
       KNMI hourly weather observations, loaded into the source layer by the dlt pipeline
       `ingest_knmi` (dlt_pipelines/pipelines/ingest/knmi). Field names are the KNMI API codes,
       lowercased by dlt.
-    # The source layer: _SRC, or <SNOWFLAKE_SCHEMA>_SRC in dev (same rule as dbt_common's
-    # generate_schema_name; source YAML can only use env_var, not macros).
-    schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+    # The source layer: _SRC, or <target.schema>_SRC in dev and dummy (DBT_SRC when it is blank).
+    # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
+    # source YAML cannot call macros.
+    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
     tables:
       - name: climate_hourly
         identifier: knmi__climate_hourly

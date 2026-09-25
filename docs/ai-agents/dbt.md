@@ -42,7 +42,7 @@ Consult these pages instead of relying on memory; they are the single source of 
 Facts from `dbt/dbt_example/dbt_project.yml` and `dbt/dbt_common/dbt_project.yml` that shape every change:
 
 Schemas follow the environment
-:   Layer folders carry a `+schema`: `02_stg` is `stg`, `03_int` is `int`, `04_mrt` is `mrt`, `05_exp` is `exp`; seeds get `ref`, stored test failures `tmp` (`+store_failures: true`), run metadata `mtd`. `dbt_common.generate_schema_name` turns that into the schema of the project database `DB_<PROJECT>_<ENV>`: `_<LAYER>` (`_STG`) in `tst`, `acc` and `prd`, and `<target.schema>_<LAYER>` (`DBT_USERNAME_STG`) in `dev` and `dummy`, so several engineers share one development database. A model without a `+schema` lands in `target.schema` itself (`SNOWFLAKE_SCHEMA`). Never spell a schema out in a model.
+:   Layer folders carry a `+schema`: `02_stg` is `stg`, `03_int` is `int`, `04_mrt` is `mrt`, `05_exp` is `exp`; seeds get `ref`, stored test failures `tmp` (`+store_failures: true`), run metadata `mtd`. `dbt_common.generate_schema_name` turns that into the schema of the project database `DB_<PROJECT>_<ENV>`: `_<LAYER>` (`_STG`) in `tst`, `acc` and `prd`, and `<target.schema>_<LAYER>` (`DBT_USERNAME_STG`) in `dev` and `dummy`, so several engineers share one development database. A model without a `+schema` lands in `target.schema` itself (`SNOWFLAKE_SCHEMA`). A blank `SNOWFLAKE_SCHEMA` falls back to the placeholder prefix `DBT` in `dev` and `dummy` (`DBT_STG`, which nobody has, so the run fails loudly) and to `_TMP` elsewhere. Never spell a schema out in a model.
 
 Materialization defaults
 :   `dbt_example`: tables for STG, INT and MRT, views for EXP (`+materialized: view` at project level). `dbt_common`: tables for its STG and MRT models, views for INT. Every layer folder also gets a tag `layer=<code>`, and `persist_docs` is on for relations and columns. Override per model in the config block only when there is a reason.
@@ -63,7 +63,7 @@ Generic tests
     Each dbt project is its own Dagster code location. Two projects that both build `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/models/04_mrt/common/dim__common__calendar`) but write the same table into the one database `.env` points at. Every project after the first sets `models: dbt_common: +enabled: false` (the opt-out documented in `dbt_common/dbt_project.yml`).
 
 !!! warning "`int__common__holiday` is a Python model"
-    It runs as Snowpark inside Snowflake and imports the `holidays` package from the Anaconda channel, which an `ORGADMIN` has to accept once per account. The country comes from the `holiday_country` var (`vars:` in the project's `dbt_project.yml`, `NL` by default). If it fails with a package error, ask a platform administrator or disable the model in `dbt/dbt_example/dbt_project.yml`; the snippet is in [Snowflake provisioning](../administration/snowflake-provisioning.md).
+    It runs as Snowpark inside Snowflake and imports the `holidays` package from the Anaconda channel, which an `ORGADMIN` has to accept once per account. The country is the `holiday_country` model config (ISO 3166-1 alpha-2, `NL` when unset), a literal in the consuming project's `dbt_project.yml` under `models: dbt_common: 03_int: common: int__common__holiday: +holiday_country: NL`. It is not a var: `var()` in a `dbt_project.yml` is rendered before the project's `vars:` load, so `--vars` and `vars:` do not change it. If it fails with a package error, ask a platform administrator or disable the model in `dbt/dbt_example/dbt_project.yml`; the snippet is in [Snowflake provisioning](../administration/snowflake-provisioning.md).
 
 ## The staging pattern
 
@@ -71,16 +71,17 @@ Copy the one staging model that exists. Source, SQL and YAML together:
 
 === "Source"
 
-    `dbt/dbt_example/sources/src_knmi.yml`, abridged. The `schema` line repeats the `generate_schema_name` rule with `env_var` (source YAML cannot call macros), `identifier` is the dlt table `<source>__<entity>`, and `config.meta.dagster.asset_key` is what makes the Dagster lineage run from the dlt asset into this model.
+    `dbt/dbt_example/sources/src_knmi.yml`, abridged. The `schema` line repeats the `generate_schema_name` rule from the same `target` (source YAML cannot call macros), `identifier` is the dlt table `<source>__<entity>`, and `config.meta.dagster.asset_key` is what makes the Dagster lineage run from the dlt asset into this model.
 
     ```yaml
     version: 2
 
     sources:
       - name: knmi
-        # The source layer: _SRC, or <SNOWFLAKE_SCHEMA>_SRC in dev (same rule as dbt_common's
-        # generate_schema_name; source YAML can only use env_var, not macros).
-        schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+        # The source layer: _SRC, or <target.schema>_SRC in dev and dummy (DBT_SRC when it is blank).
+        # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
+        # source YAML cannot call macros.
+        schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
         tables:
           - name: climate_hourly
             identifier: knmi__climate_hourly
@@ -284,7 +285,7 @@ just pre-commit    # all hooks: ruff, ty, dbt parse, sqlfluff, Dagster, Terrafor
 | Dagster location `dbt_example` fails to load | The parse on load failed. `just dbt parse` shows the real error. |
 | Model builds but Dagster does not see it | The component re-parses on every code-location load. Reload the location in the UI (Deployment page) or restart `just start`. |
 | Schemas come out as `_TMP_STG` instead of `_STG` in `tst`, `acc` or `prd` | The project lacks the `dispatch` block that puts `dbt_common` first, so dbt's default `<target>_<custom>` naming runs. Copy the block from `dbt_example/dbt_project.yml`. |
-| Source table not found while the dlt load succeeded | `ENVIRONMENT` or `SNOWFLAKE_SCHEMA` differs between the dlt run and the dbt run; both derive the source schema from the same two variables. |
+| Source table not found while the dlt load succeeded | `ENVIRONMENT` or `SNOWFLAKE_SCHEMA` differs between the dlt run and the dbt run, or `DBT_TARGET` points dbt at another target: dlt derives the source schema from those two variables, dbt from its target, which follows them unless `DBT_TARGET` overrides it. |
 | Duplicate asset keys across code locations | Two projects build the `dbt_common` models. Disable them in all but one. |
 | `int__common__holiday` fails with a package error | Anaconda terms not accepted on the account. Ask a platform administrator, or disable the model. |
 

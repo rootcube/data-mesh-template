@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# yaml-language-server: $schema=../../_validation/schemas/role.schema.json
 # Role: Administrator
 # ===================
 
 code: "adm"
 name: "Admin"
 type: "person"
-level: "global"
+level: "platform"
 desc: "Full administrative control across the platform and all Projects"
 disabled: true
 required: false

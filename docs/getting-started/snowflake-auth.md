@@ -26,13 +26,20 @@ walks through four steps:
    the private key, `--key-name` to pick another file name.
 3. **Registration.** The public key is set on your own user with
    `ALTER USER ... SET RSA_PUBLIC_KEY`. Snowflake lets every user do this for themselves unless
-   an account policy says otherwise.
+   an account policy says otherwise. When the slot already holds this key, the script says so
+   and skips it; when it holds another one (registered from another machine?), it warns and
+   asks before replacing it (default No: copy that machine's key files to
+   `~/.snowflake/keys` instead, or use `--slot 2`).
 4. **Context, verification and `.env`.** You confirm role, warehouse, database and the prefix
-   of your personal schemas. The defaults are your user's default role, warehouse and database
-   in Snowflake, falling back to what `.env` already holds, and `DBT_<USERNAME>` for the prefix
-   (`DBT_USERNAME` for `username@example.com`, or the `schema_prefix` of your file under
-   `terraform/config/users/`): the prefix Terraform created your schemas with, so keep it.
-   Press Enter to keep a default, or type the
+   of your personal schemas. Role, warehouse and database come from the project roles granted
+   to you (see [Pointing `.env` at a project](#pointing-env-at-a-project)), never from the
+   session you logged in with; without a project role they stay empty, and the script tells
+   you to ask your administrator and then run `just sf context`. The prefix defaults to
+   `DBT_<USERNAME>` (`DBT_USERNAME` for `username@example.com`, or the `schema_prefix` of your
+   file under `terraform/config/users/`): the prefix Terraform created your schemas with, so
+   keep it. The prompt asks again for a prefix that is not letters, digits and `_` starting
+   with a letter, or that is the bare placeholder `DBT`; a `tst`, `acc` or `prd` role gets no
+   prefix. Press Enter to keep a default, or type the
    values your administrator gave you. A fresh connection with the key proves it works, then
    the script writes everything to `.env`:
 
@@ -50,13 +57,14 @@ SNOWFLAKE_SCHEMA=DBT_USERNAME
 
 `dbt/profiles.yml`, the dlt destination and the Dagster resources all read exactly these
 variables (`SnowflakeSettings` in `src/orchestrator/resources/snowflake.py` is the one reader),
-so there is one place to look when a connection fails. Values are written without quotes; keep
-it that way when you edit by hand.
+so there is one place to look when a connection fails. Values are written bare, or in single
+quotes when they hold special characters (a passphrase, say); `just` and python-dotenv strip
+those quotes. `.env` and the private key are readable by you only (mode 600, or an owner-only
+ACL on Windows).
 
 !!! tip "Fewer questions"
-    `--account` and `--user` skip the first two prompts, `--yes` skips the context confirmation.
-    Use `--yes` only when your user's defaults in Snowflake are already the right role,
-    warehouse and database; `just sf check` shows what was written.
+    `--account` and `--user` skip the first two prompts, `--yes` skips the context confirmation
+    and takes the defaults from your project roles; `just sf check` shows what was written.
 
 ## What the values mean
 
@@ -102,8 +110,9 @@ just sf query "SELECT CURRENT_USER(), CURRENT_ROLE()"
 ## Rotating or re-running
 
 `setup` is safe to run again. It offers to keep an existing key (and just re-register it) or to
-generate a new one. Snowflake holds two key slots per user; `--slot 2` registers into
-`RSA_PUBLIC_KEY_2`, so you can rotate without a gap.
+generate a new one. A new key replaces the old files only once Snowflake has accepted it; the
+old ones stay as `.p8.bak` and `.pub.bak`. Snowflake holds two key slots per user; `--slot 2`
+registers into `RSA_PUBLIC_KEY_2`, so you can rotate without a gap.
 
 ## When registration is not allowed
 

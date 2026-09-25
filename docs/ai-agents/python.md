@@ -108,10 +108,10 @@ Tests are plain pytest functions in `tests/`, one file per module under test, an
 
 | File | Covers |
 |---|---|
-| `tests/test_snowflake_settings.py` | `SnowflakeSettings.from_env()`: prefix handling, blank values, `missing()`, `dlt_credentials()`, `schema_for_layer()` in `dev` and elsewhere |
-| `tests/test_dotenv.py` | `update_env_file()`: in-place replace, append, file creation (`tmp_path`) |
-| `tests/test_keypair.py` | `generate_key_pair()`, `public_key_body()` and `key_is_encrypted()` from `scripts/snowflake.py` |
-| `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` pipeline module |
+| `tests/test_snowflake_settings.py` | `SnowflakeSettings.from_env()`: prefix handling, blank values, `missing()`, `dlt_credentials()`, `schema_for_layer()` in `dev` (a blank prefix gives `DBT_<LAYER>`) and elsewhere |
+| `tests/test_dotenv.py` | `update_env_file()`: in-place replace of every line of a key, append, file creation (`tmp_path`), bare versus single-quoted values, refusing values `.env` cannot hold |
+| `tests/test_keypair.py` | `scripts/snowflake.py`: `generate_key_pair()`, `public_key_body()`, `key_is_encrypted()`, key fingerprints and the replace prompt, key rotation with `.bak` files, schema prefix rules, context discovery, `init.sql` and `account_settings.sql`, the bootstrap's sync and wipe |
+| `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` pipeline module; the load stage, merge staging in the temporary layer, `truncate_staging_dataset` |
 
 Two patterns to copy:
 
@@ -180,15 +180,16 @@ def test_update_creates_missing_file(tmp_path: Path) -> None:
 | `snowflake-connector-python` | >=3.12 | Direct connections (`scripts/snowflake.py`) |
 | `cryptography` | >=43 | Key-pair generation and loading |
 | `python-dotenv` | >=1.1 | Reading `.env` in the scripts |
+| `pyyaml` | >=6.0 | Reading `terraform/config/` in `scripts/snowflake.py` and `validate_configs.py` |
 
-The `dev` dependency group installs on every plain `uv sync` (`default-groups`): `ruff` >=0.13, `pytest` >=8.3, `pre-commit` >=4.0, `sqlfluff-templater-dbt` >=3.4, `dagster-dg-cli` >=1.13, `ty` >=0.0.1, `pyyaml` >=6.0 and `jsonschema` >=4.20 (for `validate_configs.py`), `dbt-duckdb` >=1.9 (the `dummy` dbt target). The `docs` group (`zensical` >=0.0.64) is pulled in by `just docs` with `--group docs`.
+The `dev` dependency group installs on every plain `uv sync` (`default-groups`): `ruff` >=0.13, `pytest` >=8.3, `pre-commit` >=4.0, `sqlfluff-templater-dbt` >=3.4, `dagster-dg-cli` >=1.13, `ty` >=0.0.1, `jsonschema` >=4.20 (for `validate_configs.py`), `dbt-duckdb` >=1.9 (the `dummy` dbt target). The `docs` group (`zensical` >=0.0.64) is pulled in by `just docs` with `--group docs`.
 
 ```bash
 uv sync            # after pulling dependency changes
 uv lock --upgrade  # rewrites uv.lock
 ```
 
-Never edit `uv.lock` by hand.
+Never edit `uv.lock` by hand. CI installs with `uv sync --locked`, so after changing dependencies run `uv lock` and commit `uv.lock` with the change.
 
 ## Config reference
 

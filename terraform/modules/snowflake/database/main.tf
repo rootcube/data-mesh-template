@@ -29,9 +29,11 @@ resource "snowflake_database" "this" {
   data_retention_time_in_days = local.data_retention
   is_transient                = var.is_transient
 
-  #lifecycle {
-  #  prevent_destroy = true
-  #}
+  # Removing an environment from a project (or `terraform destroy`) would drop the database with
+  # all its data; delete this block deliberately first (README.md, State and teardown).
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Drop the default PUBLIC schema that Snowflake creates automatically

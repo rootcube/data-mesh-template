@@ -14,3 +14,6 @@ workers = 2
 
 [load]
 workers = 2
+# `merge` staging tables live in the shared temporary layer (_TMP); empty them after each load so
+# raw source rows do not linger where analysts can read them (dlt keeps them by default).
+truncate_staging_dataset = true

@@ -12,7 +12,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup` |
+| `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup`, an account provisioned from another checkout runs `just sf bootstrap --existing ask --account-settings skip` |
 | `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next |
 | `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, or `all` (the default); `gh` is available too but optional, nothing in the repo needs it |
@@ -21,8 +21,8 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just sf bootstrap` | Fresh account, as `ACCOUNTADMIN` with a password: Terraform user and `init.sql` (account parameters, system roles), your key pair, `config/users/<you>.yaml`, `TF_VAR_*` in `.env`, `terraform apply` (your personal schemas included), then the same context discovery and `.env` as `setup` (`--yes` auto-approves the plan). Objects that already exist are adopted into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner, or dropped first (`--existing ask|sync|wipe`, default `ask`; `--yes` picks sync) |
-| `just sf setup` | One-time interactive login, key pair, registration on your user, verification, `.env` |
+| `just sf bootstrap` | Fresh account, as `ACCOUNTADMIN` with a password: the account parameters of `account_settings.sql` (listed, then applied if you confirm: `--account-settings ask|apply|skip`, default `ask`; `--yes` applies), the Terraform user's key pair (a passphrase prompt; empty for none) and `init.sql` (Terraform user, system roles), your own key pair (always asks for a passphrase, since this login holds `ACCOUNTADMIN`), `config/users/local/<you>.yaml` (git-ignored), `TF_VAR_*` in `.env`, `terraform apply` (your personal schemas included), then the same context discovery and `.env` as `setup` (`--yes` auto-approves the plan). Objects that already exist are adopted into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner, or dropped first (`--existing ask|sync|wipe`, default `ask`; `--yes` picks sync). A key slot that already holds a different key is replaced only when you confirm |
+| `just sf setup` | One-time interactive login, key pair, registration on your user, verification, `.env`: role, warehouse and database from the project roles granted to you, the schema prefix in `dev` (asked again until it is valid). A new key replaces the old files only once Snowflake accepted it (the old ones stay as `.bak`); a slot holding another key is replaced only when you confirm; `.env` and the private key are readable by you only |
 | `just sf setup --auth password` | Same, with password + MFA in the terminal instead of the browser |
 | `just sf context` | Pick the project you work in from the roles granted to you, then write role, warehouse, database and schema prefix to `.env`; no login needed (`--role`, `--yes`) |
 | `just sf setup --passphrase` | Encrypt the private key with a passphrase |
@@ -30,7 +30,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just sf setup --account <org>-<account> --user <login> --yes` | Skip the prompts and keep every default |
 | `just sf check` | Connect with the key pair and print your context plus the layer schemas |
 | `just sf query "SELECT 1"` | Run one statement (`--limit 50` rows by default) |
-| `just sf keygen <name>` | Key pair only, no login (service users, the Terraform user); `--force` overwrites |
+| `just sf keygen <name>` | Key pair only, no login (service users, the Terraform user), printed for `ALTER USER ... SET RSA_PUBLIC_KEY`; `--force` overwrites, `--passphrase` encrypts the private key |
 
 ## Dagster
 
@@ -38,7 +38,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground; runs `just stop` first so a forgotten instance never doubles the daemon |
 | `just port=3001 start` | Same on another port |
-| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers), then anything else still on the port |
+| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers), then anything else still listening on the port |
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | Load every code location like `start` does, without the UI |
 
@@ -63,11 +63,11 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` |
+| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` (refused while the databases carry `prevent_destroy`; see [State and teardown](../administration/snowflake-provisioning.md#state-and-teardown)) |
 | `just tf output -json initial_passwords` | One-time passwords of persons Terraform created |
 | `just tf output -json user_role_grants` | Roles per login |
 | `just tf output -json personal_schemas` | Personal schemas per login |
-| `just tf-validate-config` | Validate the YAML under `terraform/config/` against its JSON schemas and cross references |
+| `just tf-validate-config` | Validate the YAML under `terraform/config/` (sub-folders included) against its JSON schemas and cross references: a project's `code` equals its file name, users name existing projects, roles and environments, no two user files share a name |
 
 ## Docs
 

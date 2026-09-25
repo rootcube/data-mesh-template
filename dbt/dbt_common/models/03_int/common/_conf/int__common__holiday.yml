@@ -3,7 +3,7 @@ version: 2
 
 models:
   - name: int__common__holiday
-    description: Public holidays of the country set by the `holiday_country` var (ISO 3166-1 alpha-2, `NL` by default), one row per holiday date, from the `holidays` package
+    description: Public holidays of the country set by the `holiday_country` config (ISO 3166-1 alpha-2, `NL` by default), one row per holiday date, from the `holidays` package
 
     data_tests:
       - has_data:

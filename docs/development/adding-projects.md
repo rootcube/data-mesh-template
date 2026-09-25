@@ -58,7 +58,9 @@ roles:
 Every list entry is a file name under `terraform/config/` (`environments/development.yaml`,
 `layers/source.yaml`, `computes/default.yaml`, `roles/engineer.yaml`); `"*"` means every enabled
 one. `team` is a file under `teams/`. `code` is lowercase, 2 to 20 characters, letters, digits
-and underscores, and becomes the `<PROJECT>` part of every Snowflake name.
+and underscores, and becomes the `<PROJECT>` part of every Snowflake name. It must equal the file
+name (`energy` in `energy.yaml`): Terraform names the objects after the file name, and
+`just tf-validate-config` rejects a `code` that differs.
 
 Validate the YAML (schemas plus cross-references), then plan and apply:
 
@@ -89,7 +91,6 @@ Users assume project roles. Add the project to each engineer's file under
 ```yaml title="terraform/config/users/username.yaml"
 login: "username@example.com"
 name: "Username"
-type: "person"
 create: false
 roles:
   - project: example
@@ -150,6 +151,9 @@ The `name`
     `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
     write the same table into the one database `.env` points at. The macros, the dispatch
     overrides and the `on-run-start` / `on-run-end` hooks keep working with the models disabled.
+    The copied `+holiday_country: NL` under
+    `dbt_common: 03_int: common: int__common__holiday:` only matters in the project that builds
+    the models; there it is a literal model config, not a var, so `--vars` does not change it.
 
 The dispatch block stays
 :   Without `search_order: ["dbt_common", "dbt"]` the project falls back to dbt's own
@@ -253,8 +257,9 @@ decision in `terraform/config/roles/`. See [Layer](../concepts/layer.md) and
 Two checks are wired to `dbt_example` by path and need an extra line for the new project if you
 want the same coverage:
 
-- The `sqlfluff-lint` hook in `.pre-commit-config.yaml` and the sqlfluff step in
-  `.github/workflows/ci.yml` both `cd dbt/dbt_example`.
+- The `sqlfluff-lint` hook in `.pre-commit-config.yaml` runs `just sqlfluff lint models` for
+  `dbt/dbt_example` only (a second entry would run `just project=dbt_<project> sqlfluff lint models`),
+  and the sqlfluff step in `.github/workflows/ci.yml` does `cd dbt/dbt_example`.
 - `just fmt` and `just lint` run sqlfluff in the project selected by `project=`; the default is
   `dbt_example`.
 
@@ -265,7 +270,7 @@ The dbt parse hook and CI's parse step already cover every project through `dbt_
 
 Administrator:
 
-- [ ] `terraform/config/projects/<project>.yaml` with its own `code`; `just tf-validate-config` passes
+- [ ] `terraform/config/projects/<project>.yaml` with `code: "<project>"`, equal to the file name; `just tf-validate-config` passes
 - [ ] `just tf apply` created `DB_<PROJECT>_<ENV>`, the layer schemas, the roles and the warehouse
 - [ ] Engineers hold `RL_<PROJECT>_DEV__ENG` through `terraform/config/users/`, applied, so their personal schemas exist in `DB_<PROJECT>_DEV`
 

@@ -13,7 +13,7 @@ never need any of this; they get their access from you and then follow
 
 | Concern | Where it lives | Runbook |
 |---------|----------------|---------|
-| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING` | `terraform/modules/snowflake/init.sql`, run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
+| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING` | `terraform/modules/snowflake/account_settings.sql` (the account parameters) and `init.sql` (the rest), run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
 | The mesh: organisation, teams, projects, environments, layers, roles, computes | one YAML file per object under `terraform/config/` | [Snowflake provisioning](snowflake-provisioning.md), [Concepts](../concepts/index.md) |
 | Who may assume which project role, and the personal schemas that come with the engineer role in development | `terraform/config/users/<name>.yaml` | [Onboarding](onboarding.md) |
 | Key registration for people who cannot set their own key, and for service users | `ALTER USER ... SET RSA_PUBLIC_KEY` | [Onboarding](onboarding.md) |
@@ -39,12 +39,14 @@ flowchart LR
 ```
 
 Everything is derived from the YAML. A new project is a copy of
-`terraform/config/projects/example.yaml` with its own `code`; a new engineer is a file under
-`terraform/config/users/`. `just tf plan` shows exactly what changes before you apply.
+`terraform/config/projects/example.yaml` with its own `code`, which must equal the file name; a
+new engineer is a file under `terraform/config/users/`. `just tf plan` shows exactly what
+changes before you apply.
 
 ## Before the first engineer starts
 
-- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in (`just setup` does this for you on a fresh account; by hand, `just sf keygen terraform` creates the pair and prints the key body)
+- [ ] `account_settings.sql` (if you want its account parameters) and `init.sql` have run as `ACCOUNTADMIN`, the latter with the public key of `TERRAFORM_USER` pasted in (`just setup` does this for you on a fresh account, asking about the account parameters first; by hand, `just sf keygen terraform` creates the pair and prints the key body)
+- [ ] `TERRAFORM_USER` has a network policy and an encrypted key ([Securing the Terraform user](snowflake-provisioning.md#securing-the-terraform-user))
 - [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` (see [Environment variables](../reference/environment-variables.md))
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
 - [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)
@@ -57,7 +59,8 @@ Everything is derived from the YAML. A new project is a copy of
 ## Tools you need
 
 Terraform 1.5 or newer; `just tf init` pulls the Snowflake provider (`snowflakedb/snowflake`
-2.x). On top of that, the same `just` and uv setup engineers use (`just init`): the YAML
+2.x) at the version pinned in the committed `terraform/.terraform.lock.hcl`. On top of that,
+the same `just` and uv setup engineers use (`just init`): the YAML
 validation runs from the repo's virtual environment. It is also a pre-commit hook and a CI job,
 so a broken configuration never reaches `main`.
 
@@ -73,4 +76,4 @@ so a broken configuration never reaches `main`.
 | `just tf output -json user_role_grants` | Which roles each login holds |
 | `just tf output -json personal_schemas` | The personal schemas of each login |
 | `just tf output -json initial_passwords` | One-time passwords of persons created with `create: true` |
-| `just tf destroy` | Remove everything Terraform created; the `init.sql` objects stay |
+| `just tf destroy` | Remove everything Terraform created; the `init.sql` objects stay. Databases carry `prevent_destroy`, so it fails until you delete that block ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |

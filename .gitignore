@@ -46,7 +46,8 @@ logs/
 
 # --- Terraform ---
 terraform/.terraform/
-terraform/.terraform.lock.hcl
+# User files `just sf bootstrap` writes for the local account
+terraform/config/users/local/
 *.tfstate
 *.tfstate.*
 *.tfvars

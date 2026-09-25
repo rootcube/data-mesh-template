@@ -29,15 +29,12 @@ privileges:
         - SELECT ON VIEWS
         - USAGE ON FUNCTIONS
         - USAGE ON PROCEDURES
+    # Scratch space: the role owns what it creates here, so it needs no write grants on the
+    # tables of other roles (dlt's merge staging tables, dbt's stored test failures)
     temporary:
       all:
         - USAGE
-        - MODIFY
         - CREATE TABLE
         - CREATE VIEW
         - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
         - SELECT ON VIEWS

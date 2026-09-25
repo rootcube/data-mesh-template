@@ -132,7 +132,8 @@ locals {
   # Warehouse Grants (Role x Compute with specific privileges)
   # --------------------------------------------------------------------------
 
-  # Build a flat list of warehouse grants: one entry per role x compute combination
+  # Build a flat list of warehouse grants: one entry per role x compute x size combination
+  # (every size of a compute is its own warehouse)
   # Privileges are resolved using environment-specific overrides or defaults
   # Only roles in project.roles are considered (authoritative source)
   # Note: Role privileges use codes (e.g., 'default'), project.computes uses keys (e.g., 'default')
@@ -141,33 +142,38 @@ locals {
       for environment_key in project.environments : [
         for role_key in project.roles : [
           # compute_code here is actually the key used in role.privileges.computes (which happens to be the key, not the code)
-          for compute_key, env_privileges in try(local.roles[role_key].privileges.computes, {}) : {
-            key              = "${project_key}_${environment_key}_warehouse_grant_${role_key}_${compute_key}"
-            project_key      = project_key
-            environment_key  = environment_key
-            environment_code = local.environment_codes[environment_key]
-            role_key         = role_key
-            role_code        = local.role_codes[role_key]
-            compute_key      = compute_key
-            compute_code     = local.compute_codes[compute_key]
+          for compute_key, env_privileges in try(local.roles[role_key].privileges.computes, {}) : [
+            for size_code in local.computes[compute_key].sizes : {
+              # The first size keeps the key it had before every size was granted, so applied grants are not
+              # re-created (a REVOKE racing the new GRANT); only the extra sizes carry the size in the key.
+              key              = "${project_key}_${environment_key}_warehouse_grant_${role_key}_${compute_key}${size_code == local.computes[compute_key].sizes[0] ? "" : "_${size_code}"}"
+              project_key      = project_key
+              environment_key  = environment_key
+              environment_code = local.environment_codes[environment_key]
+              role_key         = role_key
+              role_code        = local.role_codes[role_key]
+              compute_key      = compute_key
+              compute_code     = local.compute_codes[compute_key]
+              size_code        = size_code
 
-            # Role name follows the pattern: RL_<PROJECT>_<ENV>__<PURPOSE>
-            role_name = upper("RL_${project_key}_${local.environment_codes[environment_key]}__${local.role_codes[role_key]}")
+              # Role name follows the pattern: RL_<PROJECT>_<ENV>__<PURPOSE>
+              role_name = upper("RL_${project_key}_${local.environment_codes[environment_key]}__${local.role_codes[role_key]}")
 
-            # Build warehouse name using short size codes (e.g., 'xs', 'm', 'l')
-            warehouse_name = upper(
-              local.compute_codes[compute_key] == "" ?
-              "WH_${project_key}_${local.environment_codes[environment_key]}" :
-              "WH_${project_key}_${local.environment_codes[environment_key]}__${local.compute_codes[compute_key]}_${local.computes[compute_key].sizes[0]}"
-            )
+              # Build warehouse name using short size codes (e.g., 'xs', 'm', 'l')
+              warehouse_name = upper(
+                local.compute_codes[compute_key] == "" ?
+                "WH_${project_key}_${local.environment_codes[environment_key]}" :
+                "WH_${project_key}_${local.environment_codes[environment_key]}__${local.compute_codes[compute_key]}_${size_code}"
+              )
 
-            # Try environment-specific privileges first, fall back to all
-            # Note: Role privilege definitions still use environment codes (dev, prd, etc.)
-            privileges = try(
-              env_privileges[local.environment_codes[environment_key]],
-              try(env_privileges["all"], [])
-            )
-          }
+              # Try environment-specific privileges first, fall back to all
+              # Note: Role privilege definitions still use environment codes (dev, prd, etc.)
+              privileges = try(
+                env_privileges[local.environment_codes[environment_key]],
+                try(env_privileges["all"], [])
+              )
+            }
+          ]
           if contains(keys(local.roles), role_key) &&
           contains(keys(local.computes), compute_key) &&
           contains(project.computes, compute_key) &&

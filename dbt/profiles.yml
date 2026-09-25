@@ -1,8 +1,7 @@
 # Shared by every dbt project under dbt/ (DBT_PROFILES_DIR points here, set by the justfile
 # and .envrc). One profile, one target per environment; the target follows ENVIRONMENT unless
 # DBT_TARGET overrides it. Every target reads the same SNOWFLAKE_* variables: your personal key
-# pair in dev, the transform system user's key pair in prd. Add tst/acc here when Terraform
-# enables those environments (copy the prd block).
+# pair in dev, the transform system user's key pair in tst, acc and prd.
 default:
   target: "{{ env_var('DBT_TARGET', env_var('ENVIRONMENT', 'dev')) }}"
 
@@ -21,11 +20,17 @@ default:
       threads: 8
       client_session_keep_alive: false
 
-    # Shared environment: the layer schemas (_STG, _MRT, ...) of DB_<PROJECT>_PRD.
-    prd:
+    # Shared environments: the layer schemas (_STG, _MRT, ...) of DB_<PROJECT>_TST, _ACC and _PRD.
+    tst: &shared
       <<: *snowflake
       schema: "{{ env_var('SNOWFLAKE_SCHEMA', '_TMP') }}"
       threads: 16
+
+    acc:
+      <<: *shared
+
+    prd:
+      <<: *shared
 
     # Parse, compile and lint without any Snowflake credentials (CI, pre-commit, sqlfluff): an
     # in-memory DuckDB stands in for the warehouse. The sqlfluff dbt templater needs a working

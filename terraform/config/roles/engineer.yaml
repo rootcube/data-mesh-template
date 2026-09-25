@@ -124,8 +124,10 @@ privileges:
         - TRUNCATE ON TABLES
         - SELECT ON VIEWS
       prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
+    # Outside dev and tst only scratch space: the role owns what it creates here, so it needs
+    # no write grants on the tables of other roles (dlt's merge staging tables, dbt's test failures)
     temporary:
-      all:
+      dev:
         - USAGE
         - MODIFY
         - CREATE TABLE
@@ -136,6 +138,18 @@ privileges:
         - DELETE ON TABLES
         - TRUNCATE ON TABLES
         - SELECT ON VIEWS
+      tst:
+        - USAGE
+        - MODIFY
+        - CREATE TABLE
+        - CREATE VIEW
+        - SELECT ON TABLES
+        - INSERT ON TABLES
+        - UPDATE ON TABLES
+        - DELETE ON TABLES
+        - TRUNCATE ON TABLES
+        - SELECT ON VIEWS
+      all: [USAGE, CREATE TABLE, CREATE VIEW, SELECT ON TABLES, SELECT ON VIEWS]
     reference:
       dev:
         - USAGE

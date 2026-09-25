@@ -5,7 +5,8 @@
 telemetry:
   enabled: false
 
-# Runs start immediately in a subprocess; no daemon queue needed for local development.
+# Runs start immediately in a subprocess, with no limit on concurrent runs; a limit needs the
+# QueuedRunCoordinator and the daemon.
 run_coordinator:
   module: dagster.core.run_coordinator
   class: DefaultRunCoordinator
@@ -13,8 +14,3 @@ run_coordinator:
 run_launcher:
   module: dagster.core.launcher
   class: DefaultRunLauncher
-
-# Keep runs from piling up on a laptop.
-concurrency:
-  runs:
-    max_concurrent_runs: 4

@@ -68,25 +68,32 @@ account name, your username, your password and an MFA passcode (leave it empty f
 notification), then:
 
 1. logs in to `<organization>-<account>` and switches to `ACCOUNTADMIN`;
-2. generates `~/.snowflake/keys/terraform.p8` and runs `terraform/modules/snowflake/init.sql`
-   with its public key: account parameters (UTC, ISO weeks and date formats, a few security
-   defaults), `TERRAFORM_USER` with the system roles `SYSADMIN`, `SECURITYADMIN` and
+2. lists the account parameters of `terraform/modules/snowflake/account_settings.sql` (UTC, ISO
+   weeks and date formats, a few security defaults) and applies them when you confirm
+   (`--account-settings ask|apply|skip`, default `ask`);
+3. generates `~/.snowflake/keys/terraform.p8`, asking for an optional passphrase (or for the
+   passphrase of an existing encrypted key), and runs `terraform/modules/snowflake/init.sql`
+   with its public key: `TERRAFORM_USER` with the system roles `SYSADMIN`, `SECURITYADMIN` and
    `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor;
-3. generates a key pair for your own user and registers it with `ALTER USER ... SET RSA_PUBLIC_KEY`;
-4. writes `terraform/config/users/<you>.yaml` (the `engineer` role in `development` on every
-   project under `terraform/config/projects/`), puts the `TF_VAR_SNOWFLAKE_*` block in `.env`
+4. generates a key pair for your own user and registers it with `ALTER USER ... SET RSA_PUBLIC_KEY`.
+   It always asks for a passphrase and warns first: this key signs in as a user holding
+   `ACCOUNTADMIN`, so give it one, and use a separate login without `ACCOUNTADMIN` for daily work;
+5. writes `terraform/config/users/local/<you>.yaml` (the `engineer` role in `development` on every
+   project under `terraform/config/projects/`; `users/local/` is git-ignored), puts the
+   `TF_VAR_SNOWFLAKE_*` block in `.env`
    and runs `terraform init` and `terraform apply`. Read the plan and answer `yes`; it creates
    the databases, schemas, roles and warehouses of the `example` project in `development` and
    `production`, grants you `RL_EXAMPLE_DEV__ENG` and creates your personal schemas
    (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...) in `DB_EXAMPLE_DEV`;
-5. connects with your key pair, proposes `RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV`,
+6. connects with your key pair, proposes `RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV`,
    `DB_EXAMPLE_DEV` and a personal schema prefix (`DBT_<USERNAME>`), verifies the login and writes
-   `.env`.
+   `.env`, readable by you only (as are the private keys).
 
-`just sf bootstrap --yes` runs the same without the wizard, auto-approves the Terraform plan
-and skips the context confirmation. Rerunning `just setup` is safe: the prompts offer the organization, account and user from your
-`.env` as defaults (Enter keeps them), `init.sql` is idempotent, the script offers to keep
-existing keys, and Terraform applies only the difference.
+`just sf bootstrap --yes` runs the same without the wizard, applies the account parameters,
+auto-approves the Terraform plan and skips the context confirmation. Rerunning `just setup` is safe: the prompts offer the organization, account and user from your
+`.env` as defaults (Enter keeps them), `account_settings.sql` and `init.sql` are idempotent, the
+script offers to keep existing keys and skips registering a key the user already holds (another
+key there is replaced only when you confirm), and Terraform applies only the difference.
 
 ## 5. Check and run
 
@@ -99,8 +106,8 @@ Then follow [First run](../getting-started/first-run.md): materialize the KNMI l
 the dbt models.
 
 !!! note "Python models need the Anaconda terms"
-    `dbt_common` ships one Snowpark model, `int__generic__holiday`, that imports the `holidays`
-    package. Accept the Anaconda terms once in Snowsight (**Admin > Billing & Terms**, as
+    `dbt_common` ships one Snowpark model, `int__common__holiday` (in `03_int/common`), that
+    imports the `holidays` package. Accept the Anaconda terms once in Snowsight (**Admin > Billing & Terms**, as
     `ORGADMIN`) or disable the model; see
     [Snowflake provisioning](snowflake-provisioning.md#python-models-need-anaconda-packages).
 
@@ -111,7 +118,9 @@ the dbt models.
 | Your login holds `ACCOUNTADMIN`, so one person does bootstrap, provisioning and engineering | An administrator bootstraps and provisions ([Snowflake provisioning](snowflake-provisioning.md)); engineers only run `just sf setup` |
 | Password plus MFA is the only login | Usually SSO; `just sf setup` opens the browser instead |
 | Terraform state is a local `terraform.tfstate` | Move it to a remote backend before a second administrator applies |
-| The account expires after 30 days, with everything in it | Nothing expires; `just tf destroy` removes what Terraform created |
+| The account expires after 30 days, with everything in it | Nothing expires; `just tf destroy` removes what Terraform created, once you lift the `prevent_destroy` on the databases ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
 
-The user file the bootstrap wrote is ordinary configuration: commit it if you want the grant
-to survive a later `terraform apply` from another checkout, delete it when the trial is over.
+The user file the bootstrap wrote sits in `terraform/config/users/local/`, which git ignores,
+because its login exists in this account only. Move it up to `terraform/config/users/` and
+commit it if you want the grant to survive a later `terraform apply` from another checkout;
+delete it when the trial is over.

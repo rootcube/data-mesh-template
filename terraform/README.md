@@ -44,14 +44,19 @@ and `.env`; it needs the organization name, the account name and the password of
 just setup            # = just init + a one-question wizard; answer 1 (fresh) for just sf bootstrap
 ```
 
-It generates `~/.snowflake/keys/terraform.p8`, runs `init.sql` with that public key, registers
-a key pair on your own user, writes a `config/users/<you>.yaml` (engineer in development on
-every project) unless one lists your login, warns about user files whose login the account does
+It generates `~/.snowflake/keys/terraform.p8` (asking for a passphrase, empty for none), lists the
+account parameters of `modules/snowflake/account_settings.sql` and applies them when you confirm
+(`--account-settings ask|apply|skip`, default `ask`; `--yes` applies, answer 3 skips), runs
+`init.sql` with that public key, registers a key pair on your own user (after a passphrase prompt,
+since that user holds `ACCOUNTADMIN`), writes a `config/users/local/<you>.yaml` (engineer in development on
+every project; `users/local/` is git-ignored, the login exists in your account only) unless a user
+file lists your login, warns about user files whose login the account does
 not have (Terraform would fail on their grants), writes the `TF_VAR_*` block to `.env`, runs
 `terraform init` and `terraform apply` (you confirm the plan; `just sf bootstrap --yes` auto-approves) and ends
 like `just sf setup`. Rerunning it is safe: the prompts default to the values already in
-`.env`, `init.sql` is idempotent, existing keys are kept when you say so, and Terraform applies
-only the difference. Objects Terraform would create that already exist (an account provisioned
+`.env`, `init.sql` is idempotent, existing keys are kept when you say so, a key already registered
+on a user is replaced only after you confirm (the fingerprints are compared first), and Terraform
+applies only the difference. Objects Terraform would create that already exist (an account provisioned
 from another checkout: `just setup` answer 3, or `--existing ask|sync|wipe`) are either synced
 into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner with
 `GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first.
@@ -66,7 +71,7 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
 
 2. Open `modules/snowflake/init.sql`, uncomment the `RSA_PUBLIC_KEY` line in the `ALTER USER`
    block of `TERRAFORM_USER` and paste the public key body, then run the whole script as
-   `ACCOUNTADMIN` in Snowsight. It sets the account parameters below, creates `TERRAFORM_USER`
+   `ACCOUNTADMIN` in Snowsight. It creates `TERRAFORM_USER`
    with the system roles `SYSADMIN` (its default role), `SECURITYADMIN` and `USERADMIN`, the
    warehouse `WH_PLATFORM_PROVISIONING` and the database `DB_PLATFORM_PROVISIONING` (both owned
    by `SYSADMIN`, usable by `USERADMIN`) and a resource monitor. It drops
@@ -74,6 +79,8 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
    still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it.
    The script is idempotent; rerun it after edits. If the user already holds a key in
    `RSA_PUBLIC_KEY` (another administrator's machine), use `RSA_PUBLIC_KEY_2` for the second one.
+   For the account parameters below, also run `modules/snowflake/account_settings.sql` as
+   `ACCOUNTADMIN`; `init.sql` no longer sets them.
 
 3. Put the provider settings in `.env` (the block at the bottom of `.env.example`):
 
@@ -82,6 +89,8 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
     TF_VAR_SNOWFLAKE_ACCOUNT=<account>
     TF_VAR_SNOWFLAKE_USER=TERRAFORM_USER
     TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH=~/.snowflake/keys/terraform.p8
+    # Empty unless the key is encrypted; single-quote it when it holds spaces, # or $
+    TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
     ```
 
 4. Initialize and check the configuration:
@@ -92,7 +101,8 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
     just tf plan
     ```
 
-The account parameters `init.sql` sets (users and sessions can still override most of them):
+The account parameters `modules/snowflake/account_settings.sql` sets (`just sf bootstrap` lists
+them and asks first; users and sessions can still override most of them):
 `TIMEZONE = 'UTC'` and `TIMESTAMP_TYPE_MAPPING = 'TIMESTAMP_NTZ'`; ISO weeks starting on Monday
 (`WEEK_START = 1`, `WEEK_OF_YEAR_POLICY = 0`); ISO 8601 output formats for `DATE`, `TIME` and the
 `TIMESTAMP` types; AES-256 for files `PUT` into internal stages (`CLIENT_ENCRYPTION_KEY_SIZE`);
@@ -113,9 +123,9 @@ One YAML file per object, validated against the JSON schemas in `config/_validat
 | `projects/` | one file per project | `team`, `environments`, `layers`, `computes`, `roles`; `"*"` means all enabled |
 | `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere |
 | `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names |
-| `roles/` | project roles (engineer, analyst, ingest, transform) and global roles | privileges per compute, database, layer and environment |
+| `roles/` | project roles (engineer, analyst, ingest, transform) and platform roles (`global/`, disabled) | privileges per compute, database, layer and environment |
 | `computes/` | warehouse profiles and sizes | `default` has no suffix |
-| `users/` | who may assume which project roles | see onboarding below |
+| `users/` | who may assume which project roles | see onboarding below; the file name is the key, also in a sub-folder; `users/local/` (git-ignored) holds the files `just sf bootstrap` writes for your own account |
 
 A new project is a copy of `projects/example.yaml` with its own `code`; `just tf plan` shows the
 databases, schemas, roles and warehouses it adds.
@@ -127,8 +137,7 @@ databases, schemas, roles and warehouses it adds.
     ```yaml
     login: "username@example.com"
     name: "Username"
-    type: "person"
-    create: false        # true creates the user with a one-time password
+    create: false        # true creates the user (a person) with a one-time password
     roles:
       - project: example
         role: engineer
@@ -174,22 +183,69 @@ repository are not part of the starter.
 
 ## Python models need Anaconda packages
 
-`dbt_common` ships a Python (Snowpark) model, `int__generic__holiday`, that imports the
-`holidays` package from the Snowflake Anaconda channel. An `ORGADMIN` accepts the Anaconda terms
-once per account (Snowsight: Admin > Billing & Terms). Without that, disable the model in the
-consuming project:
+`dbt_common` ships a Python (Snowpark) model, `int__common__holiday` (in `03_int/common`), that
+imports the `holidays` package from the Snowflake Anaconda channel. An `ORGADMIN` accepts the
+Anaconda terms once per account (Snowsight: Admin > Billing & Terms). Without that, disable the
+model in the consuming project:
 
 ```yaml
 models:
   dbt_common:
     03_int:
-      generic:
-        int__generic__holiday:
+      common:
+        int__common__holiday:
           +enabled: false
 ```
+
+## Provider versions
+
+`.terraform.lock.hcl` is committed: it pins the exact provider versions (and their checksums for
+Windows, Linux and macOS) that the `~> 2.0` and `~> 3.6` constraints in `providers.tf` resolved
+to, so every administrator and CI plan with the same provider. Upgrade deliberately, then review
+the plan and commit the lock file:
+
+```bash
+just tf init -upgrade
+just tf providers lock -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_amd64 -platform=darwin_arm64
+just tf plan
+```
+
+## Securing the Terraform user
+
+`TERRAFORM_USER` holds `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`: whoever has its private key
+controls every object, grant and user in the account. Restrict where it may log in from with a
+network policy listing the addresses Terraform runs from (the administrators' networks, a
+deployment runner). Run it as `ACCOUNTADMIN`, which owns `TERRAFORM_USER` (`init.sql` creates it).
+The policy binds this user only: leaving an address out locks Terraform out from there, not you:
+
+```sql
+USE ROLE ACCOUNTADMIN;
+CREATE NETWORK POLICY NP_TERRAFORM_USER
+  ALLOWED_IP_LIST = ('203.0.113.10', '198.51.100.0/24')
+  COMMENT = 'Where Terraform may run from';
+ALTER USER TERRAFORM_USER SET NETWORK_POLICY = NP_TERRAFORM_USER;
+```
+
+Also encrypt its private key. `just sf bootstrap` asks for a passphrase when it creates
+`terraform.p8` and writes it to `.env` as `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE`, which passes it
+to the provider. To encrypt a key that is already registered, re-encrypt it in place so the public
+key stays the same, then set that variable yourself:
+
+```bash
+openssl pkcs8 -topk8 -v2 aes256 -in ~/.snowflake/keys/terraform.p8 -out ~/.snowflake/keys/terraform.enc.p8
+mv ~/.snowflake/keys/terraform.enc.p8 ~/.snowflake/keys/terraform.p8
+```
+
+`just sf keygen terraform --force` is not a way to do this: it writes a new key pair, which
+Terraform cannot use until an `ACCOUNTADMIN` registers its public key on `TERRAFORM_USER`.
 
 ## State and teardown
 
 State is local (`terraform.tfstate`, git-ignored). Move it to a remote backend before several
-administrators share the configuration. `just tf destroy` removes everything Terraform created;
-the bootstrap objects from `init.sql` stay.
+administrators share the configuration.
+
+Databases carry `prevent_destroy` (`modules/snowflake/database/main.tf`): a plan that would drop
+one fails, whether it comes from `just tf destroy` or from removing an environment from a project
+(or a project file). To drop databases with all their data on purpose, delete that `lifecycle`
+block first, run `just tf destroy` (or the apply), and put the block back. The bootstrap objects
+from `init.sql` stay either way.
