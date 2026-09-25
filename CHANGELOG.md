@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.8](https://github.com/rootcube/data-mesh-template/compare/v0.1.7...v0.1.8) (2026-09-25)
+
+
+### Features
+
+* add CI setup job for multi-OS support and update documentation ([a6ac223](https://github.com/rootcube/data-mesh-template/commit/a6ac223a08debb125a21f73056c872b3cce07f00))
+* add CI setup job for multi-OS support and update documentation ([9c288cd](https://github.com/rootcube/data-mesh-template/commit/9c288cda89ec0b0cd6156f303128e5c3bea82fef))
+* update sqlfluff commands to include config path for linting and fixing models ([141370a](https://github.com/rootcube/data-mesh-template/commit/141370a4b61ca381695637f32efbb9675cf2d354))
+
+
+### Bug Fixes
+
+* **dbt:** correct calendar dates, schema resolution and holiday config ([19a15b6](https://github.com/rootcube/data-mesh-template/commit/19a15b671f6bcde5029dd774783126ae7947ca90))
+* **docs:** update Terraform commands to reflect changes in `just tf c… ([8d54b7c](https://github.com/rootcube/data-mesh-template/commit/8d54b7c6b70d217ad306829bb993db1f905aa616))
+* **docs:** update Terraform commands to reflect changes in `just tf clean` ([23e892d](https://github.com/rootcube/data-mesh-template/commit/23e892d0389b8323312a927deb74664798f2a00c))
+* **ingestion:** fail closed on a blank prefix and empty staging tables ([b09a3e5](https://github.com/rootcube/data-mesh-template/commit/b09a3e5b2128680a4830fd0883b796e2a1825074))
+* **setup:** harden key-pair setup, bootstrap and .env writing ([f807113](https://github.com/rootcube/data-mesh-template/commit/f807113f13f870d4e523053ca284173258c11a81))
+* **terraform:** tighten grants, protect databases and validate users ([0c260c4](https://github.com/rootcube/data-mesh-template/commit/0c260c4726fdf7c97dfd3a683683fa07ce449f47))
+* **tooling:** run validate and the pre-commit hooks on Windows ([1479bb5](https://github.com/rootcube/data-mesh-template/commit/1479bb5d7a22702c07b8cfafdc5bcbecfc60b058))
+
+
+### Documentation
+
+* align the documentation with the audit fixes ([dadc78a](https://github.com/rootcube/data-mesh-template/commit/dadc78abfddc0ae175d61d8d768e0f3578765947))
+
 ## [0.1.7](https://github.com/rootcube/data-mesh-template/compare/v0.1.6...v0.1.7) (2026-09-25)
 
 
