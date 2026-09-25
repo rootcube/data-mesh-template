@@ -145,9 +145,9 @@ Materialized as `table`. No joins, no business logic, read only by INT.
 ### Integration: business logic
 
 Organized by domain, not by source. Joins, enrichment, derived measures, reusable building
-blocks. `dbt_example` has the `weather` domain: `int__weather__observation` unpivots the hourly
-staging row into one row per station, hour and measurement type, and `int__weather__station`
-and `int__weather__measurement_type` carry the seeded stations and KNMI variables. The
+blocks. `dbt_example` has the `weather` domain: `int__weather__knmi_measurement` unpivots the hourly
+staging row into one row per station, hour and measurement type, and `int__weather__knmi_station`
+and `int__weather__knmi_measurement_type` carry the seeded stations and KNMI variables. The
 [Adding a dbt model](../development/adding-dbt-models.md) walkthrough adds a daily one.
 `dbt_common` contributes the common chain described below.
 
@@ -159,8 +159,8 @@ Dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) and aggregates (`agg__`
 `dbt_common` dimensions show the house pattern: a surrogate key named `id_<model>` as the first
 column (`id_dim__common__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
 `stg__seed__unknown` so every fact can point at an unknown member instead of a `NULL`.
-`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__station`,
-`dim__weather__measurement_type` and `fct__weather__observation`, one row per station, hour and
+`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__knmi_station`,
+`dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement`, one row per station, hour and
 measurement type, keyed to both weather dimensions and to `dim__common__calendar` and
 `dim__common__time`.
 

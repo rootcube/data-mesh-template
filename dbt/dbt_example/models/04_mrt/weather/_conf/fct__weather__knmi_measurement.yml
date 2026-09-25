@@ -1,53 +1,53 @@
 version: 2
 
 models:
-  - name: fct__weather__observation
+  - name: fct__weather__knmi_measurement
     description: >
-      Observation fact, one row per station per hour per measurement type. The calendar and time
+      Measurement fact, one row per station per hour per measurement type. The calendar and time
       keys identify the start of the observation hour; observed_at is its end, as KNMI reports it.
 
     data_tests:
       - dbt_common.has_data:
-          name: fct__weather__observation__has_data
+          name: fct__weather__knmi_measurement__has_data
 
     columns:
-      - name: id_fct__weather__observation
+      - name: id_fct__weather__knmi_measurement
         description: Surrogate key of the fact, a hash of station code, observed_at and measurement type code.
         data_type: varchar(32)
         data_tests:
           - not_null:
-              name: fct__weather__observation__id_fct__weather__observation__not_null
+              name: fct__weather__knmi_measurement__id_fct__weather__knmi_measurement__not_null
 
           - unique:
-              name: fct__weather__observation__id_fct__weather__observation__unique
+              name: fct__weather__knmi_measurement__id_fct__weather__knmi_measurement__unique
 
-      - name: id_dim__weather__station
-        description: Foreign key to dim__weather__station (-2 when the station is not in the seed).
+      - name: id_dim__weather__knmi_station
+        description: Foreign key to dim__weather__knmi_station (-2 when the station is not in the seed).
         data_type: varchar(40)
         data_tests:
           - not_null:
-              name: fct__weather__observation__id_dim__weather__station__not_null
+              name: fct__weather__knmi_measurement__id_dim__weather__knmi_station__not_null
 
           - relationships:
-              name: fct__weather__observation__id_dim__weather__station__relationships
+              name: fct__weather__knmi_measurement__id_dim__weather__knmi_station__relationships
               arguments:
-                to: ref('dim__weather__station')
-                field: id_dim__weather__station
+                to: ref('dim__weather__knmi_station')
+                field: id_dim__weather__knmi_station
               config:
                 severity: warn
 
-      - name: id_dim__weather__measurement_type
-        description: Foreign key to dim__weather__measurement_type (-2 when the code is not in the seed).
+      - name: id_dim__weather__knmi_measurement_type
+        description: Foreign key to dim__weather__knmi_measurement_type (-2 when the code is not in the seed).
         data_type: varchar(40)
         data_tests:
           - not_null:
-              name: fct__weather__observation__id_dim__weather__measurement_type__not_null
+              name: fct__weather__knmi_measurement__id_dim__weather__knmi_measurement_type__not_null
 
           - relationships:
-              name: fct__weather__observation__id_dim__weather__measurement_type__relationships
+              name: fct__weather__knmi_measurement__id_dim__weather__knmi_measurement_type__relationships
               arguments:
-                to: ref('dim__weather__measurement_type')
-                field: id_dim__weather__measurement_type
+                to: ref('dim__weather__knmi_measurement_type')
+                field: id_dim__weather__knmi_measurement_type
               config:
                 severity: warn
 
@@ -56,10 +56,10 @@ models:
         data_type: integer
         data_tests:
           - not_null:
-              name: fct__weather__observation__id_dim__common__calendar__not_null
+              name: fct__weather__knmi_measurement__id_dim__common__calendar__not_null
 
           - relationships:
-              name: fct__weather__observation__id_dim__common__calendar__relationships
+              name: fct__weather__knmi_measurement__id_dim__common__calendar__relationships
               arguments:
                 to: ref('dim__common__calendar')
                 field: id_dim__common__calendar
@@ -71,10 +71,10 @@ models:
         data_type: integer
         data_tests:
           - not_null:
-              name: fct__weather__observation__id_dim__common__time__not_null
+              name: fct__weather__knmi_measurement__id_dim__common__time__not_null
 
           - relationships:
-              name: fct__weather__observation__id_dim__common__time__relationships
+              name: fct__weather__knmi_measurement__id_dim__common__time__relationships
               arguments:
                 to: ref('dim__common__time')
                 field: id_dim__common__time
@@ -86,16 +86,16 @@ models:
         data_type: timestamp_ntz
         data_tests:
           - not_null:
-              name: fct__weather__observation__observed_at__not_null
+              name: fct__weather__knmi_measurement__observed_at__not_null
 
       - name: measurement_value
         description: The measured value, in the unit of its measurement type.
         data_type: number(10,2)
         data_tests:
           - not_null:
-              name: fct__weather__observation__measurement_value__not_null
+              name: fct__weather__knmi_measurement__measurement_value__not_null
 
     constraints:
       - columns:
-          - id_fct__weather__observation
+          - id_fct__weather__knmi_measurement
         type: primary_key

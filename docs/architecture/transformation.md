@@ -174,8 +174,8 @@ to run first, and a monitoring project could later read those tables as sources.
 - The dispatch block and the `on-run-start` hook shown above.
 
 Today it holds one source (`src_knmi.yml`), two seeds (`seed_knmi_station`, `seed_knmi_measurement_type`)
-and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__observation`,
-`dim__weather__station`, `dim__weather__measurement_type` and `fct__weather__observation` to
+and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__knmi_measurement`,
+`dim__weather__knmi_station`, `dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement` to
 `exp__weather__station_weather`, whose consumer is the `weather_dashboard` exposure.
 
 Run it from the project folder, which is what `just dbt` does:

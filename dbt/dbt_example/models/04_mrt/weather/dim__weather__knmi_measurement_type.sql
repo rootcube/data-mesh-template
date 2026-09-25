@@ -1,5 +1,5 @@
 SELECT
-  SHA1(mst.measurement_type_code) AS id_dim__weather__measurement_type
+  SHA1(mst.measurement_type_code) AS id_dim__weather__knmi_measurement_type
 
 , mst.measurement_type_code
 , mst.measurement_type_name
@@ -7,12 +7,12 @@ SELECT
 , mst.unit
 , mst.measurement_type_sort
 FROM
-  {{ ref('int__weather__measurement_type') }} AS mst
+  {{ ref('int__weather__knmi_measurement_type') }} AS mst
 
 UNION ALL
 
 SELECT
-  CAST(unk.unknown_id AS VARCHAR) AS id_dim__weather__measurement_type
+  CAST(unk.unknown_id AS VARCHAR) AS id_dim__weather__knmi_measurement_type
 
 -- Attributes
 , unk.unknown_code                AS measurement_type_code

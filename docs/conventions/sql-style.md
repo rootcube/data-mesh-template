@@ -207,7 +207,7 @@ When a Jinja block genuinely cannot be made lint-clean, fence it:
 | Type | Pattern | Example |
 |---|---|---|
 | Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
-| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__observation` |
+| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__knmi_measurement` |
 | Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Boolean | `is_<condition>` / `has_<thing>` | `is_holiday`, `is_weekend` |
 | Timestamp | `<event>_at` | `observed_at` |
