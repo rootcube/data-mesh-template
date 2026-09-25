@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.5](https://github.com/rootcube/data-mesh-template/compare/v0.1.4...v0.1.5) (2026-09-25)
+
+
+### Features
+
+* add KNMI weather data models and seeds for measurement types and stations ([8d02d2a](https://github.com/rootcube/data-mesh-template/commit/8d02d2a4dd7b97e3b0f70f098aeb40813489f16f))
+* handle fresh install on Windows ([33ab62b](https://github.com/rootcube/data-mesh-template/commit/33ab62be6c392bf39abbfb5fe1fc1add50c13716))
+* handle fresh install on Windows and improve setup wizard if account already exists (tf state sync/wipe options added). ([4f0fee8](https://github.com/rootcube/data-mesh-template/commit/4f0fee86ded5f36d69f9623738e0af0b83f54ed7))
+* update dlt ingestion and dbt models for knmi ([10aaff6](https://github.com/rootcube/data-mesh-template/commit/10aaff680d637bd37db53c008c1e401db391b7bc))
+
+
+### Bug Fixes
+
+* update refresh_stages.sql to correct stage reference from ST_DLT to ST_DEFAULT ([f411bf9](https://github.com/rootcube/data-mesh-template/commit/f411bf9efb62b621119b4d9668f38e407f925497))
+* update snowflake destination and load stage to include source-specific paths ([a9d6e74](https://github.com/rootcube/data-mesh-template/commit/a9d6e74132378bf0e1ae1b092b31aa2e921ff67f))
+
 ## [0.1.4](https://github.com/rootcube/data-mesh-template/compare/v0.1.3...v0.1.4) (2026-09-24)
 
 
