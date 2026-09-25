@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg__seed__knmi_station
+    description: Typed KNMI weather stations, one row per station the pipeline ingests.
+
+    data_tests:
+      - dbt_common.has_data:
+          name: stg__seed__knmi_station__has_data
+
+      - dbt_common.rows_expected:
+          name: stg__seed__knmi_station__rows_expected
+          arguments:
+            value: 7
+
+    columns:
+      - name: station_code
+        description: KNMI station number.
+        data_type: integer
+        data_tests:
+          - not_null:
+              name: stg__seed__knmi_station__station_code__not_null
+
+          - unique:
+              name: stg__seed__knmi_station__station_code__unique
+
+      - name: station_name
+        description: Station name as KNMI lists it.
+        data_type: varchar(50)
+        data_tests:
+          - not_null:
+              name: stg__seed__knmi_station__station_name__not_null
+
+          - unique:
+              name: stg__seed__knmi_station__station_name__unique
+
+      - name: longitude
+        description: Longitude in decimal degrees east.
+        data_type: number(6,3)
+
+      - name: latitude
+        description: Latitude in decimal degrees north.
+        data_type: number(6,3)
+
+      - name: elevation_m
+        description: Elevation of the station in metres above sea level.
+        data_type: number(6,2)

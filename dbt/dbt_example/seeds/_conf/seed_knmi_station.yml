@@ -1,0 +1,52 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_knmi_station
+    description: >
+      The KNMI weather stations the dlt pipeline ingests (STATIONS in
+      dlt_pipelines/pipelines/ingest/knmi/constants.py), with the location KNMI publishes for them.
+
+    config:
+      enabled: true
+      column_types:
+        station_code: integer
+        station_name: varchar(50)
+        longitude: number(6,3)
+        latitude: number(6,3)
+        elevation_m: number(6,2)
+
+    columns:
+      - name: station_code
+        description: KNMI station number.
+        data_type: integer
+
+        data_tests:
+          - unique:
+              name: seed_knmi_station__station_code__unique
+
+          - not_null:
+              name: seed_knmi_station__station_code__not_null
+
+      - name: station_name
+        description: Station name as KNMI lists it.
+        data_type: varchar(50)
+
+        data_tests:
+          - unique:
+              name: seed_knmi_station__station_name__unique
+
+          - not_null:
+              name: seed_knmi_station__station_name__not_null
+
+      - name: longitude
+        description: Longitude in decimal degrees east.
+        data_type: number(6,3)
+
+      - name: latitude
+        description: Latitude in decimal degrees north.
+        data_type: number(6,3)
+
+      - name: elevation_m
+        description: Elevation of the station in metres above sea level.
+        data_type: number(6,2)

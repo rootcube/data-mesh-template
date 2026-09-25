@@ -126,8 +126,9 @@ What does not belong: renames, casts, fixes. Those are staging's job.
 
 CSV files under `seeds/`, loaded by `dbt seed` (part of `dbt build`). `dbt_common` ships four:
 `seed_environment`, `seed_month`, `seed_weekday` and `seed_unknown` (the unknown-member rows
-with ids `-1`, `-2`, `-3`). `dbt_common` seeds use `+full_refresh: true`, so the table always
-matches the file. Seeds arrive untyped, which is why each one has a typed `stg__seed__<name>`
+with ids `-1`, `-2`, `-3`); `dbt_example` ships `seed_knmi_station` (the KNMI stations the pipeline
+ingests) and `seed_knmi_measurement_type` (the KNMI variables it carries). `dbt_common` seeds use
+`+full_refresh: true`, so the table always matches the file. Seeds arrive untyped, which is why each one has a typed `stg__seed__<name>`
 model in `02_stg/seed/`; downstream models reference the staging model, not the seed.
 
 ### Staging: typed and renamed
@@ -142,8 +143,10 @@ Materialized as `table`. No joins, no business logic, read only by INT.
 ### Integration: business logic
 
 Organized by domain, not by source. Joins, enrichment, derived measures, reusable building
-blocks. `dbt_example` has no INT models yet (the folder holds a `.gitkeep`); the
-[Adding a dbt model](../development/adding-dbt-models.md) walkthrough builds the first one.
+blocks. `dbt_example` has the `weather` domain: `int__weather__observation` unpivots the hourly
+staging row into one row per station, hour and measurement type, and `int__weather__station`
+and `int__weather__measurement_type` carry the seeded stations and KNMI variables. The
+[Adding a dbt model](../development/adding-dbt-models.md) walkthrough adds a daily one.
 `dbt_common` contributes the common chain described below.
 
 Materialized as `table` in `dbt_example`. Read by MRT and other INT models.
@@ -154,6 +157,10 @@ Dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) and aggregates (`agg__`
 `dbt_common` dimensions show the house pattern: a surrogate key named `id_<model>` as the first
 column (`id_dim__common__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
 `stg__seed__unknown` so every fact can point at an unknown member instead of a `NULL`.
+`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__station`,
+`dim__weather__measurement_type` and `fct__weather__observation`, one row per station, hour and
+measurement type, keyed to both weather dimensions and to `dim__common__calendar` and
+`dim__common__time`.
 
 Materialized as `table`. Consumer-specific shaping belongs one layer up.
 
@@ -161,7 +168,10 @@ Materialized as `table`. Consumer-specific shaping belongs one layer up.
 
 Views that give a named consumer, or another project, the flat shape it wants. This is the
 publication boundary of the project: other projects read `_EXP` and nothing else.
-`dbt_example` has none yet. Materialized as `view`, so they are always current.
+`dbt_example` publishes `exp__weather__station_weather`, the observation star joined back into
+one flat row per station, hour and measurement type, and declares its consumer as the dbt
+exposure `weather_dashboard` (`exposures/weather_dashboard.yml`), so the lineage runs past the
+last model. Materialized as `view`, so they are always current.
 
 ### Metadata and Temporary: bookkeeping
 

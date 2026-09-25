@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: exp__weather__station_weather
+    description: >
+      Station weather data product: hourly KNMI measurements per station, one row per station
+      per hour per measurement type, read by the weather_dashboard exposure.
+
+    data_tests:
+      - dbt_common.has_data:
+          name: exp__weather__station_weather__has_data
+
+      - dbt_utils.unique_combination_of_columns:
+          name: exp__weather__station_weather__station_code__observed_at__measurement_type_code__unique
+          arguments:
+            combination_of_columns: [station_code, observed_at, measurement_type_code]
+
+    columns:
+      - name: station_code
+        description: KNMI station number.
+        data_type: integer
+
+      - name: station_name
+        description: Station name as KNMI lists it.
+        data_type: varchar(50)
+
+      - name: latitude
+        description: Latitude in decimal degrees north.
+        data_type: number(6,3)
+
+      - name: longitude
+        description: Longitude in decimal degrees east.
+        data_type: number(6,3)
+
+      - name: observed_at
+        description: End of the observation hour (timestamp, no timezone).
+        data_type: timestamp_ntz
+
+      - name: measurement_type_code
+        description: KNMI variable code (T, FH, RH, Q, U).
+        data_type: varchar(10)
+
+      - name: measurement_type_name
+        description: Name of the measurement type.
+        data_type: varchar(50)
+
+      - name: unit
+        description: Unit of the measurement value.
+        data_type: varchar(10)
+
+      - name: measurement_value
+        description: The measured value, in the unit of its measurement type.
+        data_type: number(10,2)

@@ -111,15 +111,18 @@ Project must never read another Project's non-expose layers.
 
 `int`, Integration
 :   Reusable, joined and enriched datasets that are not yet facts or dimensions. Organised by
-    domain, not by source. Here: the common calendar chain from `dbt_common`.
+    domain, not by source. Here: the common calendar chain from `dbt_common` and the `weather`
+    models of `dbt_example`.
 
 `mrt`, Mart
 :   Modelled, analytics-ready data: dimensions, facts, bridges, aggregates. Here:
-    `dim__common__calendar`, `dim__common__time`, `dim__common__environment`.
+    `dim__common__calendar`, `dim__common__time`, `dim__common__environment`, and the weather star
+    `dim__weather__station`, `dim__weather__measurement_type`, `fct__weather__observation`.
 
 `exp`, Expose
 :   The publication boundary. Whatever is here is a contract; the owning Team keeps it
-    backward compatible. Here: views, none yet in the example project.
+    backward compatible. Here: `exp__weather__station_weather`, read by the `weather_dashboard`
+    exposure.
 
 `app`, Application
 :   Operational datasets for applications with CRUD access, separate from the analytical
