@@ -9,7 +9,7 @@ require-dbt-version: [">=1.11.0", "<2.0.0"]
 flags:
   send_anonymous_usage_stats: false
 
-model-paths: ["models", "sources"]
+model-paths: ["models", "sources", "exposures"]
 seed-paths: ["seeds"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
@@ -77,7 +77,7 @@ data_tests:
   +schema: tmp
 
 # Run context at the start of every run (Snowflake account, database, links to the query history),
-# then the directory table of the dlt load stage (_SRC.ST_DLT), which internal stages never refresh by themselves.
+# then the directory table of the dlt load stage (_SRC.ST_DEFAULT), which internal stages never refresh by themselves.
 on-run-start:
   - "{{ dbt_common.log_run_info() }}"
   - "{{ dbt_common.refresh_stages() }}"

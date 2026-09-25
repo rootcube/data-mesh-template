@@ -45,12 +45,14 @@ Uppercased in Snowflake object names, lowercase everywhere in the repo.
 | Expose | `exp__<domain>__<entity>` | `exp__weather__station_weather` |
 | Sources | `src_<source>.yml` | `src_knmi.yml` |
 | Seeds | `seed_<name>` | `seed_unknown` |
+| Exposures | `exposures/<consumer>.yml`, exposure named `<consumer>` | `weather_dashboard` |
 
 Double underscores (`__`) separate the structural segments (layer, source or domain, entity);
 single underscores separate words within a segment. In staging, `<source>` is the dlt source
 folder name (`knmi`). From integration up, `<domain>` is a business domain (`common` for the
-shared calendar and time models). The `fct__`, `brg__`, `agg__` and `exp__` examples are
-illustrative; `dbt_example` has only the staging model so far.
+shared calendar and time models, `weather` for the KNMI chain in `dbt_example`). The `brg__` and
+`agg__` examples are illustrative; `dbt_example` ships `dim__weather__station`,
+`dim__weather__measurement_type`, `fct__weather__observation` and `exp__weather__station_weather`.
 
 The model name is also the last segment of its Dagster asset key and its Snowflake table or view
 name, so pick it once and carefully. The asset key carries the project name
@@ -152,8 +154,8 @@ environment:
 | Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
-| dlt load stage | `_SRC.ST_DLT`, one internal stage per source layer | `DB_EXAMPLE_DEV._SRC.ST_DLT` |
-| dlt load files | `<stage>/dlt/ingest/<source>/"<load id>"/<source>__<entity>.<file id>.<retry>.jsonl`, behind the lowercased `SNOWFLAKE_SCHEMA` prefix in dev | `_SRC.ST_DLT/dlt/ingest/knmi/`, `_SRC.ST_DLT/dbt_username/dlt/ingest/knmi/` |
+| Source layer stage | `_SRC.ST_DEFAULT`, the default internal stage of each source layer; dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT` |
+| dlt load files | `<stage>/dlt/ingest/<source>/"<load id>"/<source>__<entity>.<file id>.<retry>.jsonl`, behind the lowercased `SNOWFLAKE_SCHEMA` prefix in dev | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `_SRC.ST_DEFAULT/dbt_username/dlt/ingest/knmi/` |
 | Provisioning (bootstrap) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,

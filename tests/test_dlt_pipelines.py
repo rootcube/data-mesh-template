@@ -15,8 +15,8 @@ def test_discover_finds_knmi() -> None:
 def test_load_stage_is_the_source_layer_stage_with_a_path_per_source() -> None:
     dev = SnowflakeSettings(database="DB_EXAMPLE_DEV", schema="DBT_USERNAME", environment="dev")
     prd = SnowflakeSettings(database="DB_EXAMPLE_PRD", environment="prd")
-    assert load_stage(dev, "knmi") == "DB_EXAMPLE_DEV._SRC.ST_DLT/dbt_username/dlt/ingest/knmi"
-    assert load_stage(prd, "knmi") == "DB_EXAMPLE_PRD._SRC.ST_DLT/dlt/ingest/knmi"
+    assert load_stage(dev, "knmi") == "DB_EXAMPLE_DEV._SRC.ST_DEFAULT/dbt_username/dlt/ingest/knmi"
+    assert load_stage(prd, "knmi") == "DB_EXAMPLE_PRD._SRC.ST_DEFAULT/dlt/ingest/knmi"
 
 
 def test_load_window_never_starts_before_the_start_date() -> None:

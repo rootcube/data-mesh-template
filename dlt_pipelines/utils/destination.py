@@ -7,7 +7,7 @@ from orchestrator.resources.snowflake import SnowflakeSettings
 
 SOURCE_LAYER = "src"
 STAGING_LAYER = "tmp"
-STAGE = "ST_DLT"
+STAGE = "ST_DEFAULT"
 
 
 def snowflake_destination(source: str) -> Destination:
@@ -28,12 +28,12 @@ def snowflake_destination(source: str) -> Destination:
 
 
 def load_stage(settings: SnowflakeSettings, source: str) -> str:
-    """The stage path dlt PUTs a source's load files into: `DB_<PROJECT>_<ENV>._SRC.ST_DLT/dlt/ingest/<source>`.
+    """The stage path dlt PUTs a source's load files into: `DB_<PROJECT>_<ENV>._SRC.ST_DEFAULT/dlt/ingest/<source>`.
 
     Terraform creates the stage in the provisioned source layer of every project database
     (terraform/stages.tf), so it is the same stage in every environment. The path below it mirrors
     the Dagster asset key (`dlt/ingest/<source>/<entity>`); dlt adds a folder per load id and names
-    each file after its table, so `LIST @_SRC.ST_DLT/dlt/ingest/knmi/` shows every KNMI load. In dev
+    each file after its table, so `LIST @_SRC.ST_DEFAULT/dlt/ingest/knmi/` shows every KNMI load. In dev
     the path starts with your lowercased SNOWFLAKE_SCHEMA prefix, the way the tables live in
     `<SNOWFLAKE_SCHEMA>_SRC`.
     """

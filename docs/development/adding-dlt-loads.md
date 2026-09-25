@@ -169,7 +169,7 @@ More resources
 `snowflake_destination(SOURCE)` and `source_dataset()`
 :   Always these two. They read `SNOWFLAKE_*` and `ENVIRONMENT` from `.env` through
     `SnowflakeSettings`, so there is nothing to configure per source; the source name only picks
-    the folder of the load files in the stage, `_SRC.ST_DLT/dlt/ingest/airquality/`. Credentials
+    the folder of the load files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`. Credentials
     are only checked when the pipeline runs, which is why the module imports cleanly without a
     `.env`.
 
