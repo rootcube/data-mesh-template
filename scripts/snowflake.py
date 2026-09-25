@@ -55,6 +55,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROLE = re.compile(r"^RL_(?P<project>[A-Z0-9_]+)_(?P<env>DEV|TST|ACC|PRD)__(?P<purpose>[A-Z]+)$")
 ENVIRONMENT_ORDER = ("DEV", "TST", "ACC", "PRD")
 PURPOSE_ORDER = ("ENG", "ANL", "TFM", "ING")
+# Schema prefixes .env.example ships: a placeholder, never someone's personal prefix.
+PLACEHOLDER_SCHEMAS = ("DBT", "DBT_USERNAME")
 ENV_FILE = ROOT / ".env"
 ENV_EXAMPLE = ROOT / ".env.example"
 KEY_DIR = Path.home() / ".snowflake" / "keys"
@@ -241,10 +243,7 @@ def discover_context(
         warehouse=found["warehouse"],
         database=found["database"],
         environment=found["environment"],
-        # A bare "DBT" is the pre-project placeholder, not a personal prefix.
-        schema=settings.schema
-        if settings.schema and settings.schema.upper() != "DBT"
-        else personal_prefix(settings.user),
+        schema=schema_prefix(settings.schema, settings.user),
     )
 
 
@@ -292,6 +291,11 @@ def verify(settings: SnowflakeSettings) -> bool:
 def personal_prefix(user: str) -> str:
     """Default prefix for personal schemas: DBT_<first part of the login>, DBT_USERNAME for username@example.com."""
     return "DBT_" + re.sub(r"[^A-Za-z0-9]+", "_", user.split("@")[0]).strip("_").upper()
+
+
+def schema_prefix(current: str, user: str) -> str:
+    """The prefix from .env, or one derived from the login while .env still holds what .env.example ships."""
+    return current if current and current.upper() not in PLACEHOLDER_SCHEMAS else personal_prefix(user)
 
 
 def prompt_context(settings: SnowflakeSettings) -> SnowflakeSettings:
@@ -584,7 +588,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
         role=role or current.get("SNOWFLAKE_ROLE", ""),
         warehouse=warehouse or current.get("SNOWFLAKE_WAREHOUSE", ""),
         database=database or current.get("SNOWFLAKE_DATABASE", ""),
-        schema=current.get("SNOWFLAKE_SCHEMA") or personal_prefix(exact_user),
+        schema=schema_prefix(current.get("SNOWFLAKE_SCHEMA", ""), exact_user),
     )
     if finish_settings(settings, args):
         return 1
