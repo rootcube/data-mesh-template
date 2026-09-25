@@ -59,7 +59,10 @@ on a user is replaced only after you confirm (the fingerprints are compared firs
 applies only the difference. Objects Terraform would create that already exist (an account provisioned
 from another checkout: `just setup` answer 3, or `--existing ask|sync|wipe`) are either synced
 into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner with
-`GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first.
+`GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first. Objects the state already tracks but
+another role owns are handed back the same way, before the plan runs. This happens to an account an
+earlier version provisioned: `init.sql` drops that version's `RL_PLATFORM_PROVISIONING`, and
+Snowflake gives what it owned to `ACCOUNTADMIN`, where Terraform can no longer change it.
 
 The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yourself:
 
@@ -246,6 +249,12 @@ administrators share the configuration.
 
 Databases carry `prevent_destroy` (`modules/snowflake/database/main.tf`): a plan that would drop
 one fails, whether it comes from `just tf destroy` or from removing an environment from a project
-(or a project file). To drop databases with all their data on purpose, delete that `lifecycle`
-block first, run `just tf destroy` (or the apply), and put the block back. The bootstrap objects
-from `init.sql` stay either way.
+(or a project file).
+
+To remove everything this checkout's state tracks on purpose, databases and all their data
+included, run `just tf clean`. It lists what goes and asks you to type the account name back. It
+then has Terraform destroy everything but the databases, drops the databases as `TERRAFORM_USER`
+(`SYSADMIN`, which owns them) and removes them from the state last. A run that stops halfway can
+simply be repeated. `just tf apply` provisions everything again afterwards. A dropped database can
+be restored with `UNDROP DATABASE` while its Time Travel retention lasts (30 days in `prd`). The
+bootstrap objects from `init.sql`, the account parameters and your own key stay.

@@ -118,7 +118,7 @@ the dbt models.
 | Your login holds `ACCOUNTADMIN`, so one person does bootstrap, provisioning and engineering | An administrator bootstraps and provisions ([Snowflake provisioning](snowflake-provisioning.md)); engineers only run `just sf setup` |
 | Password plus MFA is the only login | Usually SSO; `just sf setup` opens the browser instead |
 | Terraform state is a local `terraform.tfstate` | Move it to a remote backend before a second administrator applies |
-| The account expires after 30 days, with everything in it | Nothing expires; `just tf destroy` removes what Terraform created, once you lift the `prevent_destroy` on the databases ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
+| The account expires after 30 days, with everything in it | Nothing expires; `just tf clean` removes what Terraform created, databases and data included, after you type the account name ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
 
 The user file the bootstrap wrote sits in `terraform/config/users/local/`, which git ignores,
 because its login exists in this account only. Move it up to `terraform/config/users/` and

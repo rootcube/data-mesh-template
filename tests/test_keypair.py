@@ -108,15 +108,15 @@ class FakeConnection:
     """
 
     SHOW = {
-        "SHOW DATABASES": (["name"], [["DB_EXAMPLE_DEV"], ["SNOWFLAKE"]]),
-        "SHOW SCHEMAS IN ACCOUNT": (["database_name", "name"], [["DB_EXAMPLE_DEV", "_SRC"]]),
+        "SHOW DATABASES": (["name", "owner"], [["DB_EXAMPLE_DEV", "ACCOUNTADMIN"], ["SNOWFLAKE", ""]]),
+        "SHOW SCHEMAS IN ACCOUNT": (["database_name", "name", "owner"], [["DB_EXAMPLE_DEV", "_SRC", "SYSADMIN"]]),
         "SHOW STAGES IN ACCOUNT": (
-            ["database_name", "schema_name", "name"],
-            [["DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT"]],
+            ["database_name", "schema_name", "name", "owner"],
+            [["DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT", "SYSADMIN"]],
         ),
-        "SHOW WAREHOUSES": (["name"], []),
-        "SHOW ROLES": (["name"], [["RL_EXAMPLE_DEV__ENG"]]),
-        "SHOW USERS": (["name"], [["ADMIN"]]),
+        "SHOW WAREHOUSES": (["name", "owner"], []),
+        "SHOW ROLES": (["name", "owner"], [["RL_EXAMPLE_DEV__ENG", "SECURITYADMIN"]]),
+        "SHOW USERS": (["name", "owner"], [["ADMIN", "ACCOUNTADMIN"]]),
     }
 
     def __init__(self, answers: dict[str, tuple[list[str], list[list[str]]]] | None = None, refuse: str = "") -> None:
@@ -124,6 +124,12 @@ class FakeConnection:
         self.scripts: list[str] = []
         self.answers = {**self.SHOW, **(answers or {})}
         self.refuse = refuse
+
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
 
     def cursor(self) -> "FakeConnection":
         return self
@@ -531,3 +537,159 @@ def test_write_env_reads_back_what_it_wrote(tmp_path: Path, monkeypatch: pytest.
     }
     with pytest.raises(SystemExit):
         script.write_env({"SNOWFLAKE_PRIVATE_KEY_PASSPHRASE": "it's"})
+
+
+STATE = {
+    "values": {
+        "root_module": {
+            "resources": [
+                {
+                    "address": 'snowflake_stage_internal.default["dev_src"]',
+                    "mode": "managed",
+                    "type": "snowflake_stage_internal",
+                    "values": {"database": "DB_EXAMPLE_DEV", "schema": "_SRC", "name": "ST_DEFAULT"},
+                },
+                {
+                    "address": "data.snowflake_x.y",
+                    "mode": "data",
+                    "type": "snowflake_database",
+                    "values": {"name": "X"},
+                },
+            ],
+            "child_modules": [
+                {
+                    "resources": [
+                        {
+                            "address": 'module.database["dev"].snowflake_database.this',
+                            "mode": "managed",
+                            "type": "snowflake_database",
+                            "values": {"name": "DB_EXAMPLE_DEV"},
+                        },
+                        {
+                            "address": 'module.database["dev"].snowflake_execute.drop_public_schema',
+                            "mode": "managed",
+                            "type": "snowflake_execute",
+                            "values": {},
+                        },
+                    ]
+                }
+            ],
+        }
+    }
+}
+
+
+def test_managed_objects_reads_every_module_of_the_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "terraform_output", lambda env, *args: json.dumps(STATE))
+    assert sorted(script.object_path(r) for r in script.managed_objects({})) == [
+        ("DB_EXAMPLE_DEV",),
+        ("DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT"),
+    ]
+    monkeypatch.setattr(script, "terraform_output", lambda env, *args: '{"format_version": "1.0"}')
+    assert script.managed_objects({}) == []  # no state yet
+
+
+def test_misowned_objects_lists_what_another_role_owns() -> None:
+    script = load_script()
+    found = script.misowned_objects(FakeConnection(), PLANNED)
+    # DB_EXAMPLE_PRD and the warehouse do not exist; the schema, stage and role have their Terraform owner.
+    assert [(script.object_path(r), r["owner"]) for r in found] == [
+        (("DB_EXAMPLE_DEV",), "ACCOUNTADMIN"),
+        (("ADMIN",), "ACCOUNTADMIN"),
+    ]
+
+
+def test_reclaim_managed_objects_hands_them_back_after_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "managed_objects", lambda env: PLANNED)
+    conn = FakeConnection()
+    script.reclaim_managed_objects(conn, {}, yes=True)
+    assert [sql for sql in conn.executed if sql.startswith("GRANT")] == [
+        'GRANT OWNERSHIP ON DATABASE "DB_EXAMPLE_DEV" TO ROLE SYSADMIN COPY CURRENT GRANTS',
+        'GRANT OWNERSHIP ON USER "ADMIN" TO ROLE USERADMIN COPY CURRENT GRANTS',
+    ]
+    conn = FakeConnection()
+    monkeypatch.setattr("builtins.input", lambda prompt: "n")
+    script.reclaim_managed_objects(conn, {}, yes=False)
+    assert not [sql for sql in conn.executed if sql.startswith("GRANT")]
+
+
+def test_destroy_targets_cover_everything_but_the_databases() -> None:
+    script = load_script()
+    addresses = [
+        'module.database["dev"].snowflake_database.this',
+        'module.database["dev"].snowflake_execute.drop_public_schema',
+        'module.database_grant["dev_eng"].snowflake_grant_privileges_to_account_role.this[0]',
+        'module.schema["dev_src"].snowflake_schema.this',
+        'module.schema["dev_stg"].snowflake_schema.this',
+        'random_password.user["jane"]',
+        'snowflake_stage_internal.default["dev_src"]',
+        "data.snowflake_current_account.this",
+    ]
+    assert script.destroy_targets(addresses) == [
+        "module.database_grant",
+        "module.schema",
+        "random_password.user",
+        "snowflake_stage_internal.default",
+    ]
+
+
+def test_terraform_settings_connect_as_the_terraform_user() -> None:
+    script = load_script()
+    settings = script.terraform_settings({"TF_VAR_SNOWFLAKE_ORGANIZATION": "MYORG", "TF_VAR_SNOWFLAKE_ACCOUNT": "ACC"})
+    assert (settings.account, settings.user, settings.role, settings.warehouse) == (
+        "MYORG-ACC",
+        "TERRAFORM_USER",
+        "SYSADMIN",
+        "WH_PLATFORM_PROVISIONING",
+    )
+    assert settings.private_key_path.endswith("/.snowflake/keys/terraform.p8")
+    with pytest.raises(SystemExit):
+        script.terraform_settings({})
+
+
+def fake_terraform(monkeypatch: pytest.MonkeyPatch, script: ModuleType, addresses: list[str]) -> list[tuple[str, ...]]:
+    """Record terraform calls; answer `state list` with `addresses` and `show -json` with STATE."""
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(script, "require_terraform", lambda: None)
+    monkeypatch.setattr(
+        script, "terraform_env", lambda: {"TF_VAR_SNOWFLAKE_ORGANIZATION": "MYORG", "TF_VAR_SNOWFLAKE_ACCOUNT": "ACC"}
+    )
+    monkeypatch.setattr(script, "terraform", lambda env, *args: calls.append(args))
+    answers = {"state": "\n".join(addresses), "show": json.dumps(STATE)}
+    monkeypatch.setattr(script, "terraform_output", lambda env, *args: answers[args[0]])
+    return calls
+
+
+def test_clean_changes_nothing_unless_the_account_name_is_typed(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    calls = fake_terraform(monkeypatch, script, ['module.database["dev"].snowflake_database.this'])
+    monkeypatch.setattr("builtins.input", lambda prompt: "MYORG")
+    assert script.cmd_clean(None) == 1
+    assert calls == [("init", "-input=false")]
+
+
+def test_clean_destroys_the_rest_then_drops_the_databases(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    addresses = ['module.database["dev"].snowflake_database.this', 'snowflake_stage_internal.default["dev_src"]']
+    calls = fake_terraform(monkeypatch, script, addresses)
+    conn = FakeConnection()
+    settings = SnowflakeSettings(account="MYORG-ACC")
+    monkeypatch.setattr(script, "terraform_settings", lambda env: settings)
+    monkeypatch.setattr(SnowflakeSettings, "connect", lambda self: conn)
+    monkeypatch.setattr("builtins.input", lambda prompt: "myorg-acc")
+    assert script.cmd_clean(None) == 0
+    assert calls == [
+        ("init", "-input=false"),
+        ("destroy", "-auto-approve", "-input=false", "-target=snowflake_stage_internal.default"),
+        ("state", "rm", "module.database"),
+    ]
+    assert conn.executed == ['DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"']
+
+
+def test_clean_on_an_empty_state_asks_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    calls = fake_terraform(monkeypatch, script, [])
+    assert script.cmd_clean(None) == 0
+    assert calls == [("init", "-input=false")]

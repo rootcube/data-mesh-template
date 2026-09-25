@@ -8,7 +8,11 @@
                                       provisioning (terraform apply), your own key pair and .env, in one go;
                                       objects that already exist are synced into the state (and handed to
                                       their SYSADMIN/SECURITYADMIN/USERADMIN owner) or wiped
-                                      (--existing ask|sync|wipe)
+                                      (--existing ask|sync|wipe); objects the state tracks that another
+                                      role owns (ACCOUNTADMIN, after an earlier version) are handed back
+    just tf clean              remove every object this checkout's Terraform state tracks, databases and
+                                      their data included, after you type the account name; the init.sql
+                                      objects stay
     just sf setup              one-time: log in interactively, create + register a key pair, write .env
     just sf context            pick the project you work in (from the roles granted to you) and write
                                       role, warehouse, database and schema prefix to .env; no login needed
@@ -688,20 +692,21 @@ def object_path(resource: dict[str, Any]) -> tuple[str, ...]:
     return tuple(str(resource[attr]) for attr in ADOPTABLE[resource["type"]][1])
 
 
+def terraform_output(env: dict[str, str], *args: str) -> str:
+    """Run terraform in terraform/ and return its stdout; exit with its output when it fails."""
+    result = subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, capture_output=True, encoding="utf-8")
+    if result.returncode != 0:
+        print(result.stdout + result.stderr)
+        sys.exit(f"terraform {args[0]} failed")
+    return result.stdout
+
+
 def planned_creates(env: dict[str, str]) -> list[dict[str, Any]]:
     """The adoptable resources `terraform plan` would create: address, type and planned attributes."""
-
-    def run(*args: str) -> str:
-        result = subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, capture_output=True, encoding="utf-8")
-        if result.returncode != 0:
-            print(result.stdout + result.stderr)
-            sys.exit(f"terraform {args[0]} failed")
-        return result.stdout
-
     with tempfile.TemporaryDirectory() as tmp:
         plan = str(Path(tmp) / "plan")
-        run("plan", "-input=false", "-no-color", f"-out={plan}")
-        shown = run("show", "-json", plan)
+        terraform_output(env, "plan", "-input=false", "-no-color", f"-out={plan}")
+        shown = terraform_output(env, "show", "-json", plan)
     return [
         {"address": change["address"], "type": change["type"], **(change["change"]["after"] or {})}
         for change in json.loads(shown).get("resource_changes", [])
@@ -709,23 +714,55 @@ def planned_creates(env: dict[str, str]) -> list[dict[str, Any]]:
     ]
 
 
-def existing_objects(conn: Any, creates: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The planned creates that already exist in the account (run as ACCOUNTADMIN, which sees everything)."""
+def managed_objects(env: dict[str, str]) -> list[dict[str, Any]]:
+    """The adoptable resources this checkout's Terraform state tracks: address, type and attributes (no refresh)."""
+    state = json.loads(terraform_output(env, "show", "-json"))
+    modules = [state.get("values", {}).get("root_module", {})]
+    resources: list[dict[str, Any]] = []
+    while modules:
+        module = modules.pop()
+        modules.extend(module.get("child_modules", []))
+        resources += [
+            {"address": r["address"], "type": r["type"], **r["values"]}
+            for r in module.get("resources", [])
+            if r.get("mode") == "managed" and r["type"] in ADOPTABLE
+        ]
+    return resources
 
-    def names(sql: str, *columns: str) -> set[tuple[str, ...]]:
+
+def account_objects(conn: Any) -> dict[str, dict[tuple[str, ...], str]]:
+    """Every adoptable object in the account with its owner, per resource type (ACCOUNTADMIN sees them all)."""
+
+    def owners(sql: str, *columns: str) -> dict[tuple[str, ...], str]:
         cursor = conn.cursor().execute(sql)
         header = [d[0].lower() for d in cursor.description]
-        return {tuple(str(row[header.index(c)]) for c in columns) for row in cursor.fetchall()}
+        owner = header.index("owner")
+        return {tuple(str(row[header.index(c)]) for c in columns): str(row[owner]) for row in cursor.fetchall()}
 
-    found = {
-        "snowflake_database": names("SHOW DATABASES", "name"),
-        "snowflake_schema": names("SHOW SCHEMAS IN ACCOUNT", "database_name", "name"),
-        "snowflake_stage_internal": names("SHOW STAGES IN ACCOUNT", "database_name", "schema_name", "name"),
-        "snowflake_warehouse": names("SHOW WAREHOUSES", "name"),
-        "snowflake_account_role": names("SHOW ROLES", "name"),
-        "snowflake_user": names("SHOW USERS", "name"),
+    return {
+        "snowflake_database": owners("SHOW DATABASES", "name"),
+        "snowflake_schema": owners("SHOW SCHEMAS IN ACCOUNT", "database_name", "name"),
+        "snowflake_stage_internal": owners("SHOW STAGES IN ACCOUNT", "database_name", "schema_name", "name"),
+        "snowflake_warehouse": owners("SHOW WAREHOUSES", "name"),
+        "snowflake_account_role": owners("SHOW ROLES", "name"),
+        "snowflake_user": owners("SHOW USERS", "name"),
     }
+
+
+def existing_objects(conn: Any, creates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The planned creates that already exist in the account (run as ACCOUNTADMIN, which sees everything)."""
+    found = account_objects(conn)
     return [r for r in creates if object_path(r) in found[r["type"]]]
+
+
+def misowned_objects(conn: Any, managed: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The managed objects that exist but are owned by another role than the one Terraform manages them as."""
+    found = account_objects(conn)
+    return [
+        {**r, "owner": owner}
+        for r in managed
+        if (owner := found[r["type"]].get(object_path(r), OWNER[r["type"]])) != OWNER[r["type"]]
+    ]
 
 
 def write_imports(resources: list[dict[str, Any]]) -> None:
@@ -766,6 +803,27 @@ def transfer_ownership(conn: Any, resources: list[dict[str, Any]]) -> None:
         ok(f"{kind.lower()} {'.'.join(object_path(resource))} now owned by {owner}")
 
 
+def reclaim_managed_objects(conn: Any, env: dict[str, str], yes: bool) -> None:
+    """Hand objects this checkout's Terraform state tracks back to the role Terraform manages them as.
+
+    init.sql drops RL_PLATFORM_PROVISIONING, the role earlier versions provisioned with, and Snowflake gives
+    what it owned to ACCOUNTADMIN. reconcile_existing adopts only objects the state does not track; tracked
+    ones would stay with ACCOUNTADMIN, where Terraform (SYSADMIN, SECURITYADMIN, USERADMIN) cannot change
+    them. Runs before any plan, whose refresh can already fail on them.
+    """
+    misowned = misowned_objects(conn, managed_objects(env))
+    if not misowned:
+        return
+    warn(f"{len(misowned)} objects in this checkout's Terraform state have another owner than Terraform expects:")
+    for resource in misowned:
+        label = ADOPTABLE[resource["type"]][0]
+        print(f"    {label:<10} {'.'.join(object_path(resource))}  {resource['owner']} -> {OWNER[resource['type']]}")
+    if yes or confirm("Hand them to that role? Their grants stay"):
+        transfer_ownership(conn, misowned)
+    else:
+        warn("Left as they are; Terraform cannot change objects its roles do not own.")
+
+
 def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: str, yes: bool) -> bool:
     """Handle objects Terraform would create that already exist (an account provisioned from another checkout).
 
@@ -799,6 +857,58 @@ def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: 
         return True
     print("Aborted; nothing was changed in Snowflake.")
     return False
+
+
+# The databases carry prevent_destroy, so no Terraform plan drops them: `just tf clean` drops them with SQL.
+PROTECTED_MODULE = "module.database"
+
+
+def require_terraform() -> None:
+    refresh_windows_path()  # installed by winget after this shell started
+    if shutil.which("terraform") is None:
+        sys.exit("terraform not found on PATH; install it with `just install terraform`, then open a new shell.")
+
+
+def terraform_env() -> dict[str, str]:
+    """The process environment plus .env (the process wins, as `just` loads .env too): the TF_VAR_* block."""
+    file_values = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
+    return {**file_values, **os.environ}
+
+
+def terraform_settings(env: dict[str, str]) -> SnowflakeSettings:
+    """TERRAFORM_USER's connection as SYSADMIN, which owns the project databases (defaults as in variables.tf)."""
+    organization = env.get("TF_VAR_SNOWFLAKE_ORGANIZATION", "")
+    account = env.get("TF_VAR_SNOWFLAKE_ACCOUNT", "")
+    if not organization or not account:
+        sys.exit("TF_VAR_SNOWFLAKE_ORGANIZATION and TF_VAR_SNOWFLAKE_ACCOUNT are not set (terraform/README.md).")
+    return SnowflakeSettings(
+        account=f"{organization}-{account}",
+        user=env.get("TF_VAR_SNOWFLAKE_USER") or "TERRAFORM_USER",
+        private_key_path=env.get("TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH") or key_paths(TERRAFORM_KEY)[0].as_posix(),
+        private_key_passphrase=env.get("TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE", ""),
+        role="SYSADMIN",
+        warehouse=env.get("TF_VAR_SNOWFLAKE_WAREHOUSE") or "WH_PLATFORM_PROVISIONING",
+    )
+
+
+def destroy_targets(addresses: list[str]) -> list[str]:
+    """One -target per top-level resource or module among the state `addresses`, the protected databases left out."""
+    targets: set[str] = set()
+    for address in addresses:
+        top = re.match(r"module\.[^.\[]+|[^.\[]+\.[^.\[]+", address)
+        if top and not address.startswith("data."):
+            targets.add(top[0])
+    return sorted(targets - {PROTECTED_MODULE})
+
+
+def confirm_clean(account: str, addresses: list[str], databases: list[dict[str, Any]]) -> bool:
+    """Show what `just tf clean` removes and ask for the account name back."""
+    warn(f"This removes all {len(addresses)} resources this checkout's Terraform state tracks in {account}:")
+    for database in databases:
+        print(f"    database  {database['name']}, with every schema, table, stage and file in it")
+    print("    and every warehouse, role, user and grant Terraform created. The init.sql objects stay.")
+    print("    A dropped database can be restored with UNDROP DATABASE while its Time Travel retention lasts.")
+    return ask(f'Type the account name "{account}" to go ahead').upper() == account.upper()
 
 
 # --- subcommands --------------------------------------------------------------
@@ -916,7 +1026,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         write_env({f"TF_VAR_{k}": v for k, v in tf_vars.items()})
         env = {**os.environ, **{f"TF_VAR_{k}": v for k, v in tf_vars.items()}}
         terraform(env, "init", "-input=false")
-        # Still logged in as ACCOUNTADMIN here, which can see (and drop) whatever an earlier state created.
+        # Still logged in as ACCOUNTADMIN here, which can see (and drop) whatever an earlier state created,
+        # and owns what init.sql's DROP ROLE left behind.
+        reclaim_managed_objects(conn, env, args.yes)
         if not reconcile_existing(conn, env, args.existing, exact_user, args.yes):
             return 1
     finally:
@@ -1018,6 +1130,35 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_clean(_args: argparse.Namespace) -> int:
+    """`just tf clean`: every object the Terraform state tracks goes, the prevent_destroy databases included.
+
+    Terraform destroys everything but the databases; TERRAFORM_USER then drops those as SYSADMIN, and they
+    leave the state last, so a rerun after a failure picks up where this one stopped.
+    """
+    require_terraform()
+    env = terraform_env()
+    terraform(env, "init", "-input=false")
+    addresses = terraform_output(env, "state", "list").split()
+    if not addresses:
+        ok("Nothing to remove: this checkout's Terraform state tracks no objects.")
+        return 0
+    settings = terraform_settings(env)
+    databases = [r for r in managed_objects(env) if r["type"] == "snowflake_database"]
+    if not confirm_clean(settings.account, addresses, databases):
+        print("Aborted; nothing was changed in Snowflake.")
+        return 1
+    targets = destroy_targets(addresses)
+    if targets:
+        terraform(env, "destroy", "-auto-approve", "-input=false", *(f"-target={t}" for t in targets))
+    if databases:
+        with settings.connect() as conn:
+            drop_objects(conn, databases, current_user="")
+        terraform(env, "state", "rm", PROTECTED_MODULE)
+    done("The Terraform state is empty; `just tf apply` provisions everything again.")
+    return 0
+
+
 def cmd_keygen(args: argparse.Namespace) -> int:
     private_path, public_path = key_paths(args.name)
     if private_path.exists() and not args.force:
@@ -1098,6 +1239,9 @@ def main(argv: list[str] | None = None) -> int:
     keygen.add_argument("--passphrase", action="store_true", help="encrypt the private key with a passphrase")
     keygen.add_argument("--force", action="store_true", help="overwrite an existing key pair")
     keygen.set_defaults(func=cmd_keygen)
+
+    clean = sub.add_parser("clean", help="`just tf clean`: remove every object the Terraform state tracks")
+    clean.set_defaults(func=cmd_clean)
 
     args = parser.parse_args(argv)
     return args.func(args)

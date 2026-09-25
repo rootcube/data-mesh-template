@@ -212,9 +212,9 @@ sqlfluff *args:
 
 # --- Terraform (platform administrators) -----------------------------------
 
-# run terraform in terraform/, e.g. `just tf init`, `just tf plan`, `just tf apply`
+# run terraform in terraform/, e.g. `just tf init`, `just tf plan`, `just tf apply`; `just tf clean` removes every object the state tracks, databases and their data included
 tf cmd *args:
-    cd {{tf_dir}}; terraform {{cmd}} {{args}}
+    {{ if cmd == "clean" { "uv run python scripts/snowflake.py clean" } else { "cd " + tf_dir + "; terraform " + cmd + " " + args } }}
 
 # validate the YAML configuration under terraform/config against its JSON schemas
 tf-validate-config:

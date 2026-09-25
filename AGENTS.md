@@ -117,6 +117,7 @@ just dbt build        # dbt in dbt/dbt_example (just project=dbt_x dbt ... for a
 just dlt run knmi     # one dlt pipeline outside Dagster
 just fmt / lint / typecheck / test / check
 just tf plan          # Terraform (administrators); just tf-validate-config checks the YAML
+just tf clean         # remove every object the Terraform state tracks, databases and data included (asks first)
 just docs             # docs site on :8000 (`just docs build --strict` after editing docs/)
 ```
 
