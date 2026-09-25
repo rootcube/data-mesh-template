@@ -178,7 +178,7 @@ In `dev` the same set exists per engineer under the personal prefix (`DBT_USERNA
 `DBT_USERNAME_STG`, ...), provisioned by Terraform per engineer; a model without `+schema` would
 land in the prefix itself (`DBT_USERNAME`), which is not provisioned.
 `SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name` implement the rule;
-source YAML repeats it with `env_var`.
+source YAML repeats it from the dbt `target`.
 
 Snowflake folds unquoted identifiers to uppercase, so `knmi__climate_hourly` and
 `KNMI__CLIMATE_HOURLY` are the same table. The connection settings are the `SNOWFLAKE_*`

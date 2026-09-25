@@ -38,10 +38,11 @@ icon: material/lifebuoy
     `just sf check` shows which schemas exist. A different prefix needs `schema_prefix` in that
     file and another apply.
 
-**dbt wants `DBT_STG` instead of `DBT_<USERNAME>_STG`**
-:   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`, a prefix
-    nobody has schemas for. Set it to your prefix (`DBT_<USERNAME>`), the same value
-    `just sf setup` proposes.
+**dbt wants `DBT_STG` (or dlt `DBT_SRC`) instead of `DBT_<USERNAME>_STG`**
+:   `SNOWFLAKE_SCHEMA` is empty in `.env`, as `.env.example` ships it. In `dev`, dbt, dlt and
+    Dagster then all fall back to the placeholder prefix `DBT`, which nobody has schemas for, so
+    they fail instead of writing into the shared `_<LAYER>` schemas. Run `just sf setup` (or
+    `just sf context`), which fills in your prefix, or set it to `DBT_<USERNAME>` by hand.
 
 **`FileNotFoundError: .../.venv/bin/dbt` (or "bad interpreter") although the file exists**
 :   The checkout was moved or renamed after `.venv` was created; the scripts in it still name
@@ -54,8 +55,10 @@ icon: material/lifebuoy
     are for deployed service users.
 
 **Quoted values in `.env`**
-:   `just` and Docker pass quotes literally, which breaks identifiers and file paths. Write
-    `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, never `SNOWFLAKE_ROLE="RL_EXAMPLE_DEV__ENG"`.
+:   `just` and python-dotenv strip single quotes and read the inside literally; Docker's
+    `--env-file` keeps them as part of the value. Write `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`
+    bare, and single-quote only values with spaces, `#`, `$` or other special characters, as
+    `just sf setup` does.
 
 **Dagster code location `dbt_example` fails to load**
 :   It parses the dbt project on load. Run `just dbt parse` to see the real error; most often
@@ -63,7 +66,7 @@ icon: material/lifebuoy
 
 **Port 3000 already in use**
 :   `just start` stops a previous `dagster dev` of this checkout by itself. When something else
-    holds the port, `just stop` frees it, or run on another port: `just port=3001 start`.
+    listens on the port, `just stop` frees it, or run on another port: `just port=3001 start`.
 
 **`int__common__holiday` fails with a package error**
 :   This Python model needs the Anaconda terms accepted on the Snowflake account (an `ORGADMIN`

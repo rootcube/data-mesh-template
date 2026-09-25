@@ -131,7 +131,7 @@ Pre-commit, on every commit, from `.pre-commit-config.yaml`:
 | `sqlfluff lint` | `dbt/dbt_example/models/**/*.sql` | The SQL rules; lint only, so run `just fmt` first |
 | `dagster definitions validate` | `src/`, `dlt_pipelines/` | Every code location must load |
 | `terraform fmt` | `.tf` files | Needs the `terraform` binary, so administrators in practice |
-| `validate_configs.py` | `terraform/config/**` | The YAML schemas and cross-references (`just tf-validate-config`) |
+| `validate_configs.py` | `terraform/config/**` | The YAML schemas and cross-references, sub-folders included: a project's `code` equals its file name, users name existing projects, roles and environments (`just tf-validate-config`) |
 
 `just pre-commit` runs every hook on every file, which is the quickest way to find out what CI
 will say.

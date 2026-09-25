@@ -89,7 +89,7 @@ objects live in the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../conc
 
 | Path | Contents |
 |------|----------|
-| `.dagster/` | `DAGSTER_HOME`: run history, event logs, and the versioned `dagster.yaml` (telemetry off, at most 4 concurrent runs) |
+| `.dagster/` | `DAGSTER_HOME`: run history, event logs, and the versioned `dagster.yaml` (telemetry off, runs start immediately with no concurrency limit) |
 | `.dlt/data/` | dlt working directory (pipeline state restores from Snowflake anyway) |
 | `.dlt/config.toml` | dlt runtime settings, versioned |
 | `dbt/<project>/target/` | Compiled SQL and `manifest.json` |

@@ -28,11 +28,19 @@ For every project in `terraform/config/projects/` and each of its environments:
 
 The example project has two environments, so the same set exists once more with `PRD`:
 `DB_EXAMPLE_PRD`, `RL_EXAMPLE_PRD__*`, `WH_EXAMPLE_PRD`. Nothing is shared between the two.
+Each database keeps 30 days of Time Travel in `prd`, 7 in `acc` and one elsewhere, which its
+schemas inherit, and carries `prevent_destroy`, so no plan drops it by accident.
 
 Terraform connects through Snowflake's system roles, so every object has the owner Snowflake
 recommends: `SYSADMIN` creates and owns the databases, schemas, stages and warehouses,
 `SECURITYADMIN` the roles and every grant, `USERADMIN` the users (`terraform/providers.tf`).
 Every project role is granted to `SYSADMIN`, the recommended role hierarchy.
+
+The temporary layer is scratch space for the analyst role in every environment and for the
+engineer role in `acc` and `prd`: `USAGE`, `CREATE TABLE`, `CREATE VIEW` and `SELECT` there. They own what they create, but get no write on the tables of
+other roles, such as dlt's `merge` staging tables and dbt's stored test failures. The transform
+role holds `READ` and `WRITE` on the source-layer stages for dbt's stage refresh. Every grant:
+[Role](../concepts/role.md).
 
 ```mermaid
 flowchart LR
@@ -85,13 +93,16 @@ SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 `DBT_USERNAME_STG`, `DBT_USERNAME_INT`, ... and the metadata upload writes `DBT_USERNAME_MTD`. The
 schemas exist once an administrator has applied the user's file, so that comes before the first
 load or build. The provisioned `_<LAYER>` schemas of `DB_EXAMPLE_DEV` stay untouched by local runs.
-`tst`, `acc` and `prd` know no personal schemas; there the same code writes to `_<LAYER>`.
+`tst`, `acc` and `prd` know no personal schemas; there the same code writes to `_<LAYER>`. A
+blank `SNOWFLAKE_SCHEMA` in `dev` does not fall through to them: every tool then uses the
+placeholder prefix `DBT` (`DBT_SRC`, `DBT_STG`), which nobody has, so the first load or build
+fails loudly.
 
 The prefix keeps people apart, it does not lock them out: the privileges go to the shared
 engineer role, so engineers can read and write each other's personal schemas.
 
-The switch is `ENVIRONMENT` in `.env`, read by `SnowflakeSettings.schema_for_layer()`,
-`dbt_common.generate_schema_name` and the source YAML. See
+The switch is `ENVIRONMENT` in `.env`, read by `SnowflakeSettings.schema_for_layer()` and,
+through the dbt target it selects, by `dbt_common.generate_schema_name` and the source YAML. See
 [Layers in practice](layers.md#the-schema-naming-rule).
 
 ## Key-pair authentication
@@ -103,8 +114,10 @@ People
 :   `just sf setup` (`scripts/snowflake.py`) logs you in once interactively (browser,
     or `--auth password` for password plus MFA), generates an RSA 2048 key pair under
     `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key on your own
-    user with `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies a key-pair connection, and writes
-    the settings to `.env`. `--slot 2` uses `RSA_PUBLIC_KEY_2` for rotation, `--passphrase`
+    user with `ALTER USER ... SET RSA_PUBLIC_KEY` (unless that slot already holds it; another
+    key there is replaced only when you confirm), verifies a key-pair connection, and writes
+    the settings to `.env`: role, warehouse and database from the project roles granted to you,
+    never from the login session. `--slot 2` uses `RSA_PUBLIC_KEY_2` for rotation, `--passphrase`
     encrypts the private key. The walkthrough is on
     [Snowflake authentication](../getting-started/snowflake-auth.md).
 
@@ -115,7 +128,10 @@ Service users
     with `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`, and grants the roles through a
     `create: false` file in `terraform/config/users/`. The Terraform user itself is bootstrapped
     the same way: `just sf keygen terraform`, then the key goes into
-    `modules/snowflake/init.sql`.
+    `modules/snowflake/init.sql`. It holds `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, so
+    encrypt its key (`just sf keygen terraform --passphrase`, passed on through
+    `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE`) and restrict where it logs in from with a network
+    policy ([Securing the Terraform user](../administration/snowflake-provisioning.md#securing-the-terraform-user)).
 
 What ends up in an engineer's `.env`:
 
@@ -131,8 +147,10 @@ SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV
 SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 ```
 
-No quotes around values: `just` passes them literally. `*.p8` and `*.pub` files are
-git-ignored, and so is `.env`. A deployed environment fills the same variables with the
+Values are bare, or in single quotes when they hold special characters: `just` and
+python-dotenv strip single quotes, Docker's `--env-file` does not. `*.p8` and `*.pub` files are
+git-ignored, and so is `.env`; `just sf setup` makes the private key and `.env` readable by you
+only (mode 600, or an owner-only ACL on Windows). A deployed environment fills the same variables with the
 service user, its key, `RL_<PROJECT>_PRD__TFM` or `__ING`, and `ENVIRONMENT=prd`.
 
 ## One settings reader
@@ -145,7 +163,7 @@ needs:
 
 | Method | Returns | Used by |
 |--------|---------|---------|
-| `schema_for_layer(layer)` | `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` when `is_personal` (`dev`, `dummy`) | dlt's `source_dataset()`, `just sf check` |
+| `schema_for_layer(layer)` | `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` when `is_personal` (`dev`, `dummy`; `DBT_<LAYER>` when the prefix is blank) | dlt's `source_dataset()`, `just sf check` |
 | `connection_kwargs()` / `connect()` | Arguments for `snowflake.connector.connect`, with the private key loaded as unencrypted PKCS#8 DER | `scripts/snowflake.py` (`check`, `query`) |
 | `dlt_credentials()` | The dict dlt's Snowflake destination expects | `dlt_pipelines/utils/destination.py` |
 

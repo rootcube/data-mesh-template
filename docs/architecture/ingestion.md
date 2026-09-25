@@ -93,7 +93,9 @@ may not create. `snowflake_destination()` sets `staging_dataset_name_layout` to 
 layer instead: `_TMP` in the shared environments, your personal `<SNOWFLAKE_SCHEMA>_TMP` in
 `dev`. The ingest role holds `CREATE TABLE` and the table privileges there
 (`terraform/config/roles/ingest.yaml`); the tables carry the source table's name and are
-overwritten on the next load.
+emptied after each successful load (`truncate_staging_dataset` in `.dlt/config.toml`), so raw
+source rows do not linger in the shared temporary layer. A failed load leaves them until the
+next successful one.
 
 To start over, drop the source's tables and state in the destination before loading:
 
@@ -138,7 +140,9 @@ def source_dataset() -> str:
 identifier, user name, private key path and passphrase, role, warehouse and database.
 `schema_for_layer("src")` applies the platform's schema rule: the dataset is `_SRC` in the
 shared environments and `<SNOWFLAKE_SCHEMA>_SRC` (for example `DBT_USERNAME_SRC`) in `dev`, one of
-the personal schemas Terraform provisions for every engineer (`terraform/personal.tf`).
+the personal schemas Terraform provisions for every engineer (`terraform/personal.tf`). With a
+blank `SNOWFLAKE_SCHEMA` it is the unprovisioned placeholder `DBT_SRC`, so the load fails instead
+of writing into the shared `_SRC`.
 
 `stage_name` is where the load files go. dlt writes each load as JSONL files under
 `.dlt/data/`, uploads them with `PUT` and loads the table with `COPY INTO`. Without a
@@ -192,6 +196,9 @@ workers = 2
 
 [load]
 workers = 2
+# `merge` staging tables live in the shared temporary layer (_TMP); empty them after each load so
+# raw source rows do not linger where analysts can read them (dlt keeps them by default).
+truncate_staging_dataset = true
 ```
 
 dlt finds this file because the justfile and `.envrc` set `DLT_PROJECT_DIR` to the repository

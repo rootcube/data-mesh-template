@@ -21,10 +21,10 @@ instance.
 
 | File | Covers |
 |------|--------|
-| `tests/test_snowflake_settings.py` | `SnowflakeSettings.from_env()`: prefixed variables, blank values, `missing()`, `dlt_credentials()`, `schema_for_layer()` in dev and in `prd` |
-| `tests/test_keypair.py` | `scripts/snowflake.py`: key generation, PKCS#8 output, passphrase encryption |
-| `tests/test_dotenv.py` | `update_env_file()`: in-place replacement, appending, creating the file |
-| `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` source |
+| `tests/test_snowflake_settings.py` | `SnowflakeSettings.from_env()`: prefixed variables, blank values, `missing()`, `dlt_credentials()`, `schema_for_layer()` in dev (a blank prefix falls back to `DBT_<LAYER>`, never `_<LAYER>`) and in `prd` |
+| `tests/test_keypair.py` | `scripts/snowflake.py`: key generation, PKCS#8 output, passphrase encryption, key fingerprints and the replace prompt, key rotation with `.bak` files, schema prefix rules, context discovery, `init.sql` and `account_settings.sql` |
+| `tests/test_dotenv.py` | `update_env_file()`: in-place replacement of every line of a key, appending, creating the file, bare versus single-quoted values, refusing values `.env` cannot hold |
+| `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` source; the load stage, merge staging in the temporary layer and `truncate_staging_dataset` from `.dlt/config.toml` |
 
 Conventions for new tests: a `test_<module>.py` next to these, plain functions, `tmp_path` for
 files, no network. Logic worth testing lives in plain functions (a date chunker, a settings
@@ -73,8 +73,9 @@ fail the same way.
 
 Dagster's CLI marks `dagster definitions validate` as superseded by `dg check defs`, which
 only loads the project's `defs_module` from `pyproject.toml` and ignores `workspace.yaml`. The
-recipe, the pre-commit hook and CI keep the old command and silence that one warning through
-`PYTHONWARNINGS`.
+recipe (which the pre-commit hook runs) and CI keep the old command and silence that one warning
+through `PYTHONWARNINGS`, next to the global Snowflake connector filter; `just validate` works the
+same in PowerShell.
 
 ## `just check`
 
@@ -105,13 +106,13 @@ The hooks in `.pre-commit-config.yaml`:
 | `ruff-format`, `ruff-check --fix` | ruff | `*.py` |
 | `ty-check` | `ty check` (whole project) | any `*.py` change |
 | `dbt-parse` | `dbt parse --target dummy` in every project | `dbt/**/*.sql`, `.yml`, `.yaml`, `.csv`, `.py` |
-| `sqlfluff-lint` | `sqlfluff lint models` in `dbt/dbt_example` | `dbt/dbt_example/models/**/*.sql` |
-| `dagster-validate` | `dagster definitions validate -w workspace.yaml` | `src/**` and `dlt_pipelines/**` `.py`/`.yaml` |
+| `sqlfluff-lint` | `just sqlfluff lint models` (inside `dbt/dbt_example`) | `dbt/dbt_example/models/**/*.sql` |
+| `dagster-validate` | `just validate` | `src/**` and `dlt_pipelines/**` `.py`/`.yaml` |
 | `terraform-fmt` | `terraform fmt -recursive terraform` | `*.tf` (needs the `terraform` binary, so in practice administrators) |
 | `validate-configs` | `validate_configs.py` (schemas and cross-references) | `terraform/config/**` `.yaml`/`.json` |
 
 `detect-private-key` is there for a reason: the `.p8` files stay under `~/.snowflake/keys/`, never
-in the repo.
+in the repo. The two hooks that call `just` need it on the `PATH`, also for a commit from an IDE.
 
 !!! danger "Never bypass the hooks"
     `git commit --no-verify` is off-limits. Fix the issue; CI runs the same checks and fails
@@ -124,12 +125,13 @@ parallel:
 
 | Job | Steps |
 |-----|-------|
-| Python | `uv sync`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
+| Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
 | dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
-| Docs | `zensical build --strict` |
+| Docs | `uv sync --locked --group docs`, `zensical build --strict` |
 
-CI has no Snowflake credentials. Everything it does works with the `dummy` target and an empty
+Every job installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after changing
+dependencies, run `uv lock` and commit `uv.lock`. CI has no Snowflake credentials. Everything it does works with the `dummy` target and an empty
 `DAGSTER_HOME`; that is the design constraint behind the `dummy` target and the lazy credential
 checks in dlt and the Dagster resource.
 

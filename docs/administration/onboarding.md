@@ -12,14 +12,16 @@ pair for themselves with `just sf setup`; for a service user you register it.
 
 ### 1. Describe the user
 
-Create `terraform/config/users/<name>.yaml`. The file name is only the Terraform key; the
-starter ships one user file under `terraform/config/users/` to copy from:
+Create `terraform/config/users/<name>.yaml`. The file name is only the Terraform key, also in a
+sub-folder, so two user files may not share a name; the starter ships one user file under
+`terraform/config/users/` to copy from. `just sf bootstrap` writes the file for your own login
+to `terraform/config/users/local/<login>.yaml`, which git ignores: that login exists in your
+account only.
 
 ```yaml
 login: "username@example.com"   # exact, as CURRENT_USER() returns it
 name: "Username"
-type: "person"
-create: false                  # true creates the user with a one-time password
+create: false                  # true creates the user (a person) with a one-time password
 roles:
   - project: example           # file name under config/projects
     role: engineer             # file name under config/roles
@@ -34,8 +36,7 @@ The fields, from `terraform/config/_validation/schemas/user.schema.json`:
 | `login` | yes | Snowflake login name. For SSO accounts this is the existing login. |
 | `name` | no | Display name, stored as the user comment. |
 | `email` | no | Only used when creating the user. |
-| `type` | no | `person` (default) or `service`. |
-| `create` | no | `false` (default): the login exists already, only the grants are made. `true`: create the user; persons get a one-time password they must change at first login. |
+| `create` | no | `false` (default): the login exists already, only the grants are made. `true`: create the user as a person, with a one-time password they must change at first login. Service users are created by hand ([below](#a-service-user)). |
 | `schema_prefix` | no | Prefix of the personal schemas (`<PREFIX>_SRC`, ...) and of `SNOWFLAKE_SCHEMA` in `.env`. Default: `DBT_` plus the login before the `@`, non-alphanumerics as `_`, uppercased. |
 | `disabled` | no | `true` removes the grants on the next apply, and drops the user if Terraform created it. |
 | `roles` | yes | One entry per project role: `project`, `role`, optional `environments`. |
@@ -61,10 +62,12 @@ created persons, hand out the password from `just tf output -json initial_passwo
 forces a change at the first login.
 
 !!! note "Defaults on the user"
-    Terraform sets no default role, warehouse or database on the user. `just sf setup`
-    proposes whatever Snowflake reports for the login, so tell the person the three names
-    (`RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV` and `DB_EXAMPLE_DEV` in the starter project), or set
-    them once with `ALTER USER ... SET DEFAULT_ROLE = ... DEFAULT_WAREHOUSE = ... DEFAULT_NAMESPACE = ...`.
+    Terraform sets a default role, warehouse and database only on the users it creates
+    (`create: true`): those of their first role assignment. `just sf setup` does not rely on
+    them: it derives role, warehouse and database from the project roles granted to the login
+    (the engineer role in development first) and never stores a system role such as
+    `ACCOUNTADMIN`. A person without a granted project role gets them empty, with a warning
+    that points here; once your apply has granted the role, they run `just sf context`.
 
 ### 3. What the person runs
 
@@ -78,7 +81,9 @@ just start
 
 `just sf setup` logs in once (browser SSO, or `--auth password`), writes an RSA key pair
 to `~/.snowflake/keys/`, registers the public key on the person's own user with
-`ALTER USER ... SET RSA_PUBLIC_KEY`, verifies the key-pair login and writes `.env`. The engineer
+`ALTER USER ... SET RSA_PUBLIC_KEY` (it compares fingerprints first: a slot that already holds
+the key is left alone, another key there is replaced only when the person confirms), verifies
+the key-pair login and writes `.env`. The engineer
 side of this is [Snowflake authentication](../getting-started/snowflake-auth.md).
 
 ### 4. What ends up in their `.env`
@@ -190,8 +195,7 @@ Deployed environments run dlt and dbt as system users: the `ingest` role
     ```
 
     With `ENVIRONMENT=prd` the layer schemas are the provisioned `_SRC`, `_STG`, ...; dbt puts
-    anything without a layer into `_TMP`, the profile's default when `SNOWFLAKE_SCHEMA` is
-    empty.
+    anything without a layer into `_TMP`, its fallback when `SNOWFLAKE_SCHEMA` is empty.
 
 !!! note "Warehouse grants of the system roles"
     `ingest` and `transform` receive warehouse privileges on the `default` compute and on their

@@ -110,7 +110,7 @@ today; keep it that way if you can.
 | Constants | `UPPER_SNAKE_CASE` | `ENV_PREFIX`, `DAYS_BACK`, `STATIONS`, `SOURCE_LAYER` |
 | Classes | `PascalCase` | `SnowflakeSettings` |
 | Functions, methods, variables | `lower_snake_case` | `build_dbt_defs`, `fetch_hourly_observations`, `schema_for_layer` |
-| Module-private names | `_` prefix | `_build_defs`, `_chmod`, `_PROJECT_ROOT` |
+| Module-private names | `_` prefix | `_build_defs`, `_PROJECT_ROOT` |
 | Booleans | `is_` / `has_` prefix | `is_personal`, `is_encrypted` |
 
 Imports are ordered stdlib, third-party, local, each group separated by a blank line (ruff's `I`
@@ -167,8 +167,9 @@ class SnowflakeSettings:
 
 - Catch **specific exception types**, never a bare `except`. Where a broad catch is unavoidable,
   say why on the same line: `except Exception as exc:  # noqa: BLE001 - ...`.
-- Degrade gracefully only where that is the right call (`_chmod` in `scripts/snowflake.py`
-  swallows `OSError` on Windows and says so in a comment); fail loudly everywhere else.
+- Degrade gracefully only where that is the right call (`restrict_to_owner` in
+  `scripts/snowflake.py` warns instead of failing when `icacls` cannot restrict a file on
+  Windows); fail loudly everywhere else.
 - Utility modules log through the `logging` module; Dagster assets use `context.log`.
 
 ```python title="dlt_pipelines/pipelines/ingest/knmi/source.py"
@@ -220,8 +221,9 @@ Dagster code locations
 
 `.env` editing
 :   `update_env_file()` in `src/orchestrator/utils/dotenv.py` rewrites `KEY=value` lines and keeps
-    comments and ordering. Values are written unquoted on purpose: `just` passes quoted values
-    literally.
+    comments and ordering. Values are written bare when they hold only `[A-Za-z0-9_./:@+,=-]`,
+    otherwise in single quotes, which `just` and python-dotenv both strip; values single quotes
+    cannot carry for both readers raise `ValueError`.
 
 ## Python or SQL?
 

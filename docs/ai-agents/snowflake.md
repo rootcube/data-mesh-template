@@ -22,18 +22,18 @@ Platform administrators provision everything with Terraform from the YAML under 
 
 Owners follow Snowflake's recommendation (`terraform/providers.tf`): `SYSADMIN` creates and owns databases, schemas, stages and warehouses, `SECURITYADMIN` the roles and every grant, `USERADMIN` the users; every project role is granted to `SYSADMIN`.
 
-`terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep one day of Time Travel unless the module is told otherwise.
+`terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep 30 days of Time Travel in `prd`, 7 in `acc` and one elsewhere (the database module); their schemas inherit it.
 
 The four purposes, from `terraform/config/roles/`:
 
 | Role | Purpose code | Type | What it may do |
 |---|---|---|---|
-| Engineer | `ENG` | person | Full read and write on every layer in `dev` and on the personal schemas there (the `personal` block; no `CREATE SCHEMA`); read-only on the layers in `prd`; read and write on `_TMP` everywhere. Inherits `transform` and `ingest` in `dev` and `tst`, `analyst` everywhere. |
-| Analyst | `ANL` | person | Read on `_MRT` and `_EXP`, read and write on `_TMP`, `USAGE` on the default warehouse. |
+| Engineer | `ENG` | person | Full read and write on every layer in `dev` and on the personal schemas there (the `personal` block; no `CREATE SCHEMA`); read-only on the layers in `prd`; read and write on `_TMP` in `dev` and `tst`, only scratch space there elsewhere (`USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`). Inherits `transform` and `ingest` in `dev` and `tst`, `analyst` everywhere. |
+| Analyst | `ANL` | person | Read on `_MRT` and `_EXP`, scratch space in `_TMP` (`USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`: it owns what it creates, no write on other roles' tables), `USAGE` on the default warehouse. |
 | Ingest | `ING` | system | Write on `_SRC`, plus tables in `_TMP` for the staging tables of `merge` loads: what dlt runs as in deployed environments. |
-| Transform | `TFM` | system | Read on `_SRC`, write on `_STG` to `_EXP`, `_REF`, `_MTD`, `_TMP`: what dbt runs as in deployed environments. |
+| Transform | `TFM` | system | Read on `_SRC` (with `READ` and `WRITE` on its stages, for the stage refresh), write on `_STG` to `_EXP`, `_REF`, `_MTD`, `_TMP`: what dbt runs as in deployed environments. |
 
-Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/init.sql`, created once as `ACCOUNTADMIN`: the service user `TERRAFORM_USER` (key pair only, no password) with the system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The same script sets the account parameters: `TIMEZONE = 'UTC'`, ISO weeks starting on Monday, ISO 8601 output formats, and security and cost defaults. The provider authenticates as that user with `TF_VAR_SNOWFLAKE_*` from `.env` (the commented block at the bottom of `.env.example`).
+Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/init.sql`, created once as `ACCOUNTADMIN`: the service user `TERRAFORM_USER` (key pair only, no password) with the system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The account parameters live apart, in `terraform/modules/snowflake/account_settings.sql`: `TIMEZONE = 'UTC'`, ISO weeks starting on Monday, ISO 8601 output formats, and security and cost defaults; `just sf bootstrap` lists them and asks before applying them (`--account-settings ask|apply|skip`). The provider authenticates as that user with `TF_VAR_SNOWFLAKE_*` from `.env` (the commented block at the bottom of `.env.example`).
 
 ## Development: personal schemas in a shared database
 
@@ -50,9 +50,9 @@ Every engineer holds `RL_<PROJECT>_DEV__ENG` on the same `DB_<PROJECT>_DEV`. To 
 
 Three pieces of code implement that one rule; keep them in step:
 
-- `SnowflakeSettings.schema_for_layer(layer)` in `src/orchestrator/resources/snowflake.py`: `<SNOWFLAKE_SCHEMA>_<LAYER>` when `ENVIRONMENT` is `dev` (or `dummy`) and a prefix is set, else `_<LAYER>`. dlt uses it for `dataset_name`.
+- `SnowflakeSettings.schema_for_layer(layer)` in `src/orchestrator/resources/snowflake.py`: `<SNOWFLAKE_SCHEMA>_<LAYER>` when `ENVIRONMENT` is `dev` (or `dummy`), `DBT_<LAYER>` there when the prefix is blank (the unprovisioned placeholder, so the load fails loudly), else `_<LAYER>`. dlt uses it for `dataset_name`.
 - `dbt_common.generate_schema_name` in `dbt/dbt_common/macros/generate_schema_name.sql`: the same, keyed on `target.name` and `target.schema`.
-- The `schema` expression in `dbt/dbt_example/sources/src_knmi.yml`, spelled out with `env_var` because source YAML cannot call macros.
+- The `schema` expression in `dbt/dbt_example/sources/src_knmi.yml`, spelled out from `target.name` and `target.schema` because source YAML cannot call macros.
 
 !!! note "Qualify with the schema, not the database"
     Your session database is the project database, so `dbt_username_src.knmi__climate_hourly` or `dbt_username_stg.stg__knmi__climate_hourly` is enough in `dev`. Fully qualified: `DB_EXAMPLE_DEV.DBT_USERNAME_STG.STG__KNMI__CLIMATE_HOURLY`. Snowflake folds unquoted identifiers to upper case, so `dbt_username_stg` and `DBT_USERNAME_STG` are the same schema.
@@ -74,15 +74,15 @@ Layer semantics and materialization defaults: [Layers in practice](../architectu
 
 Authentication is key pair only, no passwords in files:
 
-- `just sf setup` does the one-time interactive login (browser by default, `--auth password` for password plus MFA), writes an RSA 2048 key pair to `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key with `ALTER USER ... SET RSA_PUBLIC_KEY`, verifies key-pair login (with a few retries, a fresh key can take a moment), asks you to confirm role, warehouse, database and personal schema prefix (defaults from your user's settings; the prefix from `schema_prefix` in your `terraform/config/users/` file, else `DBT_<first part of your login>`), and writes `.env` including `ENVIRONMENT`. `--slot 2` registers into `RSA_PUBLIC_KEY_2` for rotation; `--passphrase` encrypts the private key; `--yes` skips the confirmation.
+- `just sf setup` does the one-time interactive login (browser by default, `--auth password` for password plus MFA), writes an RSA 2048 key pair to `~/.snowflake/keys/<account>__<user>.p8` and `.pub`, registers the public key with `ALTER USER ... SET RSA_PUBLIC_KEY` (skipped when the slot already holds it; another key there is replaced only when you confirm), verifies key-pair login (with a few retries, a fresh key can take a moment), asks you to confirm role, warehouse, database and personal schema prefix (role, warehouse and database from the project roles granted to you, never from the login session; the prefix from `schema_prefix` in your `terraform/config/users/` file, else `DBT_<first part of your login>`), and writes `.env` including `ENVIRONMENT`. `--slot 2` registers into `RSA_PUBLIC_KEY_2` for rotation; `--passphrase` encrypts the private key; `--yes` skips the confirmation.
 - `just sf check` connects with the key pair and prints organization, account, user, role, warehouse, database, schema and version, the schemas that exist in your database, and the layer schemas it resolves for your environment.
 - `just sf query "SELECT 1"` runs one statement (`--limit 50` rows by default).
 - `just sf keygen <name>` creates a key pair without logging in and prints the public key body, for service users: `just sf keygen terraform` is step one of the administrator bootstrap; the ingest and transform system users of deployed environments get theirs the same way.
 
 The walkthrough: [Snowflake authentication](../getting-started/snowflake-auth.md); every variable: [Environment variables](../reference/environment-variables.md); onboarding people and system users: [Onboarding](../administration/onboarding.md).
 
-!!! warning "No quotes in `.env`"
-    `just` and Docker pass quoted values literally, which breaks identifiers and the key path. `just sf setup` writes the file unquoted; keep it that way when editing by hand.
+!!! warning "Quoting in `.env`"
+    `just` and python-dotenv strip single quotes and read the value inside literally, so values with special characters go in single quotes; Docker `--env-file` keeps the quotes as part of the value. `just sf setup` writes a value bare when it holds only letters, digits and `_./:@+,=-`, single-quoted otherwise, and refuses a single quote, a line break, `\\`, `\'`, a trailing backslash or `${`.
 
 ## Shared macros
 
@@ -90,7 +90,7 @@ Snowflake-specific machinery lives in `dbt/dbt_common/macros/`, picked up by eve
 
 | Macro | Purpose |
 |---|---|
-| `generate_schema_name` | The layer-to-schema rule: `<target.schema>_<LAYER>` on the `dev` and `dummy` targets, `_<LAYER>` elsewhere, `target.schema` when a model has no `+schema`. Overrides dbt's default `<target>_<custom>` naming. |
+| `generate_schema_name` | The layer-to-schema rule: `<target.schema>_<LAYER>` on the `dev` and `dummy` targets, `_<LAYER>` elsewhere, `target.schema` when a model has no `+schema`; a blank `target.schema` becomes `DBT` on `dev` and `dummy`, `_TMP` elsewhere. Overrides dbt's default `<target>_<custom>` naming. |
 | `set_query_tag` | Tags every session with `dbt_invocation_id:<invocation_id>`, so a whole run is one filter in the query history. |
 | `log_run_info` | `on-run-start` banner: invocation id, target, organization, account, database, warehouse, threads, user, plus Snowsight links to the catalog and to the run's queries by tag. |
 | `log_run_summary` | `on-run-end` summary: totals by status, slowest models, failed tests, total runtime. |
@@ -124,7 +124,7 @@ just sf query "SHOW TABLES IN SCHEMA dbt_username_mtd"                        # 
 
 ## What an agent may touch on the administrator side
 
-Editing `terraform/config/*.yaml` is safe and checkable: `just tf-validate-config` validates every file against its JSON schema and the cross-references. A new project is a copy of `projects/example.yaml` with its own `code`; a new person is a file under `users/` listing project roles per environment (optionally a `schema_prefix`); their personal schemas exist only once it is applied. Anything beyond that (`just tf plan`, `just tf apply`, `init.sql`, registering keys on other users) is a human administrator's call; describe the change and stop.
+Editing `terraform/config/*.yaml` is safe and checkable: `just tf-validate-config` validates every file against its JSON schema and the cross-references. A new project is a copy of `projects/example.yaml` with its own `code`; a new person is a file under `users/` listing project roles per environment (optionally a `schema_prefix`); their personal schemas exist only once it is applied. Anything beyond that (`just tf plan`, `just tf apply`, `init.sql`, `account_settings.sql`, registering keys on other users) is a human administrator's call; describe the change and stop.
 
 ## Source files
 
@@ -134,7 +134,7 @@ Editing `terraform/config/*.yaml` is safe and checkable: `just tf-validate-confi
 - Shared dbt profiles: `dbt/profiles.yml`
 - Schema routing: `dbt/dbt_common/macros/generate_schema_name.sql`
 - Metadata upload: `dbt/dbt_common/macros/dbt_artifacts/`
-- Provisioning (administrators): `terraform/main.tf`, `terraform/users.tf`, `terraform/personal.tf`, `terraform/stages.tf`, `terraform/providers.tf`, `terraform/config/`, `terraform/modules/snowflake/init.sql`
+- Provisioning (administrators): `terraform/main.tf`, `terraform/users.tf`, `terraform/personal.tf`, `terraform/stages.tf`, `terraform/providers.tf`, `terraform/config/`, `terraform/modules/snowflake/init.sql`, `terraform/modules/snowflake/account_settings.sql`
 
 ## Related pages
 
