@@ -4,14 +4,19 @@
     Layers map to schemas of the project database DB_<PROJECT>_<ENV>. In the shared environments
     (tst, acc, prd) a layer's schema is `_<LAYER>`, provisioned by Terraform. In development
     every engineer works in personal schemas: `<target.schema>_<LAYER>`, created on demand,
-    so several people share one development database without stepping on each other.
+    so several people share one development database without stepping on each other. A blank
+    target.schema (SNOWFLAKE_SCHEMA set but empty) falls back to DBT in development and to _TMP
+    elsewhere, so it never lands in the shared `_<LAYER>` schemas by accident.
 
-    | target  | target.schema | +schema | Result        |
-    |---------|---------------|---------|---------------|
-    | dev     | DBT_USERNAME      | stg     | DBT_USERNAME_STG  |
-    | dev     | DBT_USERNAME      | (none)  | DBT_USERNAME      |
-    | prd     | _TMP          | stg     | _STG          |
-    | prd     | _TMP          | (none)  | _TMP          |
+    | target  | target.schema | +schema | Result           |
+    |---------|---------------|---------|------------------|
+    | dev     | DBT_USERNAME  | stg     | DBT_USERNAME_STG |
+    | dev     | DBT_USERNAME  | (none)  | DBT_USERNAME     |
+    | dev     | (blank)       | stg     | DBT_STG          |
+    | dev     | (blank)       | (none)  | DBT              |
+    | prd     | _TMP          | stg     | _STG             |
+    | prd     | _TMP          | (none)  | _TMP             |
+    | prd     | (blank)       | (none)  | _TMP             |
 
     To use it, a consuming project lists dbt_common in its dispatch search order:
 
@@ -23,11 +28,12 @@
 {% macro generate_schema_name(custom_schema_name, node) -%}
 
     {%- set personal = target.name | trim | lower in ['dev', 'dummy'] -%}
+    {%- set base_schema = (target.schema | trim | upper) or ('DBT' if personal else '_TMP') -%}
 
     {%- if custom_schema_name is none -%}
-        {{ target.schema | trim | upper }}
+        {{ base_schema }}
     {%- elif personal -%}
-        {{ target.schema | trim | upper }}_{{ custom_schema_name | trim | upper }}
+        {{ base_schema }}_{{ custom_schema_name | trim | upper }}
     {%- else -%}
         _{{ custom_schema_name | trim | upper }}
     {%- endif -%}

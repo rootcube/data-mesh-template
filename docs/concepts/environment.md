@@ -59,13 +59,16 @@ only use them. The provisioned `_<LAYER>` schemas exist in `dev` too; the other 
 only those.
 
 The rule is implemented twice, once in Python and once in Jinja, and the dbt source YAML
-repeats it with `env_var`:
+repeats it from the dbt `target`:
 
 | Where | Personal (`dev`) | Shared (`tst`, `acc`, `prd`) |
 |-------|------------------|------------------------------|
 | `SnowflakeSettings.schema_for_layer()` in `src/orchestrator/resources/snowflake.py` | `<SNOWFLAKE_SCHEMA>_<LAYER>` | `_<LAYER>` |
 | `dbt_common.generate_schema_name` | `<target.schema>_<LAYER>` | `_<LAYER>` |
-| `dbt/dbt_example/sources/src_knmi.yml` | `<SNOWFLAKE_SCHEMA>_SRC` | `_SRC` |
+| `dbt/dbt_example/sources/src_knmi.yml` | `<target.schema>_SRC` | `_SRC` |
+
+A blank `SNOWFLAKE_SCHEMA` in `dev` does not fall through to the shared schemas: all three use
+the placeholder prefix `DBT` (`DBT_SRC`, `DBT_STG`), which nobody has, so they fail loudly.
 
 ## In the repo
 
@@ -77,7 +80,8 @@ repeats it with `env_var`:
   threads and the `_<LAYER>` schemas.
 - `SnowflakeSettings.from_env()`: `is_personal` is true for `dev` (and for `dummy`), which
   switches the dlt dataset and the Dagster resource to personal schemas.
-- `src_knmi.yml`: the source schema expression above.
+- `src_knmi.yml`: the source schema expression above, through the dbt target (so `DBT_TARGET`
+  moves it along with the models).
 
 The rest of the connection (`SNOWFLAKE_ROLE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_WAREHOUSE`) has to
 match the environment: `RL_EXAMPLE_DEV__ENG`, `DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV` for `dev`.

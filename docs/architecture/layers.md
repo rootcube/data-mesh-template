@@ -67,12 +67,14 @@ dispatch:
 Models without any `+schema` land in `target.schema`: your prefix in `dev`, and `_TMP` in the
 shared environments (the `profiles.yml` fallback when `SNOWFLAKE_SCHEMA` is unset). Nothing
 should end up there; in `dev` Terraform does not provision the bare prefix, so such a model fails.
+A blank `SNOWFLAKE_SCHEMA` falls back to the placeholder prefix `DBT` in `dev` (`DBT_STG`, which
+nobody has, so the run fails loudly) and to `_TMP` elsewhere.
 
 Source YAML cannot call macros, so `dbt/dbt_example/sources/src_knmi.yml` spells the rule out
-with `env_var`:
+from the same dbt `target`:
 
 ```yaml title="dbt/dbt_example/sources/src_knmi.yml (excerpt)"
-schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
 ```
 
 Keep the two in step when you touch either.
@@ -232,8 +234,10 @@ flowchart LR
 
 `int__common__date` generates a window of ten calendar years back and ten forward around the
 current year; `int__common__calendar` decorates it with ISO weeks, month and weekday labels
-and the public holidays of the `holiday_country` var; `int__common__time` is one row per second
-of the day.
+and the public holidays of the country in the `holiday_country` model config (`NL` by default;
+a literal the consuming project sets in its `dbt_project.yml` under
+`models: dbt_common: 03_int: common: int__common__holiday:`, not a var); `int__common__time` is
+one row per second of the day.
 `int__common__holiday` is a Python (Snowpark) model that imports the `holidays` package from
 the Snowflake Anaconda channel, which an `ORGADMIN` has to accept once per account. If that is
 not possible, disable the model in `dbt/dbt_example/dbt_project.yml` as shown in

@@ -5,6 +5,9 @@
 # in each developer's personal source schema (`<PREFIX>_SRC.ST_DEFAULT`, personal.tf),
 # so load files never mix between people. Owned by SYSADMIN; READ/WRITE come from the
 # future grants on stages in the layer privileges of the roles, hence the depends_on.
+# dbt's on-run-start ALTER STAGE ... REFRESH (dbt_common refresh_stages) runs with READ
+# and WRITE ON STAGES, as the engineer role holds on the personal stages; USAGE ON
+# STAGES is an external-stage privilege and does not cover these internal stages.
 # -----------------------------------------------------------------------------
 
 locals {

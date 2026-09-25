@@ -84,7 +84,9 @@ Disabled entries are dropped
     the compute `default`.
 
 The project `code` becomes part of every Snowflake name and must be lowercase letters, digits
-and underscores, starting with a letter (checked by the database module).
+and underscores, starting with a letter (checked by the database module). It must also equal
+the file name: Terraform names the objects after the file name (`projects/example.yaml` gives
+`DB_EXAMPLE_*`), and `just tf-validate-config` rejects a `code` that differs.
 
 The Project also has a footprint outside `terraform/`:
 
@@ -111,11 +113,14 @@ For every environment the project lists, Terraform creates:
 
 The database module drops the default `PUBLIC` schema, so a project database holds layer
 schemas only (plus, in `dev`, the personal schemas Terraform creates per engineer). Time Travel
-retention is the module default of one day.
+retention is set on the database, 30 days in `prd`, 7 in `acc` and one day elsewhere, and the
+schemas inherit it. Databases carry `prevent_destroy`: a plan that would drop one, such as
+removing an environment from the project, fails until an administrator lifts it
+([Snowflake provisioning](../administration/snowflake-provisioning.md)).
 
 ## Adding a project
 
-Copy `projects/example.yaml` with a new `code`, then copy `dbt/dbt_example` and
+Copy `projects/example.yaml` to `projects/<code>.yaml` with that `code`, then copy `dbt/dbt_example` and
 `src/orchestrator/locations/dbt/dbt_example`, and add one block to `workspace.yaml`. Exactly one
 project builds the `dbt_common` models. The walkthrough is
 [Adding a project](../development/adding-projects.md).

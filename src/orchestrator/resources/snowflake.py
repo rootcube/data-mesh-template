@@ -6,7 +6,10 @@ pair and registers the public key on your user.
 
 Layers map to schemas of the project database (DB_<PROJECT>_<ENV>): `_<LAYER>` in every
 environment except `dev`, where each developer works in personal schemas prefixed with their
-SNOWFLAKE_SCHEMA (`<PREFIX>_<LAYER>`), so several people share one development database.
+SNOWFLAKE_SCHEMA (`<PREFIX>_<LAYER>`), so several people share one development database. A blank
+SNOWFLAKE_SCHEMA in dev falls back to the prefix `DBT`, as dbt does (dbt/profiles.yml,
+dbt_common.generate_schema_name): nobody provisions `DBT_<LAYER>`, so a missing prefix fails loudly
+instead of writing into the shared `_<LAYER>` schemas of the development database.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from cryptography.hazmat.primitives import serialization
 ENV_PREFIX = "SNOWFLAKE_"
 APPLICATION = "DATA_MESH_STARTER"
 PERSONAL_ENVIRONMENTS = ("dev", "dummy")
+PLACEHOLDER_PREFIX = "DBT"  # the dev prefix when SNOWFLAKE_SCHEMA is blank; dbt/profiles.yml defaults to the same
 
 
 @dataclass(frozen=True)
@@ -63,10 +67,13 @@ class SnowflakeSettings:
         return self.environment in PERSONAL_ENVIRONMENTS
 
     def schema_for_layer(self, layer_code: str) -> str:
-        """The schema a layer lives in: `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` in dev."""
+        """The schema a layer lives in: `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` in dev.
+
+        Without SNOWFLAKE_SCHEMA, dev resolves to the unprovisioned `DBT_<LAYER>`, never the shared `_<LAYER>`.
+        """
         layer = layer_code.strip("_").upper()
-        if self.is_personal and self.schema:
-            return f"{self.schema.upper()}_{layer}"
+        if self.is_personal:
+            return f"{(self.schema or PLACEHOLDER_PREFIX).upper()}_{layer}"
         return f"_{layer}"
 
     def missing(self, names: tuple[str, ...] = REQUIRED) -> list[str]:

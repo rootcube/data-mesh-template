@@ -40,14 +40,15 @@ Installed once with `just pre-commit-install`, they fire on every `git commit` (
 | `ruff format`, `ruff check --fix` | Python formatting and lint | `*.py` |
 | `ty check` | Whole-project type check | Any `*.py` change |
 | `dbt parse` | `scripts/dbt_all.py parse --target dummy --quiet`: every project must parse without credentials | `dbt/**/*.{sql,yml,yaml,csv,py}` |
-| `sqlfluff lint` | `cd dbt/dbt_example && sqlfluff lint models` | `dbt/dbt_example/models/**/*.sql` |
-| `dagster definitions validate` | Every code location must load | `src/**` and `dlt_pipelines/**` (`*.py`, `*.yaml`) |
+| `sqlfluff lint` | `just sqlfluff lint models`: the recipe runs inside `dbt/dbt_example` with `DBT_PROFILES_DIR` set, on every OS | `dbt/dbt_example/models/**/*.sql` |
+| `dagster definitions validate` | `just validate`: every code location must load | `src/**` and `dlt_pipelines/**` (`*.py`, `*.yaml`) |
 | `terraform fmt` | `terraform fmt -recursive terraform` | `*.tf` |
-| `validate-configs` | `terraform/config/_validation/validate_configs.py`: every YAML matches its JSON schema, references resolve, required layers, environments, computes and roles are present | `terraform/config/**/*.{yaml,json}` |
+| `validate-configs` | `terraform/config/_validation/validate_configs.py`: every YAML (sub-folders included) matches its JSON schema, references resolve, required layers, environments, computes and roles are present, a project's `code` equals its file name, users name existing projects, roles and environments, and no two user files share a name | `terraform/config/**/*.{yaml,json}` |
 
 Details agents trip over:
 
-- **The sqlfluff hook is hard-wired to `dbt/dbt_example`.** A second dbt project needs its own hook entry; the `.sqlfluff` config in `dbt/` is shared. See [adding a project](../development/adding-projects.md).
+- **The sqlfluff hook is hard-wired to `dbt/dbt_example`.** A second dbt project needs its own hook entry (`just project=dbt_x sqlfluff lint models`); the `.sqlfluff` config in `dbt/` is shared. See [adding a project](../development/adding-projects.md).
+- **The sqlfluff and Dagster hooks call `just`.** A commit needs `just` on the `PATH`, also when an IDE runs the hooks; in return they work the same on Windows, where no `bash` or `env` is at hand.
 - **`dbt parse` needs packages.** The hook and the Dagster validation both parse the dbt projects; without `just dbt-all deps` they fail before your change is even looked at.
 - **`just pre-commit` runs with `.env` loaded** (`just` loads it into every recipe), so the Dagster hook parses dbt with whatever `DBT_TARGET` says, and `ENVIRONMENT` when that is unset. CI has no `.env` and sets `DBT_TARGET=dummy` explicitly.
 - **`terraform fmt` calls the `terraform` binary.** It only fires on `*.tf` changes, which are administrator territory; an engineer's machine does not need Terraform installed. The YAML hook (`validate-configs`) runs through `uv` and works everywhere.
@@ -58,19 +59,20 @@ Details agents trip over:
 
 | Job | Steps |
 |---|---|
-| `python` | `uv sync`, `ruff format --check .`, `ruff check .`, `ty check`, `pytest` |
+| `python` | `uv sync --locked`, `ruff format --check .`, `ruff check .`, `ty check`, `pytest` |
 | `dbt-and-dagster` | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` (with `DBT_TARGET=dummy`) |
 | `terraform` | `terraform fmt -check -recursive terraform`, `init -backend=false`, `validate`, then `validate_configs.py` through `uv` |
-| `docs` | `zensical build --strict` (a broken link fails the build) |
+| `docs` | `uv sync --locked --group docs`, `zensical build --strict` (a broken link fails the build) |
 | `setup` | On Linux, macOS and Windows: `just init`, `just info`, `just check`, `just sf keygen`, then `just start` until the UI answers with every code location loaded, and `just stop` until the port is free |
 
-`just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
+Every job but `setup` installs with `uv sync --locked`, so a `uv.lock` that no longer matches `pyproject.toml` fails CI: after changing dependencies, run `uv lock` and commit `uv.lock`. `terraform init` honors the committed `terraform/.terraform.lock.hcl`. `just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
 
 The `setup` job is the fresh-machine test: no uv, no `.venv`, no `.env`, no dbt packages, what a new
-engineer's checkout looks like, so the `[unix]` and `[windows]` recipe bodies and everything they
-call get exercised on every pull request instead of by hand on three machines.
+engineer's checkout looks like. It installs through `just init` rather than `uv sync --locked`,
+because that is the command the engineer runs, so the `[unix]` and `[windows]` recipe bodies and
+everything they call get exercised on every pull request instead of by hand on three machines.
 
-Dependency bumps come from Dependabot (`.github/dependabot.yml`: `uv.lock`, GitHub Actions, Terraform providers, weekly and grouped). Review them like any pull request; CI runs on them. dbt packages in `packages.yml` and the pre-commit hook revisions are bumped by hand.
+Dependency bumps come from Dependabot (`.github/dependabot.yml`: `uv.lock`, GitHub Actions, Terraform providers, weekly and grouped). Both workflows pin every action to a full commit SHA with a trailing `# vX.Y.Z` comment, which Dependabot keeps up to date. Review them like any pull request; CI runs on them. dbt packages in `packages.yml` and the pre-commit hook revisions are bumped by hand.
 
 !!! danger "Never bypass hooks"
     `--no-verify` is forbidden. Agents never run `git commit` at all (humans own git, see [Git workflow](../conventions/git-workflow.md)), but the rule extends to advice: when a hook fails, fix the cause; never suggest bypassing it. CI runs the same checks and fails the pull request anyway.

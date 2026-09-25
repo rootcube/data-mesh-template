@@ -15,10 +15,8 @@ export DAGSTER_HOME     := justfile_directory() / ".dagster"
 export DLT_PROJECT_DIR  := justfile_directory()
 export DLT_DATA_DIR     := justfile_directory() / ".dlt" / "data"
 export DBT_PROFILES_DIR := justfile_directory() / "dbt"
-# Two warnings with nothing to fix: the Snowflake connector's vendored requests nags about urllib3 on
-# every command, and Dagster's CLI marks `definitions validate` as superseded by `dg check defs`, which
-# does not read workspace.yaml (the same filter sits in .pre-commit-config.yaml and ci.yml).
-export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests,ignore:Function `definitions_validate_command`"
+# The Snowflake connector's vendored requests warns about urllib3 on every command; nothing to fix here.
+export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests"
 # uv's installer puts it in ~/.local/bin; each recipe line is a fresh shell, so make it findable
 # right after `just init` installs it, before the user restarts their shell.
 _uv_bin   := if os_family() == "windows" { home_directory() + "\\.local\\bin" } else { home_directory() / ".local" / "bin" }
@@ -156,19 +154,20 @@ start: stop _dirs
 start: stop _dirs
     $env:PYTHONLEGACYWINDOWSSTDIO = "1"; $env:PYTHONIOENCODING = "utf-8"; uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
 
-# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else listening on the port
 [unix]
 stop:
     #!/usr/bin/env bash
     # `dagster dev` shuts its daemon and code servers down on SIGTERM; a second instance would
     # otherwise fight the first one's daemon ("Another ... daemon is still sending heartbeats").
+    # Only listeners: a plain `lsof -i :port` also lists clients, such as a browser showing the UI.
     if pkill -TERM -f "dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}" 2>/dev/null; then
         echo "stopping dagster dev on port {{port}}"
-        for _ in $(seq 1 20); do lsof -ti :{{port}} >/dev/null 2>&1 || break; sleep 0.5; done
+        for _ in $(seq 1 20); do lsof -ti tcp:{{port}} -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 0.5; done
     fi
-    lsof -ti :{{port}} | xargs kill -9 2>/dev/null || true
+    lsof -ti tcp:{{port}} -sTCP:LISTEN | xargs kill -9 2>/dev/null || true
 
-# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
+# stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else listening on the port
 [windows]
 stop:
     @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -gt 4 -and $_ -ne $PID }; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }; exit 0
@@ -177,9 +176,19 @@ stop:
 dagster *args:
     uv run dagster {{args}}
 
+# `dagster definitions validate` is superseded by `dg check defs`, which does not read workspace.yaml;
+# PYTHONWARNINGS adds a filter for that one nag to the global one (the pre-commit hook runs this
+# recipe; ci.yml sets the same filter).
+
 # load every code location exactly like `just start` does, without the UI
+[unix]
 validate:
-    uv run dagster definitions validate -w workspace.yaml
+    PYTHONWARNINGS='{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
+
+# load every code location exactly like `just start` does, without the UI
+[windows]
+validate:
+    $env:PYTHONWARNINGS = '{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`'; uv run dagster definitions validate -w workspace.yaml
 
 # --- dlt --------------------------------------------------------------------
 

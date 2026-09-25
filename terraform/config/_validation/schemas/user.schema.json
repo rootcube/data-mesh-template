@@ -28,7 +28,11 @@
     "schema_prefix": {
       "type": "string",
       "description": "Prefix of the personal schemas (<PREFIX>_SRC, ...) and SNOWFLAKE_SCHEMA in .env; defaults to DBT_<login before the @, non-alphanumerics as _, upper case>",
-      "pattern": "^[A-Z][A-Z0-9_]*$"
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "not": {
+        "const": "DBT",
+        "description": "DBT is the placeholder an empty SNOWFLAKE_SCHEMA falls back to; it must never have schemas"
+      }
     },
     "create": {
       "type": "boolean",

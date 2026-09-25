@@ -91,7 +91,10 @@ gets those privileges on them. The engineer role uses it in `dev`.
 
 What each of the four roles may do, as defined in the YAML. "write" stands for `USAGE`,
 `MODIFY`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `TRUNCATE ON
-TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELECT ON VIEWS`.
+TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELECT ON VIEWS`;
+"scratch" for `USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT ON TABLES` and `SELECT ON VIEWS`.
+A role owns the scratch tables it creates, so it needs no write grants on the tables of other
+roles there (dlt's `merge` staging tables, dbt's stored test failures).
 
 === "engineer (ENG)"
 
@@ -100,21 +103,21 @@ TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELEC
     | `source` | write | write | read |
     | `staging`, `integration`, `mart`, `expose`, `reference` | write | none | read |
     | `metadata` | write (tables only) | none | `USAGE`, `SELECT ON TABLES` |
-    | `temporary` | write | write | write |
+    | `temporary` | write | write | scratch |
 
     Personal schemas: the `personal` block (`environments: [dev]`) gives every user with this
     role their own `<PREFIX>_<LAYER>` schemas, created by Terraform, with write on them and
     `READ`, `WRITE` on their load stage; the role has no `CREATE SCHEMA`. Computes: `USAGE`,
     `OPERATE`, `MONITOR` on `default`, `ingest` and `transform`. Inherits `transform` and
     `ingest` in `dev` and `tst`, and `analyst` everywhere. There is no `acc` block, so an
-    engineer in acceptance would only see the temporary layer.
+    engineer in acceptance would only get scratch space in the temporary layer.
 
 === "analyst (ANL)"
 
     | Layer | all environments |
     |-------|------------------|
     | `mart`, `expose` | read, plus `USAGE ON FUNCTIONS` and `USAGE ON PROCEDURES` |
-    | `temporary` | write |
+    | `temporary` | scratch |
 
     Computes: `USAGE` on `default`.
 
@@ -130,7 +133,7 @@ TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELEC
 
     | Layer | all environments |
     |-------|------------------|
-    | `source` | read, plus usage of functions, procedures, stages and file formats |
+    | `source` | read, plus `READ` and `WRITE` on stages (dbt's stage refresh) and usage of functions, procedures and file formats |
     | `staging`, `integration`, `mart`, `expose` | write, plus `CREATE MATERIALIZED VIEW`, `CREATE FUNCTION`, `CREATE PROCEDURE` |
     | `reference`, `temporary` | write |
     | `metadata` | write (tables only) |
@@ -171,12 +174,12 @@ which is what local development needs. In production an engineer inherits only t
 ## Users
 
 Users are the starter's first addition to the platform model. One file per person or service
-under `terraform/config/users/` says which project roles a login may assume:
+under `terraform/config/users/` (sub-folders too; the file name is the key) says which project
+roles a login may assume:
 
 ```yaml title="terraform/config/users/<name>.yaml"
 login: "username@example.com"
 name: "Example Engineer"
-type: "person"
 create: false
 roles:
   - project: example
@@ -187,9 +190,9 @@ roles:
 
 `terraform/users.tf` turns every entry into a `GRANT ROLE ... TO USER`. `environments` may be
 `"*"` for every environment of the project. `create: false` means the login already exists
-(SSO); `create: true` creates it, with a one-time password for a `person`
-(`just tf output -json initial_passwords`) or without a password for a `service`, whose key
-pair is registered afterwards with `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`.
+(SSO); `create: true` creates it as a person with a one-time password
+(`just tf output -json initial_passwords`). A service user is created by hand, with its key
+pair registered through `RSA_PUBLIC_KEY`, and gets its roles from a `create: false` file.
 
 Which role a tool runs as is not decided in Terraform but in `.env`:
 

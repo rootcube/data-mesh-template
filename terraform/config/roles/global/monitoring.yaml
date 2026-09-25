@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=../_validation/schemas/role.schema.json
+# yaml-language-server: $schema=../../_validation/schemas/role.schema.json
 # Role: Monitoring
 # ================
 
 code: "mon"
 name: "Monitoring"
 type: "system"
-level: "global"
+level: "platform"
 desc: "Read-only access for platform-wide monitoring, auditing, and observability"
 disabled: true
 required: false

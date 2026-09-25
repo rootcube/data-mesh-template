@@ -30,7 +30,8 @@ def snowflake_destination(source: str) -> Destination:
         stage_name=load_stage(settings, source),
         # `merge` loads into a staging table first; keep those in the temporary layer (`_TMP`, or the
         # personal `<PREFIX>_TMP` in dev) instead of dlt's default `<dataset>_staging` schema, which
-        # nobody provisions and the ingest role may not create.
+        # nobody provisions and the ingest role may not create. `truncate_staging_dataset` in
+        # .dlt/config.toml empties them after each load, so raw rows do not linger in the shared `_TMP`.
         staging_dataset_name_layout=settings.schema_for_layer(STAGING_LAYER).lower(),
     )
 

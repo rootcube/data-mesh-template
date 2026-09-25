@@ -68,9 +68,10 @@ variable "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE" {
 #   config/computes/**/*.yaml      - One file per compute profile
 #   config/environments/**/*.yaml  - One file per environment
 #   config/layers/**/*.yaml        - One file per layer
-#   config/teams/**/*.yaml         - One file per team
-#   config/organisations/**/*.yaml - One file per organisation
 #   config/users/**/*.yaml         - One file per user (role assignments)
+#
+# config/teams and config/organisations name no Snowflake object; only
+# config/_validation/validate_configs.py reads them (cross-references).
 
 locals {
   # -------------------------------------------------------------------------
@@ -112,25 +113,12 @@ locals {
     trimsuffix(f, ".yaml") => yamldecode(file("${var.config_path}/layers/${f}"))
   }
 
-  # Load all team configurations from individual files
-  team_files = fileset("${var.config_path}/teams", "**/*.yaml")
-  teams = {
-    for f in local.team_files :
-    trimsuffix(f, ".yaml") => yamldecode(file("${var.config_path}/teams/${f}"))
-  }
-
-  # Load all organisation configurations from individual files
-  organisation_files = fileset("${var.config_path}/organisations", "**/*.yaml")
-  organisations = {
-    for f in local.organisation_files :
-    trimsuffix(f, ".yaml") => yamldecode(file("${var.config_path}/organisations/${f}"))
-  }
-
   # Load all user configurations from individual files (who may assume which project roles)
+  # Keyed by file name alone, so a user file can live in a sub-folder (users/local/, git-ignored)
   user_files = fileset("${var.config_path}/users", "**/*.yaml")
   users = {
     for f in local.user_files :
-    trimsuffix(f, ".yaml") => yamldecode(file("${var.config_path}/users/${f}"))
+    trimsuffix(basename(f), ".yaml") => yamldecode(file("${var.config_path}/users/${f}"))
   }
 
   # -------------------------------------------------------------------------
@@ -187,35 +175,6 @@ locals {
 
   role_codes = {
     for key, role in local.roles : key => role.code
-  }
-
-  # -------------------------------------------------------------------------
-  # Reverse Lookup Maps (code -> key)
-  # -------------------------------------------------------------------------
-  # These maps allow looking up the key for any concept by its code.
-  # Used when role privileges reference concepts by code.
-
-  environment_keys = {
-    for key, env in local.environments : env.code => key
-  }
-
-  layer_keys = {
-    for key, layer in local.layers : layer.code => key
-  }
-
-  compute_keys = {
-    for key, compute in local.computes_raw : compute.code => key
-    if compute.code != "" # Skip empty codes (default compute)
-  }
-
-  # Special handling for default compute which has empty code
-  compute_keys_with_default = merge(
-    local.compute_keys,
-    { for key, compute in local.computes_raw : "" => key if compute.code == "" }
-  )
-
-  role_keys = {
-    for key, role in local.roles : role.code => key
   }
 
   # -------------------------------------------------------------------------

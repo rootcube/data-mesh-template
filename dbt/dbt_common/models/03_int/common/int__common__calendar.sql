@@ -141,10 +141,10 @@ SELECT
 , CAST(CASE WHEN cal.date = CAST(DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                                 AS is_first_day_of_month
 , CAST(CASE WHEN cal.date = CAST(DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                                   AS is_first_day_of_week
 
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))       AS is_last_day_of_year
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1)) AS is_last_day_of_quarter
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))     AS is_last_day_of_month
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))       AS is_last_day_of_week
+, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))           AS is_last_day_of_year
+, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))     AS is_last_day_of_quarter
+, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))         AS is_last_day_of_month
+, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))           AS is_last_day_of_week
 
 , CAST(CASE WHEN (cal.year % 4 = 0 AND cal.year % 100 <> 0) OR cal.year % 400 = 0 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                         AS is_leap_year
 , CAST(CASE WHEN cal.day_of_month = 29 AND cal.month = 2 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                                  AS is_leap_day
@@ -158,10 +158,10 @@ SELECT
 , CAST(DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE)                                                                                             AS first_date_of_month
 , CAST(DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE)                                                                                               AS first_date_of_week
 
-, CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                   AS last_date_of_year
-, CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                             AS last_date_of_quarter
-, CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                 AS last_date_of_month
-, CAST(DATEADD('day', -1, DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF('2023-01-06', '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                   AS last_date_of_week
+, CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                       AS last_date_of_year
+, CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                 AS last_date_of_quarter
+, CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                     AS last_date_of_month
+, CAST(DATEADD('day', -1, DATEADD('week', DATEDIFF('week', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                       AS last_date_of_week
 
 -- Sequences
 , CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.iso_year ASC) - 1)) AS INTEGER)                                                               AS iso_year_sort

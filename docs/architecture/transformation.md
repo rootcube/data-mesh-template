@@ -12,7 +12,7 @@ this page covers the structure.
 
 ```
 dbt/
-├── profiles.yml              # profile `default`: targets dev, prd + dummy; DBT_PROFILES_DIR points here
+├── profiles.yml              # profile `default`: targets dev, tst, acc, prd + dummy; DBT_PROFILES_DIR points here
 ├── .sqlfluff                 # shared lint config: dbt templater with the dummy target
 ├── dbt_common/               # package: macros, generic tests, seeds, generic models. Not runnable on its own
 │   ├── dbt_project.yml       #   layer config for its own models + the on-run-end hooks
@@ -129,8 +129,20 @@ that installs `dbt_common` builds its own copy; in Dagster they show up under th
     dimension, reads it as a source. See [Adding a project](../development/adding-projects.md).
 
 `int__common__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
-the `holidays` package from the Anaconda channel; the country comes from the `holiday_country`
-var (`NL` by default) in the project's `dbt_project.yml`. An administrator accepts the Anaconda
+the `holidays` package from the Anaconda channel. The country is the `holiday_country` model
+config (`NL` by default), a literal the consuming project sets in its own `dbt_project.yml`:
+
+```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
+models:
+  dbt_common:
+    03_int:
+      common:
+        int__common__holiday:
+          +holiday_country: NL
+```
+
+It is not a var: `var()` in a `dbt_project.yml` is rendered before the project's `vars:` load,
+so `--vars` does not change it. An administrator accepts the Anaconda
 terms once per account, or you disable the model
 ([Snowflake provisioning](../administration/snowflake-provisioning.md)).
 

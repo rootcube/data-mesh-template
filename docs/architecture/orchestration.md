@@ -138,7 +138,7 @@ No import makes that happen; the key does. The dbt source declares it:
 ```yaml title="dbt/dbt_example/sources/src_knmi.yml (excerpt)"
 sources:
   - name: knmi
-    schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
     tables:
       - name: climate_hourly
         identifier: knmi__climate_hourly
@@ -190,13 +190,10 @@ run_coordinator:
 run_launcher:
   module: dagster.core.launcher
   class: DefaultRunLauncher
-
-concurrency:
-  runs:
-    max_concurrent_runs: 4
 ```
 
-Runs start immediately in a subprocess (no daemon queue), at most four at a time. Deleting
+Runs start immediately in a subprocess (no daemon queue), with no limit on concurrent runs; a
+limit needs the `QueuedRunCoordinator` and the daemon. Deleting
 `.dagster/` (keep `dagster.yaml`) resets your run history and nothing else.
 
 `pyproject.toml` also carries a `[tool.dg]` block for Dagster's `dg` CLI. Its `defs_module`
@@ -207,7 +204,7 @@ locations are the ones in `workspace.yaml`.
 
 ```bash
 just start                                                         # UI on :3000, Ctrl+C stops
-just stop                                                          # kill whatever holds port 3000
+just stop                                                          # kill whatever listens on port 3000
 just validate                                                      # load every location, no UI
 just dagster asset list -m orchestrator.locations.dlt.definitions  # any Dagster CLI command
 ```

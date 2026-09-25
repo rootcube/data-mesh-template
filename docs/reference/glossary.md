@@ -140,7 +140,7 @@ Layer schema
 :   The schema a layer lives in. In `tst`, `acc` and `prd` the provisioned `_<LAYER>` schema
     (`_STG`); in `dev` the engineer's personal schema `<SNOWFLAKE_SCHEMA>_<LAYER>`
     (`DBT_USERNAME_STG`). Implemented by `SnowflakeSettings.schema_for_layer()` and
-    `dbt_common.generate_schema_name`; dbt source YAML repeats the rule with `env_var`.
+    `dbt_common.generate_schema_name`; dbt source YAML repeats the rule from the dbt `target`.
 
 Load package, `_dlt_load_id` (dlt)
 :   One run of a pipeline produces one load package; its id is written to every row as
@@ -210,8 +210,9 @@ Provisioning objects
 :   What `terraform/modules/snowflake/init.sql` creates once as `ACCOUNTADMIN`: the service
     user `TERRAFORM_USER` (key pair only) with the system roles `SYSADMIN`, `SECURITYADMIN` and
     `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database
-    `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`; it also sets
-    the account parameters. Terraform runs as that user through those three roles.
+    `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The account
+    parameters live apart, in `account_settings.sql` next to it. Terraform runs as that user
+    through those three roles.
 
 Purpose
 :   The role code that ends a role name: `ENG` (engineer), `ANL` (analyst), `ING` (ingest),
@@ -236,7 +237,7 @@ Role
     privileges per compute, database and layer, and roles it inherits. Becomes the account
     role `RL_<PROJECT>_<ENV>__<PURPOSE>`. Person roles: engineer (required), analyst; system
     roles: ingest (required, dlt), transform (required, dbt). Reporting exists but is unused
-    in the starter, operator and the global roles are disabled. See [Role](../concepts/role.md).
+    in the starter, operator and the platform roles (`roles/global/`) are disabled. See [Role](../concepts/role.md).
 
 Seed (dbt)
 :   A CSV under `seeds/` that dbt loads as a table into the reference layer (`seed_month`,
@@ -273,9 +274,9 @@ Team
 
 User
 :   A person or service that may assume project roles: `terraform/config/users/<name>.yaml`
-    with `login`, `type`, `create` and a `roles` list of project, role and environments.
-    Terraform grants the matching `RL_<PROJECT>_<ENV>__<PURPOSE>` roles to the login, and
-    creates the user when `create: true`.
+    with `login`, `create` and a `roles` list of project, role and environments. Terraform
+    grants the matching `RL_<PROJECT>_<ENV>__<PURPOSE>` roles to the login, and creates the user
+    (a person, with a one-time password) when `create: true`.
 
 `uv`
 :   The Python package manager. `just init` installs it; every command runs through `uv run`

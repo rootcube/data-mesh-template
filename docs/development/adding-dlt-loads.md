@@ -230,8 +230,8 @@ both keys from the terminal.
 
 Two files in the dbt project that owns the source (`dbt/dbt_example` here). First the source,
 with the Dagster asset key so the lineage crosses code locations. The `schema` line is the one
-place the layer rule is spelled out by hand, because source YAML can use `env_var` but not
-macros; copy it exactly from `src_knmi.yml`.
+place the layer rule is spelled out by hand, from the dbt `target`, because source YAML cannot
+call macros; copy it exactly from `src_knmi.yml`.
 
 ```yaml title="dbt/dbt_example/sources/src_airquality.yml"
 version: 2
@@ -242,9 +242,10 @@ sources:
       Hourly air-quality measurements, loaded into the source layer by the dlt pipeline
       `ingest_airquality` (dlt_pipelines/pipelines/ingest/airquality). Field names as the API
       returns them, lowercased by dlt.
-    # The source layer: _SRC, or <SNOWFLAKE_SCHEMA>_SRC in dev (same rule as dbt_common's
-    # generate_schema_name; source YAML can only use env_var, not macros).
-    schema: "{{ env_var('SNOWFLAKE_SCHEMA', '') if env_var('ENVIRONMENT', 'dev') in ['dev', 'dummy'] else '' }}_SRC"
+    # The source layer: _SRC, or <target.schema>_SRC in dev and dummy (DBT_SRC when it is blank).
+    # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
+    # source YAML cannot call macros.
+    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
     tables:
       - name: measurement_hourly
         identifier: airquality__measurement_hourly
@@ -384,6 +385,6 @@ test calls the API or Snowflake.
 - [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `destination=snowflake_destination(SOURCE)`, `dataset_name=source_dataset()`
 - [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
 - [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
-- [ ] `dbt/<project>/sources/src_<source>.yml` with the `env_var` schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key
+- [ ] `dbt/<project>/sources/src_<source>.yml` with the `target`-based schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key
 - [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes
 - [ ] `just validate` and `just check` pass

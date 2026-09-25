@@ -12,7 +12,7 @@ Every agent entry point ends up at the same file, so instructions cannot drift b
 
 ```mermaid
 flowchart LR
-    CC["CLAUDE.md<br/>(symlink, Claude Code)"] --> A["AGENTS.md<br/>canonical instructions"]
+    CC["CLAUDE.md<br/>(@AGENTS.md import, Claude Code)"] --> A["AGENTS.md<br/>canonical instructions"]
     A --> S["docs/ai-agents/*.md<br/>7 technology guides"]
     A --> C["docs/conventions/*.md<br/>the house rules"]
 ```
@@ -20,12 +20,12 @@ flowchart LR
 | File | Consumed by | What it is |
 |---|---|---|
 | `AGENTS.md` | Every agent | Behavior rules, project overview, the platform model, directory map, commands, conventions, pitfalls. Agents read it completely before making changes. |
-| `CLAUDE.md` | Claude Code | A symlink to `AGENTS.md`. Nothing lives there on its own. |
+| `CLAUDE.md` | Claude Code | One line, `@AGENTS.md`, which Claude Code reads as an import. Nothing lives there on its own. |
 | `docs/ai-agents/*.md` | Every agent | The per-technology guides in this section (see the [table below](#skill-pages)). |
 | `docs/conventions/*.md` | Every agent | The canonical rules; the guides link to them instead of restating them. |
 
 !!! tip "Keep it that way"
-    Project rules go in `AGENTS.md`. `CLAUDE.md` is a symlink, so editing one edits the other. Never replace the symlink with a file of its own.
+    Project rules go only in `AGENTS.md`. `CLAUDE.md` stays the single line `@AGENTS.md`, an import rather than a symlink, because a Windows checkout (`core.symlinks=false`) turns a symlink into a 9-byte text file.
 
 No MCP servers are configured in this repo; agents inspect Dagster, dbt, dlt and Snowflake through the `just` recipes and by reading files.
 

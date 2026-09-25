@@ -83,7 +83,8 @@ Snowflake bootstrap (`just setup` on a fresh account, or by hand), the YAML conf
 
 ## Working with AI agents
 
-`AGENTS.md` is the canonical instruction set (`CLAUDE.md` is a symlink to it); the docs section
+`AGENTS.md` is the canonical instruction set (`CLAUDE.md` imports it with a single `@AGENTS.md`
+line); the docs section
 *AI agents* carries the per-technology guides and standards.
 
 ## Contributing
