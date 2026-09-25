@@ -45,11 +45,6 @@ models:
       +schema: int
       +materialized: view
       +tags: ["layer=int"]
-      common:
-        int__common__holiday:
-          # Country whose public holidays the calendar carries, as an ISO 3166-1 alpha-2 code.
-          # Installing projects set `holiday_country` under `vars:` in their dbt_project.yml.
-          +holiday_country: "{{ var('holiday_country', 'NL') }}"
 
     04_mrt:
       +schema: mrt

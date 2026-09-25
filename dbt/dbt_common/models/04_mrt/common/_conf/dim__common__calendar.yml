@@ -3,7 +3,7 @@ version: 2
 
 models:
   - name: dim__common__calendar
-    description: Calendar dimension containing date attributes and the public holidays of the country set by the `holiday_country` var
+    description: Calendar dimension containing date attributes and the public holidays of the country set by the `holiday_country` config (`NL` by default)
 
     data_tests:
       - has_data:
