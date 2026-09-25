@@ -7,8 +7,10 @@ from typing import Any, cast
 
 import dlt
 import pytest
+from dlt.common.configuration import known_sections, resolve_configuration
 from dlt.common.schema import Schema
 from dlt.destinations.impl.snowflake.configuration import SnowflakeClientConfiguration
+from dlt.load.configuration import LoaderConfiguration
 
 from dlt_pipelines.__main__ import discover
 from dlt_pipelines.pipelines.ingest.knmi.source import load_window
@@ -89,3 +91,9 @@ def test_merge_staging_tables_go_to_the_temporary_layer(monkeypatch: pytest.Monk
     assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "dbt_username_tmp"
     monkeypatch.setenv("ENVIRONMENT", "prd")
     assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "_tmp"
+
+
+def test_merge_staging_tables_are_emptied_after_each_load() -> None:
+    # Resolved like dlt's loader does, from the [load] section of .dlt/config.toml.
+    config = resolve_configuration(LoaderConfiguration(), sections=(known_sections.LOAD,), accept_partial=True)
+    assert config.truncate_staging_dataset is True

@@ -48,6 +48,13 @@ def test_layer_schemas_are_personal_in_dev_and_shared_elsewhere() -> None:
     prd = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "_TMP", "ENVIRONMENT": "PRD"})
     assert prd.environment == "prd"
     assert prd.schema_for_layer("mrt") == "_MRT"
+    assert SnowflakeSettings.from_env({"ENVIRONMENT": "prd"}).schema_for_layer("src") == "_SRC"
+
+
+def test_dev_without_a_prefix_never_resolves_to_the_shared_layer_schemas() -> None:
+    dev = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "  ", "ENVIRONMENT": "dev"})
+    assert dev.schema_for_layer("src") == "DBT_SRC"
+    assert dev.schema_for_layer("tmp") == "DBT_TMP"
 
 
 def test_connection_does_not_pass_the_personal_prefix_as_schema(tmp_path: Path) -> None:
