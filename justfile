@@ -21,7 +21,10 @@ export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests"
 # right after `just init` installs it, before the user restarts their shell.
 _uv_bin   := if os_family() == "windows" { home_directory() + "\\.local\\bin" } else { home_directory() / ".local" / "bin" }
 _path_sep := if os_family() == "windows" { ";" } else { ":" }
-export PATH := _uv_bin + _path_sep + env("PATH")
+# Same for `just install terraform` on Windows: winget adds its package folder to the user PATH,
+# which only shells started after the install pick up.
+_tf_bin   := if os_family() == "windows" { env("LOCALAPPDATA", "") + "\\Microsoft\\WinGet\\Packages\\Hashicorp.Terraform_Microsoft.Winget.Source_8wekyb3d8bbwe" + _path_sep } else { "" }
+export PATH := _uv_bin + _path_sep + _tf_bin + env("PATH")
 
 # Overridable: `just project=dbt_other dbt build` targets another dbt project under dbt/.
 project     := "dbt_example"
@@ -72,7 +75,7 @@ _init:
 [private]
 _init:
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" }
-    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "VIRTUAL_ENV=$PWD\.venv" -Quiet)) { Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
+    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "$PWD\.venv`"" -Quiet)) { if (Get-Process | Where-Object { $_.Path -like "$PWD\.venv\*" }) { Write-Host "checkout moved since .venv was created, but programs still run from it (Dagster?); stop them (just stop) and rerun"; exit 1 }; Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
     uv sync --all-groups
     if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
@@ -114,15 +117,38 @@ install tool="all":
 
 # --- Snowflake --------------------------------------------------------------
 
+# Positional arguments keep a quoted SQL statement one argument instead of splitting it on spaces.
+
 # key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+[unix]
+[positional-arguments]
 sf cmd *args:
-    uv run python scripts/snowflake.py {{cmd}} {{args}}
+    uv run python scripts/snowflake.py "$@"
+
+# key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+[windows]
+[positional-arguments]
+[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[extension(".ps1")]
+sf cmd *args:
+    uv run python scripts/snowflake.py @args
+    exit $LASTEXITCODE
 
 # --- Dagster ----------------------------------------------------------------
 
 # start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop); stops a previous instance first
+[unix]
 start: stop _dirs
     uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
+
+# Dagster captures a step's stdout/stderr (the run's stdout/stderr tabs) on Windows only with
+# PYTHONLEGACYWINDOWSSTDIO set; its streams then use the console code page, so UTF-8 keeps
+# non-ASCII output (dbt, dlt) from failing to encode.
+
+# start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop); stops a previous instance first
+[windows]
+start: stop _dirs
+    $env:PYTHONLEGACYWINDOWSSTDIO = "1"; $env:PYTHONIOENCODING = "utf-8"; uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
 
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [unix]
@@ -139,7 +165,7 @@ stop:
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [windows]
 stop:
-    @Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
+    @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -gt 4 -and $_ -ne $PID }; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }; exit 0
 
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 dagster *args:

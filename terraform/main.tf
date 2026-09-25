@@ -210,8 +210,8 @@ locals {
           # Database name follows the pattern: DB_<PROJECT>_<ENV>
           database_name = upper("DB_${project_key}_${local.environment_codes[environment_key]}")
 
-          # USAGE by default; a role may add e.g. CREATE SCHEMA per environment under
-          # privileges.database (engineers create personal schemas in dev that way).
+          # USAGE by default; a role may add e.g. MONITOR per environment under
+          # privileges.database. Personal schemas come from personal.tf, not CREATE SCHEMA.
           privileges = distinct(concat(["USAGE"], try(
             local.roles[role_key].privileges.database[local.environment_codes[environment_key]],
             try(local.roles[role_key].privileges.database["all"], [])
@@ -361,11 +361,15 @@ module "schema" {
 # -----------------------------------------------------------------------------
 
 module "platform_role" {
-  source   = "./modules/snowflake/role"
-  for_each = local.platform_roles
+  source    = "./modules/snowflake/role"
+  for_each  = local.platform_roles
+  providers = { snowflake = snowflake.securityadmin }
 
   purpose = upper(each.value.code)
   comment = each.value.desc
+
+  # Custom roles roll up to SYSADMIN, so it can manage whatever they create.
+  granted_to_roles = ["SYSADMIN"]
 }
 
 # -----------------------------------------------------------------------------
@@ -373,13 +377,17 @@ module "platform_role" {
 # -----------------------------------------------------------------------------
 
 module "project_role" {
-  source   = "./modules/snowflake/role"
-  for_each = local.project_environment_role_map
+  source    = "./modules/snowflake/role"
+  for_each  = local.project_environment_role_map
+  providers = { snowflake = snowflake.securityadmin }
 
   project     = upper(each.value.project_key)
   environment = upper(each.value.environment_code)
   purpose     = upper(each.value.role_code)
   comment     = each.value.role_config.desc
+
+  # Custom roles roll up to SYSADMIN, so it can manage whatever they create.
+  granted_to_roles = ["SYSADMIN"]
 }
 
 # -----------------------------------------------------------------------------
@@ -408,8 +416,9 @@ module "warehouse" {
 # -----------------------------------------------------------------------------
 
 module "warehouse_grant" {
-  source   = "./modules/snowflake/warehouse_grant"
-  for_each = local.warehouse_grant_map
+  source    = "./modules/snowflake/warehouse_grant"
+  for_each  = local.warehouse_grant_map
+  providers = { snowflake = snowflake.securityadmin }
 
   role_name      = each.value.role_name
   warehouse_name = each.value.warehouse_name
@@ -427,8 +436,9 @@ module "warehouse_grant" {
 # -----------------------------------------------------------------------------
 
 module "database_grant" {
-  source   = "./modules/snowflake/database_grant"
-  for_each = local.database_grant_map
+  source    = "./modules/snowflake/database_grant"
+  for_each  = local.database_grant_map
+  providers = { snowflake = snowflake.securityadmin }
 
   role_name     = each.value.role_name
   database_name = each.value.database_name
@@ -446,8 +456,9 @@ module "database_grant" {
 # -----------------------------------------------------------------------------
 
 module "role_grant" {
-  source   = "./modules/snowflake/role_grant"
-  for_each = local.role_grant_map
+  source    = "./modules/snowflake/role_grant"
+  for_each  = local.role_grant_map
+  providers = { snowflake = snowflake.securityadmin }
 
   role_name        = each.value.role_name
   parent_role_name = each.value.parent_role_name
@@ -463,8 +474,9 @@ module "role_grant" {
 # -----------------------------------------------------------------------------
 
 module "schema_grant" {
-  source   = "./modules/snowflake/schema_grant"
-  for_each = local.schema_grant_map
+  source    = "./modules/snowflake/schema_grant"
+  for_each  = local.schema_grant_map
+  providers = { snowflake = snowflake.securityadmin }
 
   role_name     = each.value.role_name
   database_name = each.value.database_name

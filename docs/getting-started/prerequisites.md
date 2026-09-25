@@ -66,10 +66,11 @@ project in development. Ask for:
 | The warehouse | `WH_EXAMPLE_DEV` | `SNOWFLAKE_WAREHOUSE` |
 | A one-time password | only when the administrator created your user | the first login, then you change it |
 
-The development database is shared by every engineer of the project. The engineer role holds
-`CREATE SCHEMA` on it, and dlt and dbt create your personal schemas (`DBT_<USERNAME>_SRC`,
-`DBT_<USERNAME>_STG`, ...) on first use. Other engineers use their own prefix, so nobody steps on
-anyone else's tables.
+The development database is shared by every engineer of the project. The same Terraform apply
+that grants your role creates your personal schemas in it (`DBT_<USERNAME>_SRC`,
+`DBT_<USERNAME>_STG`, ...); dlt and dbt write into them but cannot create schemas, so that apply
+comes before your first run. Other engineers use their own prefix, so nobody steps on anyone
+else's tables.
 
 ## Terraform
 

@@ -94,7 +94,10 @@ class FakeConnection:
     SHOW = {
         "SHOW DATABASES": (["name"], [["DB_EXAMPLE_DEV"], ["SNOWFLAKE"]]),
         "SHOW SCHEMAS IN ACCOUNT": (["database_name", "name"], [["DB_EXAMPLE_DEV", "_SRC"]]),
-        "SHOW STAGES IN ACCOUNT": (["database_name", "schema_name", "name"], [["DB_EXAMPLE_DEV", "_SRC", "ST_DLT"]]),
+        "SHOW STAGES IN ACCOUNT": (
+            ["database_name", "schema_name", "name"],
+            [["DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT"]],
+        ),
         "SHOW WAREHOUSES": (["name"], []),
         "SHOW ROLES": (["name"], [["RL_EXAMPLE_DEV__ENG"]]),
         "SHOW USERS": (["name"], [["ADMIN"]]),
@@ -134,11 +137,11 @@ PLANNED = [
         "name": "_SRC",
     },
     {
-        "address": 'snowflake_stage_internal.dlt["dev_src"]',
+        "address": 'snowflake_stage_internal.default["dev_src"]',
         "type": "snowflake_stage_internal",
         "database": "DB_EXAMPLE_DEV",
         "schema": "_SRC",
-        "name": "ST_DLT",
+        "name": "ST_DEFAULT",
     },
     {
         "address": 'module.warehouse["dev"].snowflake_warehouse.this',
@@ -160,7 +163,7 @@ def test_existing_objects_matches_planned_creates_by_full_name() -> None:
     assert [script.object_path(r) for r in found] == [
         ("DB_EXAMPLE_DEV",),
         ("DB_EXAMPLE_DEV", "_SRC"),
-        ("DB_EXAMPLE_DEV", "_SRC", "ST_DLT"),
+        ("DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT"),
         ("RL_EXAMPLE_DEV__ENG",),
         ("ADMIN",),
     ]
@@ -172,7 +175,7 @@ def test_write_imports_uses_quoted_identifiers(tmp_path: Path, monkeypatch: pyte
     script.write_imports([PLANNED[0], PLANNED[3]])
     text = (tmp_path / "adopt_imports.tf").read_text()
     assert 'import {\n  to = module.database["dev"].snowflake_database.this\n  id = "\\"DB_EXAMPLE_DEV\\""\n}' in text
-    assert 'id = "\\"DB_EXAMPLE_DEV\\".\\"_SRC\\".\\"ST_DLT\\""' in text
+    assert 'id = "\\"DB_EXAMPLE_DEV\\".\\"_SRC\\".\\"ST_DEFAULT\\""' in text
 
 
 def test_drop_objects_goes_innermost_first_and_spares_the_current_user() -> None:
@@ -180,7 +183,7 @@ def test_drop_objects_goes_innermost_first_and_spares_the_current_user() -> None
     conn = FakeConnection()
     script.drop_objects(conn, list(reversed(PLANNED)), current_user="admin")
     assert conn.executed == [
-        'DROP STAGE IF EXISTS "DB_EXAMPLE_DEV"."_SRC"."ST_DLT"',
+        'DROP STAGE IF EXISTS "DB_EXAMPLE_DEV"."_SRC"."ST_DEFAULT"',
         'DROP SCHEMA IF EXISTS "DB_EXAMPLE_DEV"."_SRC"',
         'DROP DATABASE IF EXISTS "DB_EXAMPLE_PRD"',
         'DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"',
@@ -210,6 +213,37 @@ def test_reconcile_existing_asks_to_sync_wipe_or_abort(
     assert script.reconcile_existing(conn, {}, "ask", "ADMIN", yes=False) is proceeds
     assert (tmp_path / "adopt_imports.tf").exists() is imports
     assert any(sql.startswith("DROP") for sql in conn.executed) is drops
+    assert any(sql.startswith("GRANT OWNERSHIP") for sql in conn.executed) is imports
+
+
+def test_sync_hands_adopted_objects_to_the_system_role_terraform_uses() -> None:
+    script = load_script()
+    conn = FakeConnection()
+    script.transfer_ownership(conn, [PLANNED[0], PLANNED[3], PLANNED[5], PLANNED[6]])
+    assert conn.executed == [
+        'GRANT OWNERSHIP ON DATABASE "DB_EXAMPLE_DEV" TO ROLE SYSADMIN COPY CURRENT GRANTS',
+        'GRANT OWNERSHIP ON STAGE "DB_EXAMPLE_DEV"."_SRC"."ST_DEFAULT" TO ROLE SYSADMIN COPY CURRENT GRANTS',
+        'GRANT OWNERSHIP ON ROLE "RL_EXAMPLE_DEV__ENG" TO ROLE SECURITYADMIN COPY CURRENT GRANTS',
+        'GRANT OWNERSHIP ON USER "ADMIN" TO ROLE USERADMIN COPY CURRENT GRANTS',
+    ]
+
+
+def test_personal_prefix_follows_the_terraform_user_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    users = tmp_path / "config" / "users"
+    users.mkdir(parents=True)
+    (users / "custom.yaml").write_text('login: "jane.doe@example.com"\nschema_prefix: "DBT_JANE"\nroles: []\n')
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    assert script.personal_prefix("JANE.DOE@example.com") == "DBT_JANE"
+    assert script.personal_prefix("john.smith@example.com") == "DBT_JOHN_SMITH"
+
+
+def test_init_sql_provisions_through_the_system_roles_in_utc() -> None:
+    sql = SCRIPT.parents[1].joinpath("terraform", "modules", "snowflake", "init.sql").read_text()
+    for role in ("SYSADMIN", "SECURITYADMIN", "USERADMIN"):
+        assert f"GRANT ROLE {role:<13} TO USER TERRAFORM_USER;" in sql
+    assert "DROP ROLE IF EXISTS RL_PLATFORM_PROVISIONING;" in sql
+    assert "TIMEZONE               = 'UTC'" in sql
 
 
 def test_reconcile_existing_does_nothing_on_a_fresh_account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

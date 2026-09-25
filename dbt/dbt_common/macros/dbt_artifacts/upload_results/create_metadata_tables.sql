@@ -6,9 +6,10 @@
     dbt_artifacts never ships DDL for them (it assumes a monitoring project has already
     built them as models). Any project that only calls `dbt_common.upload_results(results)`
     from its `on-run-end` hook would fail on a fresh database where nothing has created
-    those tables yet. This macro creates the MTD schema and the tables on demand, so the
-    upload works standalone. A monitoring project can consume them as dbt *sources*.
-    The tables live in the metadata layer (`_MTD`, or `<prefix>_MTD` in dev).
+    those tables yet. This macro creates the tables on demand, so the upload works
+    standalone. A monitoring project can consume them as dbt *sources*.
+    The tables live in the metadata layer (`_MTD`, or `<prefix>_MTD` in dev), a schema
+    Terraform provisions in both cases (terraform/main.tf, terraform/personal.tf).
 
     Column definitions (names, order, types) are hand-derived from the upstream v2.10.0
     model shells (`models/sources/*.sql`) for the Snowflake path only:
@@ -31,12 +32,6 @@
 {% macro create_metadata_tables_if_not_exist() %}
 
     {% if execute %}
-
-        {# Personal schemas are created on demand in dev; the shared _MTD is provisioned by Terraform. #}
-        {% set metadata_schema = dbt_common.generate_schema_name('mtd', none) | trim %}
-        {% if target.name | trim | lower == 'dev' %}
-            {% do run_query("CREATE SCHEMA IF NOT EXISTS " ~ target.database ~ "." ~ metadata_schema) %}
-        {% endif %}
 
         {% set ddl_by_dataset = {
             'exposures': '

@@ -35,7 +35,7 @@ The full story is under [Concepts](../concepts/index.md); this is the minimum an
 
 1. An **Organisation** has **Teams**, a Team owns **Projects**, a Project exists in **Environments** (`dev`, `tst`, `acc`, `prd`), and each Project × Environment has **Layers** (schemas), **Roles** (grants) and **Computes** (warehouses). Users assume project roles.
 2. In Snowflake that is one database `DB_<PROJECT>_<ENV>` per Project × Environment, layer schemas `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP`, roles `RL_<PROJECT>_<ENV>__<PURPOSE>` (`ENG`, `ANL`, `ING`, `TFM`) and warehouses `WH_<PROJECT>_<ENV>`. The starter ships one project, `example`, so the development database is `DB_EXAMPLE_DEV`.
-3. In `dev` every engineer works in personal schemas `<SNOWFLAKE_SCHEMA>_<LAYER>` (`DBT_USERNAME_STG`) of the shared development database; the other environments use the provisioned `_<LAYER>` schemas.
+3. In `dev` every engineer works in personal schemas `<SNOWFLAKE_SCHEMA>_<LAYER>` (`DBT_USERNAME_STG`) of the shared development database, which Terraform provisions per engineer (dlt and dbt cannot create schemas); the other environments use the provisioned `_<LAYER>` schemas.
 
 Two personas use the repo. **Engineers** write dlt pipelines, dbt models and Dagster code and never run Terraform. **Platform administrators** run Terraform against the YAML under `terraform/config/` ([Administration](../administration/index.md)). Agents almost always act for an engineer; the [Snowflake guide](snowflake.md) covers what an agent may touch on the administrator side.
 

@@ -52,11 +52,11 @@ environment. Nothing is copied between environments by hand.
 ## Development is special
 
 Development is shared: several engineers work in one `DB_EXAMPLE_DEV`. To keep them out of
-each other's way, the engineer role holds `CREATE SCHEMA` on the development database
-(`privileges.database: dev: [CREATE SCHEMA]` in `roles/engineer.yaml`) and every engineer works
-in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_USERNAME_STG`. dlt and dbt
-create those on demand. The provisioned `_<LAYER>` schemas exist in `dev` too; the other
-environments use only those.
+each other's way, every engineer works in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`,
+for example `DBT_USERNAME_STG`. Terraform creates them for every user who holds the engineer
+role in `dev` (the `personal` block in `roles/engineer.yaml`, `environments: [dev]`); dlt and dbt
+only use them. The provisioned `_<LAYER>` schemas exist in `dev` too; the other environments use
+only those.
 
 The rule is implemented twice, once in Python and once in Jinja, and the dbt source YAML
 repeats it with `env_var`:

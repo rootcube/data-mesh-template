@@ -10,7 +10,7 @@ from collections.abc import Iterator
 import dlt
 
 from dlt_pipelines.pipelines.ingest.knmi.source import fetch_hourly_observations
-from dlt_pipelines.utils.destination import snowflake_destination, source_dataset
+from dlt_pipelines.utils.destination import pipeline_name, snowflake_destination, source_dataset
 
 SOURCE = "knmi"
 ENTITY = "climate_hourly"
@@ -35,7 +35,7 @@ def knmi_source() -> Iterator[dlt.sources.DltResource]:
 source = knmi_source()
 
 pipeline = dlt.pipeline(
-    pipeline_name=f"ingest_{SOURCE}",
+    pipeline_name=pipeline_name(SOURCE),
     destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )

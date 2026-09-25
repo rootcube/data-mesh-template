@@ -151,17 +151,18 @@ environment:
 |---|---|---|
 | Database | `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
-| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` | `DBT_USERNAME_STG` |
+| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` or the user file's `schema_prefix` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
-| Source layer stage | `_SRC.ST_DEFAULT`, the default internal stage of each source layer; dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT` |
-| dlt load files | `<stage>/dlt/ingest/<source>/"<load id>"/<source>__<entity>.<file id>.<retry>.jsonl`, behind the lowercased `SNOWFLAKE_SCHEMA` prefix in dev | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `_SRC.ST_DEFAULT/dbt_username/dlt/ingest/knmi/` |
-| Provisioning (bootstrap) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
+| Source layer stage | `ST_DEFAULT`, the default internal stage of each source-layer schema (`_SRC`, and `<SNOWFLAKE_SCHEMA>_SRC` in dev); dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
+| dlt load files | `<stage>/dlt/ingest/<source>/<pipeline>__<load id>/<source>__<entity>.<file id>.<retry>.jsonl`, the pipeline being `ingest_<source>` | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/` |
+| Provisioning (bootstrap) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
 `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
 prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just sf setup` proposes `DBT_` plus the first part
-of your login.
+of your login, or the `schema_prefix` of your user file: the prefix Terraform provisioned your
+schemas with.
 
 Schemas inside a project database:
 
@@ -174,9 +175,10 @@ Schemas inside a project database:
 | `_MTD` | `dbt_common` on-run-end hook | Run metadata (`pre__dbt__*`) |
 
 In `dev` the same set exists per engineer under the personal prefix (`DBT_USERNAME_SRC`,
-`DBT_USERNAME_STG`, ...), created on demand by dlt and dbt; a model without `+schema` lands in the
-prefix itself (`DBT_USERNAME`). `SnowflakeSettings.schema_for_layer()` and
-`dbt_common.generate_schema_name` implement the rule; source YAML repeats it with `env_var`.
+`DBT_USERNAME_STG`, ...), provisioned by Terraform per engineer; a model without `+schema` would
+land in the prefix itself (`DBT_USERNAME`), which is not provisioned.
+`SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name` implement the rule;
+source YAML repeats it with `env_var`.
 
 Snowflake folds unquoted identifiers to uppercase, so `knmi__climate_hourly` and
 `KNMI__CLIMATE_HOURLY` are the same table. The connection settings are the `SNOWFLAKE_*`
