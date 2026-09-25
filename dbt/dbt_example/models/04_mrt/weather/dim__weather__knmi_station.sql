@@ -1,5 +1,5 @@
 SELECT
-  SHA1(CAST(stn.station_code AS VARCHAR)) AS id_dim__weather__station
+  SHA1(CAST(stn.station_code AS VARCHAR)) AS id_dim__weather__knmi_station
 
 , stn.station_code
 , stn.station_name
@@ -7,12 +7,12 @@ SELECT
 , stn.latitude
 , stn.elevation_m
 FROM
-  {{ ref('int__weather__station') }} AS stn
+  {{ ref('int__weather__knmi_station') }} AS stn
 
 UNION ALL
 
 SELECT
-  CAST(unk.unknown_id AS VARCHAR) AS id_dim__weather__station
+  CAST(unk.unknown_id AS VARCHAR) AS id_dim__weather__knmi_station
 
 -- Attributes
 , CAST(unk.unknown_id AS INTEGER) AS station_code

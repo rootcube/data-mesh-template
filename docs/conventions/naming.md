@@ -39,7 +39,7 @@ Uppercased in Snowflake object names, lowercase everywhere in the repo.
 | Staging (seed) | `stg__seed__<name>` | `stg__seed__unknown` |
 | Intermediate | `int__<domain>__<entity>` | `int__common__calendar` |
 | Mart dimension | `dim__<domain>__<entity>` | `dim__common__calendar` |
-| Mart fact | `fct__<domain>__<entity>` | `fct__weather__observation` |
+| Mart fact | `fct__<domain>__<entity>` | `fct__weather__knmi_measurement` |
 | Mart bridge | `brg__<domain>__<entity>` | `brg__weather__station_region` |
 | Mart aggregate | `agg__<domain>__<entity>` | `agg__weather__station_daily` |
 | Expose | `exp__<domain>__<entity>` | `exp__weather__station_weather` |
@@ -51,8 +51,8 @@ Double underscores (`__`) separate the structural segments (layer, source or dom
 single underscores separate words within a segment. In staging, `<source>` is the dlt source
 folder name (`knmi`). From integration up, `<domain>` is a business domain (`common` for the
 shared calendar and time models, `weather` for the KNMI chain in `dbt_example`). The `brg__` and
-`agg__` examples are illustrative; `dbt_example` ships `dim__weather__station`,
-`dim__weather__measurement_type`, `fct__weather__observation` and `exp__weather__station_weather`.
+`agg__` examples are illustrative; `dbt_example` ships `dim__weather__knmi_station`,
+`dim__weather__knmi_measurement_type`, `fct__weather__knmi_measurement` and `exp__weather__station_weather`.
 
 The model name is also the last segment of its Dagster asset key and its Snowflake table or view
 name, so pick it once and carefully. The asset key carries the project name
@@ -64,7 +64,7 @@ names across the repo keep the catalog searchable.
 | Type | Pattern | Example |
 |---|---|---|
 | Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
-| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__observation` |
+| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__knmi_measurement` |
 | Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Role-played foreign key (same dim twice) | `id_dim__<domain>__<entity>__<role>` | `id_dim__common__calendar__observed` |
 | Column in a role or context | `<column>__<context>` | `station_code__nearest` |

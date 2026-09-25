@@ -117,7 +117,7 @@ Project must never read another Project's non-expose layers.
 `mrt`, Mart
 :   Modelled, analytics-ready data: dimensions, facts, bridges, aggregates. Here:
     `dim__common__calendar`, `dim__common__time`, `dim__common__environment`, and the weather star
-    `dim__weather__station`, `dim__weather__measurement_type`, `fct__weather__observation`.
+    `dim__weather__knmi_station`, `dim__weather__knmi_measurement_type`, `fct__weather__knmi_measurement`.
 
 `exp`, Expose
 :   The publication boundary. Whatever is here is a contract; the owning Team keeps it

@@ -1,12 +1,12 @@
 version: 2
 
 models:
-  - name: int__weather__measurement_type
+  - name: int__weather__knmi_measurement_type
     description: KNMI measurement types, one row per variable the staging model carries.
 
     data_tests:
       - dbt_common.has_data:
-          name: int__weather__measurement_type__has_data
+          name: int__weather__knmi_measurement_type__has_data
 
     columns:
       - name: measurement_type_code
@@ -14,17 +14,17 @@ models:
         data_type: varchar(10)
         data_tests:
           - not_null:
-              name: int__weather__measurement_type__measurement_type_code__not_null
+              name: int__weather__knmi_measurement_type__measurement_type_code__not_null
 
           - unique:
-              name: int__weather__measurement_type__measurement_type_code__unique
+              name: int__weather__knmi_measurement_type__measurement_type_code__unique
 
       - name: measurement_type_name
         description: Name of the measurement type.
         data_type: varchar(50)
         data_tests:
           - not_null:
-              name: int__weather__measurement_type__measurement_type_name__not_null
+              name: int__weather__knmi_measurement_type__measurement_type_name__not_null
 
       - name: measurement_type_desc
         description: What KNMI measures, as its documentation describes it.

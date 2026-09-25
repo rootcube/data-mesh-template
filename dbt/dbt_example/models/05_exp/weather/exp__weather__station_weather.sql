@@ -22,10 +22,10 @@ SELECT
 , mst.unit
 , fct.measurement_value
 FROM
-  {{ ref('fct__weather__observation') }} AS fct
+  {{ ref('fct__weather__knmi_measurement') }} AS fct
 
-  INNER JOIN {{ ref('dim__weather__station') }} AS stn
-    ON stn.id_dim__weather__station = fct.id_dim__weather__station
+  INNER JOIN {{ ref('dim__weather__knmi_station') }} AS stn
+    ON stn.id_dim__weather__knmi_station = fct.id_dim__weather__knmi_station
 
-  INNER JOIN {{ ref('dim__weather__measurement_type') }} AS mst
-    ON mst.id_dim__weather__measurement_type = fct.id_dim__weather__measurement_type
+  INNER JOIN {{ ref('dim__weather__knmi_measurement_type') }} AS mst
+    ON mst.id_dim__weather__knmi_measurement_type = fct.id_dim__weather__knmi_measurement_type
