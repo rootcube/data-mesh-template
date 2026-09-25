@@ -41,7 +41,7 @@ jobs:
       - run: uv run python scripts/dbt_all.py parse --target dummy --quiet
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
-      - run: cd dbt/dbt_example && uv run sqlfluff lint models
+      - run: cd dbt/dbt_example && uv run sqlfluff lint models --config ../.sqlfluff
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       - run: uv run dagster definitions validate -w workspace.yaml

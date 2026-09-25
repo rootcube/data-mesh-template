@@ -32,6 +32,10 @@ export PATH := _uv_bin + _path_sep + _tf_bin + env("PATH")
 project     := "dbt_example"
 dbt_project := "dbt" / project
 tf_dir      := "terraform"
+# sqlfluff discovers a config above the working directory only by walking from there to your home
+# directory. A checkout on another drive than your profile (Windows) shares no path with it, so the
+# shared dbt/.sqlfluff is never found; pass it explicitly and the lookup stops mattering.
+sqlfluff_config := justfile_directory() / "dbt" / ".sqlfluff"
 port        := "3000"
 
 # list recipes (default)
@@ -77,7 +81,7 @@ _init:
 [private]
 _init:
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" }
-    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "VIRTUAL_ENV=$PWD\.venv" -Quiet)) { Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
+    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "$PWD\.venv`"" -Quiet)) { if (Get-Process | Where-Object { $_.Path -like "$PWD\.venv\*" }) { Write-Host "checkout moved since .venv was created, but programs still run from it (Dagster?); stop them (just stop) and rerun"; exit 1 }; Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
     uv sync --all-groups
     if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
@@ -119,15 +123,38 @@ install tool="all":
 
 # --- Snowflake --------------------------------------------------------------
 
+# Positional arguments keep a quoted SQL statement one argument instead of splitting it on spaces.
+
 # key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+[unix]
+[positional-arguments]
 sf cmd *args:
-    uv run python scripts/snowflake.py {{cmd}} {{args}}
+    uv run python scripts/snowflake.py "$@"
+
+# key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
+[windows]
+[positional-arguments]
+[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[extension(".ps1")]
+sf cmd *args:
+    uv run python scripts/snowflake.py @args
+    exit $LASTEXITCODE
 
 # --- Dagster ----------------------------------------------------------------
 
 # start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop); stops a previous instance first
+[unix]
 start: stop _dirs
     uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
+
+# Dagster captures a step's stdout/stderr (the run's stdout/stderr tabs) on Windows only with
+# PYTHONLEGACYWINDOWSSTDIO set; its streams then use the console code page, so UTF-8 keeps
+# non-ASCII output (dbt, dlt) from failing to encode.
+
+# start the Dagster dev server on http://localhost:3000 (Ctrl+C to stop); stops a previous instance first
+[windows]
+start: stop _dirs
+    $env:PYTHONLEGACYWINDOWSSTDIO = "1"; $env:PYTHONIOENCODING = "utf-8"; uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}
 
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [unix]
@@ -144,18 +171,15 @@ stop:
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [windows]
 stop:
-    @Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
+    @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -gt 4 -and $_ -ne $PID }; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }; exit 0
 
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 dagster *args:
     uv run dagster {{args}}
 
-# `dagster definitions validate` is superseded by `dg check defs`, which does not read workspace.yaml;
-# PYTHONWARNINGS drops that one nag (the same filter sits in .pre-commit-config.yaml and ci.yml).
-
 # load every code location exactly like `just start` does, without the UI
 validate:
-    PYTHONWARNINGS='ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
+    uv run dagster definitions validate -w workspace.yaml
 
 # --- dlt --------------------------------------------------------------------
 
@@ -175,7 +199,7 @@ dbt-all *args:
 
 # lint or fix SQL with sqlfluff from the dbt project, e.g. `just sqlfluff lint models`
 sqlfluff *args:
-    cd {{dbt_project}}; uv run sqlfluff {{args}}
+    cd {{dbt_project}}; uv run sqlfluff {{args}} --config '{{sqlfluff_config}}'
 
 # --- Terraform (platform administrators) -----------------------------------
 
@@ -199,13 +223,13 @@ docs cmd="serve" *args:
 fmt:
     uv run ruff format .
     uv run ruff check --fix .
-    cd {{dbt_project}}; uv run sqlfluff fix models
+    cd {{dbt_project}}; uv run sqlfluff fix models --config '{{sqlfluff_config}}'
 
 # lint Python and SQL without changing files
 lint:
     uv run ruff check .
     uv run ruff format --check .
-    cd {{dbt_project}}; uv run sqlfluff lint models
+    cd {{dbt_project}}; uv run sqlfluff lint models --config '{{sqlfluff_config}}'
 
 # type check Python with ty
 typecheck:

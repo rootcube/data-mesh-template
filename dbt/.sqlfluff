@@ -12,6 +12,9 @@ rules = AL01, AL02, AL03, AL04, AL08, AM01, AM02, AM03, AM04, AM05, AM06, AM07, 
 ; Shared by every project under dbt/. Run sqlfluff from inside a project directory
 ; (`just sqlfluff lint models`): the dbt templater takes dbt_project.yml from the working
 ; directory and profiles.yml from DBT_PROFILES_DIR (the justfile and .envrc point it at dbt/).
+; Always name this file with `--config` (the recipes and hooks do). sqlfluff only finds a config
+; above the working directory by walking from there to your home directory, so a checkout on a
+; different drive than your profile never finds it and every run fails on the missing dialect.
 [sqlfluff:templater:dbt]
 ; Lint without Snowflake credentials: the dummy target is an in-memory DuckDB (profiles.yml).
 target = dummy

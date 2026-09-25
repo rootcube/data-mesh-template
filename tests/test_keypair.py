@@ -53,11 +53,11 @@ def test_project_role_discovery_prefers_engineer_in_dev() -> None:
 def test_schema_prefix_replaces_the_placeholder_env_example_ships() -> None:
     script = load_script()
     # .env.example ships DBT_USERNAME; it must never become someone's real schema prefix.
-    assert script.schema_prefix("DBT_USERNAME", "username@example.com") == "DBT_USERNAME"
-    assert script.schema_prefix("DBT_USERNAME", "j.doe@example.com") == "DBT_J_DOE"
-    assert script.schema_prefix("dbt", "j.doe@example.com") == "DBT_J_DOE"
-    assert script.schema_prefix("", "j.doe@example.com") == "DBT_J_DOE"
-    assert script.schema_prefix("DBT_TEAM_SHARED", "j.doe@example.com") == "DBT_TEAM_SHARED"
+    assert script.resolve_prefix("DBT_USERNAME", "username@example.com") == "DBT_USERNAME"
+    assert script.resolve_prefix("DBT_USERNAME", "j.doe@example.com") == "DBT_J_DOE"
+    assert script.resolve_prefix("dbt", "j.doe@example.com") == "DBT_J_DOE"
+    assert script.resolve_prefix("", "j.doe@example.com") == "DBT_J_DOE"
+    assert script.resolve_prefix("DBT_TEAM_SHARED", "j.doe@example.com") == "DBT_TEAM_SHARED"
 
 
 def test_provisioning_sql_fills_in_the_terraform_key() -> None:

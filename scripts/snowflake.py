@@ -244,7 +244,7 @@ def discover_context(
         warehouse=found["warehouse"],
         database=found["database"],
         environment=found["environment"],
-        schema=schema_prefix(settings.schema, settings.user),
+        schema=resolve_prefix(settings.schema, settings.user),
     )
 
 
@@ -302,7 +302,7 @@ def personal_prefix(user: str) -> str:
     return "DBT_" + re.sub(r"[^A-Za-z0-9]+", "_", user.split("@")[0]).strip("_").upper()
 
 
-def schema_prefix(current: str, user: str) -> str:
+def resolve_prefix(current: str, user: str) -> str:
     """The prefix from .env, or one derived from the login while .env still holds what .env.example ships."""
     return current if current and current.upper() not in PLACEHOLDER_SCHEMAS else personal_prefix(user)
 
@@ -626,7 +626,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
         role=role or current.get("SNOWFLAKE_ROLE", ""),
         warehouse=warehouse or current.get("SNOWFLAKE_WAREHOUSE", ""),
         database=database or current.get("SNOWFLAKE_DATABASE", ""),
-        schema=schema_prefix(current.get("SNOWFLAKE_SCHEMA", ""), exact_user),
+        schema=resolve_prefix(current.get("SNOWFLAKE_SCHEMA", ""), exact_user),
     )
     if finish_settings(settings, args):
         return 1

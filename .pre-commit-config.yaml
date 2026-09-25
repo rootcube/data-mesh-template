@@ -45,7 +45,7 @@ repos:
 
       - id: sqlfluff-lint
         name: sqlfluff lint (dbt models)
-        entry: bash -c 'cd dbt/dbt_example && DBT_PROFILES_DIR=.. uv run sqlfluff lint models'
+        entry: bash -c 'cd dbt/dbt_example && DBT_PROFILES_DIR=.. uv run sqlfluff lint models --config ../.sqlfluff'
         language: system
         files: ^dbt/dbt_example/models/.*\.sql$
         pass_filenames: false
