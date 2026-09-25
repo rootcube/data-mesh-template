@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/rootcube/data-mesh-template/compare/v0.1.6...v0.1.7) (2026-09-25)
+
+
+### Features
+
+* remove unused weather measurement and observation YAML files ([dd1c6b2](https://github.com/rootcube/data-mesh-template/commit/dd1c6b2927ca19f4aea17572d9bcca3166af8299))
+* remove unused weather measurement and observation YAML files ([ac01fc8](https://github.com/rootcube/data-mesh-template/commit/ac01fc8050a95b6454c045e572ec45f6589e46ca))
+
 ## [0.1.6](https://github.com/rootcube/data-mesh-template/compare/v0.1.5...v0.1.6) (2026-09-25)
 
 
