@@ -86,3 +86,135 @@ def test_ensure_user_config_warns_about_logins_missing_from_the_account(
     out = capsys.readouterr().out
     assert "admin.yaml lists ADMIN, which does not exist in this account" in out
     assert "GONE" not in out and "NEW" not in out
+
+
+class FakeConnection:
+    """Answers the SHOW statements existing_objects runs and records every other statement."""
+
+    SHOW = {
+        "SHOW DATABASES": (["name"], [["DB_EXAMPLE_DEV"], ["SNOWFLAKE"]]),
+        "SHOW SCHEMAS IN ACCOUNT": (["database_name", "name"], [["DB_EXAMPLE_DEV", "_SRC"]]),
+        "SHOW STAGES IN ACCOUNT": (["database_name", "schema_name", "name"], [["DB_EXAMPLE_DEV", "_SRC", "ST_DLT"]]),
+        "SHOW WAREHOUSES": (["name"], []),
+        "SHOW ROLES": (["name"], [["RL_EXAMPLE_DEV__ENG"]]),
+        "SHOW USERS": (["name"], [["ADMIN"]]),
+    }
+
+    def __init__(self) -> None:
+        self.executed: list[str] = []
+
+    def cursor(self) -> "FakeConnection":
+        return self
+
+    def execute(self, sql: str) -> "FakeConnection":
+        self.executed.append(sql)
+        columns, self.rows = self.SHOW.get(sql, ([], []))
+        self.description = [(c,) for c in columns]
+        return self
+
+    def fetchall(self) -> list[list[str]]:
+        return self.rows
+
+
+PLANNED = [
+    {
+        "address": 'module.database["dev"].snowflake_database.this',
+        "type": "snowflake_database",
+        "name": "DB_EXAMPLE_DEV",
+    },
+    {
+        "address": 'module.database["prd"].snowflake_database.this',
+        "type": "snowflake_database",
+        "name": "DB_EXAMPLE_PRD",
+    },
+    {
+        "address": 'module.schema["dev_src"].snowflake_schema.this',
+        "type": "snowflake_schema",
+        "database": "DB_EXAMPLE_DEV",
+        "name": "_SRC",
+    },
+    {
+        "address": 'snowflake_stage_internal.dlt["dev_src"]',
+        "type": "snowflake_stage_internal",
+        "database": "DB_EXAMPLE_DEV",
+        "schema": "_SRC",
+        "name": "ST_DLT",
+    },
+    {
+        "address": 'module.warehouse["dev"].snowflake_warehouse.this',
+        "type": "snowflake_warehouse",
+        "name": "WH_EXAMPLE_DEV",
+    },
+    {
+        "address": 'module.role["dev_eng"].snowflake_account_role.this',
+        "type": "snowflake_account_role",
+        "name": "RL_EXAMPLE_DEV__ENG",
+    },
+    {"address": 'snowflake_user.person["admin"]', "type": "snowflake_user", "name": "ADMIN"},
+]
+
+
+def test_existing_objects_matches_planned_creates_by_full_name() -> None:
+    script = load_script()
+    found = script.existing_objects(FakeConnection(), PLANNED)
+    assert [script.object_path(r) for r in found] == [
+        ("DB_EXAMPLE_DEV",),
+        ("DB_EXAMPLE_DEV", "_SRC"),
+        ("DB_EXAMPLE_DEV", "_SRC", "ST_DLT"),
+        ("RL_EXAMPLE_DEV__ENG",),
+        ("ADMIN",),
+    ]
+
+
+def test_write_imports_uses_quoted_identifiers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
+    script.write_imports([PLANNED[0], PLANNED[3]])
+    text = (tmp_path / "adopt_imports.tf").read_text()
+    assert 'import {\n  to = module.database["dev"].snowflake_database.this\n  id = "\\"DB_EXAMPLE_DEV\\""\n}' in text
+    assert 'id = "\\"DB_EXAMPLE_DEV\\".\\"_SRC\\".\\"ST_DLT\\""' in text
+
+
+def test_drop_objects_goes_innermost_first_and_spares_the_current_user() -> None:
+    script = load_script()
+    conn = FakeConnection()
+    script.drop_objects(conn, list(reversed(PLANNED)), current_user="admin")
+    assert conn.executed == [
+        'DROP STAGE IF EXISTS "DB_EXAMPLE_DEV"."_SRC"."ST_DLT"',
+        'DROP SCHEMA IF EXISTS "DB_EXAMPLE_DEV"."_SRC"',
+        'DROP DATABASE IF EXISTS "DB_EXAMPLE_PRD"',
+        'DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"',
+        'DROP WAREHOUSE IF EXISTS "WH_EXAMPLE_DEV"',
+        'DROP ROLE IF EXISTS "RL_EXAMPLE_DEV__ENG"',
+    ]
+
+
+@pytest.mark.parametrize(
+    ("answers", "proceeds", "imports", "drops"),
+    [
+        (["sync"], True, True, False),
+        (["wipe", "wipe"], True, False, True),
+        (["wipe", "no"], False, False, False),
+        (["abort"], False, False, False),
+    ],
+)
+def test_reconcile_existing_asks_to_sync_wipe_or_abort(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, answers: list[str], proceeds: bool, imports: bool, drops: bool
+) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
+    monkeypatch.setattr(script, "planned_creates", lambda env: PLANNED)
+    replies = iter(answers)
+    monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
+    conn = FakeConnection()
+    assert script.reconcile_existing(conn, {}, "ask", "ADMIN", yes=False) is proceeds
+    assert (tmp_path / "adopt_imports.tf").exists() is imports
+    assert any(sql.startswith("DROP") for sql in conn.executed) is drops
+
+
+def test_reconcile_existing_does_nothing_on_a_fresh_account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
+    monkeypatch.setattr(script, "planned_creates", lambda env: [PLANNED[1]])
+    assert script.reconcile_existing(FakeConnection(), {}, "ask", "ADMIN", yes=False) is True
+    assert not (tmp_path / "adopt_imports.tf").exists()

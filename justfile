@@ -17,6 +17,11 @@ export DLT_DATA_DIR     := justfile_directory() / ".dlt" / "data"
 export DBT_PROFILES_DIR := justfile_directory() / "dbt"
 # The Snowflake connector's vendored requests warns about urllib3 on every command; nothing to fix here.
 export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests"
+# uv's installer puts it in ~/.local/bin; each recipe line is a fresh shell, so make it findable
+# right after `just init` installs it, before the user restarts their shell.
+_uv_bin   := if os_family() == "windows" { home_directory() + "\\.local\\bin" } else { home_directory() / ".local" / "bin" }
+_path_sep := if os_family() == "windows" { ";" } else { ":" }
+export PATH := _uv_bin + _path_sep + env("PATH")
 
 # Overridable: `just project=dbt_other dbt build` targets another dbt project under dbt/.
 project     := "dbt_example"
@@ -66,7 +71,7 @@ _init:
 [windows]
 [private]
 _init:
-    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"; $env:Path = "$env:USERPROFILE\.local\bin;$env:Path" }
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" }
     if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "VIRTUAL_ENV=$PWD\.venv" -Quiet)) { Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
     uv sync --all-groups
     if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
