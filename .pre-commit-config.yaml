@@ -34,6 +34,8 @@ repos:
         pass_filenames: false
 
   # dbt: every project must parse without credentials (dummy target); SQL follows the sqlfluff rules.
+  # sqlfluff runs through its just recipe, which sets the working directory and DBT_PROFILES_DIR
+  # on every OS (a Windows PATH has no bash or env).
   - repo: local
     hooks:
       - id: dbt-parse
@@ -45,17 +47,17 @@ repos:
 
       - id: sqlfluff-lint
         name: sqlfluff lint (dbt models)
-        entry: bash -c 'cd dbt/dbt_example && DBT_PROFILES_DIR=.. uv run sqlfluff lint models'
+        entry: just sqlfluff lint models
         language: system
         files: ^dbt/dbt_example/models/.*\.sql$
         pass_filenames: false
 
-  # Dagster: every code location must load.
+  # Dagster: every code location must load (`just validate` sets the warning filter on every OS).
   - repo: local
     hooks:
       - id: dagster-validate
         name: dagster definitions validate
-        entry: env "PYTHONWARNINGS=ignore:Function `definitions_validate_command`" uv run dagster definitions validate -w workspace.yaml
+        entry: just validate
         language: system
         files: ^(src|dlt_pipelines)/.*\.(py|yaml)$
         pass_filenames: false
