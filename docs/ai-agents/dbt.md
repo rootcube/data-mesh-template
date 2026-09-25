@@ -12,7 +12,7 @@ Two things live under `dbt/`, sharing one `profiles.yml` and one `.sqlfluff`:
 
 | Folder | What it is | Verdict for new work |
 |---|---|---|
-| `dbt/dbt_example/` | The project of the `example` mesh node. Layers `02_stg`, `03_int`, `04_mrt`, `05_exp`, plus `sources/`, `seeds/`, `tests/`, `macros/`. | **Default.** New models for this project go here. A new mesh node gets its own copy: [adding a project](../development/adding-projects.md). |
+| `dbt/dbt_example/` | The project of the `example` mesh node. Layers `02_stg`, `03_int`, `04_mrt`, `05_exp`, plus `sources/`, `seeds/`, `exposures/`, `tests/`, `macros/`. | **Default.** New models for this project go here. A new mesh node gets its own copy: [adding a project](../development/adding-projects.md). |
 | `dbt/dbt_common/` | A package every project installs (`packages.yml`: `local: ../dbt_common`). Shared macros, generic models and seeds, generic tests. | Shared machinery only, not a home for project models. |
 
 `scripts/dbt_all.py` (behind `just dbt-all`) runs one dbt command in every project under `dbt/` and skips `dbt_common` on purpose: a package is built through the project that installs it.
@@ -51,7 +51,7 @@ Dispatch
 :   `dispatch: search_order: ["dbt_common", "dbt"]` in the project makes dbt pick up the package's overrides of `generate_schema_name` and `set_query_tag`. A new project must copy that block or its schemas come out wrong outside `dev`.
 
 Hooks
-:   `on-run-start` calls `dbt_common.log_run_info()` (a banner with links to the query history in Snowsight) and `dbt_common.refresh_stages()` (`ALTER STAGE _SRC.ST_DLT REFRESH`, the directory table of the dlt load stage, for `run` and `build`, skipped on `dummy`). `dbt_common`'s own `on-run-end` hooks run in every project that installs it: `upload_results` writes run metadata into `pre__dbt__*` tables in the metadata layer (`_MTD`, or `<prefix>_MTD` in `dev`) for `run`, `build`, `test`, `seed` and `freshness`, skipped on the `dummy` target; then `log_run_summary` prints totals, slowest models and failed tests.
+:   `on-run-start` calls `dbt_common.log_run_info()` (a banner with links to the query history in Snowsight) and `dbt_common.refresh_stages()` (`ALTER STAGE _SRC.ST_DEFAULT REFRESH`, the directory table of the dlt load stage, for `run` and `build`, skipped on `dummy`). `dbt_common`'s own `on-run-end` hooks run in every project that installs it: `upload_results` writes run metadata into `pre__dbt__*` tables in the metadata layer (`_MTD`, or `<prefix>_MTD` in `dev`) for `run`, `build`, `test`, `seed` and `freshness`, skipped on the `dummy` target; then `log_run_summary` prints totals, slowest models and failed tests.
 
 The `dbt_common` models
 :   `models: dbt_common: +enabled: true` in `dbt_example` builds the shared seeds (`seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday`), the staging models over them (`stg__seed__*`), `int__common__{date,calendar,holiday,time,environment}` and `dim__common__{calendar,time,environment}`.

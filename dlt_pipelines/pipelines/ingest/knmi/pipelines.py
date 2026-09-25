@@ -36,6 +36,6 @@ source = knmi_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=f"ingest_{SOURCE}",
-    destination=snowflake_destination(),
+    destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )

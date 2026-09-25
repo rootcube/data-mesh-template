@@ -108,7 +108,7 @@ dbt/
 ├── profiles.yml                  #   shared profile `default`: dev, prd + dummy
 ├── .sqlfluff                     #   shared lint config: dbt templater with the dummy target
 ├── dbt_common/                   #   package: macros, generic tests, seeds, generic dims
-└── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/
+└── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/
 terraform/                        # platform administrators: config/*.yaml -> Snowflake
 ├── README.md                     #   the runbook
 ├── config/                       #   organisations, teams, projects, environments, layers, roles, computes, users, privileges

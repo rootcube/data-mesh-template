@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: dim__weather__station
+    description: Station dimension, the KNMI weather stations plus the unknown members.
+
+    data_tests:
+      - dbt_common.has_data:
+          name: dim__weather__station__has_data
+
+    columns:
+      - name: id_dim__weather__station
+        description: Surrogate key for the station dimension, a hash of the station code.
+        data_type: varchar(40)
+        data_tests:
+          - not_null:
+              name: dim__weather__station__id_dim__weather__station__not_null
+
+          - unique:
+              name: dim__weather__station__id_dim__weather__station__unique
+
+      - name: station_code
+        description: KNMI station number (negative for the unknown members).
+        data_type: integer
+        data_tests:
+          - not_null:
+              name: dim__weather__station__station_code__not_null
+
+          - unique:
+              name: dim__weather__station__station_code__unique
+
+      - name: station_name
+        description: Station name as KNMI lists it.
+        data_type: varchar(50)
+        data_tests:
+          - not_null:
+              name: dim__weather__station__station_name__not_null
+
+      - name: longitude
+        description: Longitude in decimal degrees east.
+        data_type: number(6,3)
+
+      - name: latitude
+        description: Latitude in decimal degrees north.
+        data_type: number(6,3)
+
+      - name: elevation_m
+        description: Elevation of the station in metres above sea level.
+        data_type: number(6,2)
+
+    constraints:
+      - columns:
+          - id_dim__weather__station
+        type: primary_key

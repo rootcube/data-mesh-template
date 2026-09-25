@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: fct__weather__observation
+    description: >
+      Observation fact, one row per station per hour per measurement type. The calendar and time
+      keys identify the start of the observation hour; observed_at is its end, as KNMI reports it.
+
+    data_tests:
+      - dbt_common.has_data:
+          name: fct__weather__observation__has_data
+
+    columns:
+      - name: id_fct__weather__observation
+        description: Surrogate key of the fact, a hash of station code, observed_at and measurement type code.
+        data_type: varchar(32)
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__id_fct__weather__observation__not_null
+
+          - unique:
+              name: fct__weather__observation__id_fct__weather__observation__unique
+
+      - name: id_dim__weather__station
+        description: Foreign key to dim__weather__station (-2 when the station is not in the seed).
+        data_type: varchar(40)
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__id_dim__weather__station__not_null
+
+          - relationships:
+              name: fct__weather__observation__id_dim__weather__station__relationships
+              arguments:
+                to: ref('dim__weather__station')
+                field: id_dim__weather__station
+              config:
+                severity: warn
+
+      - name: id_dim__weather__measurement_type
+        description: Foreign key to dim__weather__measurement_type (-2 when the code is not in the seed).
+        data_type: varchar(40)
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__id_dim__weather__measurement_type__not_null
+
+          - relationships:
+              name: fct__weather__observation__id_dim__weather__measurement_type__relationships
+              arguments:
+                to: ref('dim__weather__measurement_type')
+                field: id_dim__weather__measurement_type
+              config:
+                severity: warn
+
+      - name: id_dim__common__calendar
+        description: Foreign key to dim__common__calendar, the day the observation hour starts on (YYYYMMDD).
+        data_type: integer
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__id_dim__common__calendar__not_null
+
+          - relationships:
+              name: fct__weather__observation__id_dim__common__calendar__relationships
+              arguments:
+                to: ref('dim__common__calendar')
+                field: id_dim__common__calendar
+              config:
+                severity: warn
+
+      - name: id_dim__common__time
+        description: Foreign key to dim__common__time, the time of day the observation hour starts at (HHMMSS).
+        data_type: integer
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__id_dim__common__time__not_null
+
+          - relationships:
+              name: fct__weather__observation__id_dim__common__time__relationships
+              arguments:
+                to: ref('dim__common__time')
+                field: id_dim__common__time
+              config:
+                severity: warn
+
+      - name: observed_at
+        description: End of the observation hour (timestamp, no timezone).
+        data_type: timestamp_ntz
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__observed_at__not_null
+
+      - name: measurement_value
+        description: The measured value, in the unit of its measurement type.
+        data_type: number(10,2)
+        data_tests:
+          - not_null:
+              name: fct__weather__observation__measurement_value__not_null
+
+    constraints:
+      - columns:
+          - id_fct__weather__observation
+        type: primary_key

@@ -1,11 +1,11 @@
 # -----------------------------------------------------------------------------
-# Stages: one internal stage per source layer, where dlt PUTs its load files
-# before COPY INTO the source tables (`stage_name` in dlt_pipelines/utils/
-# destination.py). READ/WRITE come from the layer privileges of the roles.
+# Stages: the default internal stage of every source layer, where dlt PUTs its
+# load files before COPY INTO the source tables (`stage_name` in dlt_pipelines/
+# utils/destination.py). READ/WRITE come from the layer privileges of the roles.
 # -----------------------------------------------------------------------------
 
 locals {
-  dlt_stage_name = "ST_DLT"
+  default_stage_name = "ST_DEFAULT"
 
   source_layer_schemas = {
     for key, layer in local.project_environment_layer_map : key => layer
@@ -13,15 +13,15 @@ locals {
   }
 }
 
-resource "snowflake_stage_internal" "dlt" {
+resource "snowflake_stage_internal" "default" {
   for_each = local.source_layer_schemas
 
   database = each.value.database_name
   schema   = module.schema[each.key].schema_name
-  name     = local.dlt_stage_name
-  comment  = "Internal stage for dlt load files (PUT, then COPY INTO the source tables)"
+  name     = local.default_stage_name
+  comment  = "Default internal stage of the source layer (dlt PUTs its load files here, then COPY INTO the source tables)"
 
-  # Directory table: SELECT * FROM DIRECTORY(@_SRC.ST_DLT) lists the files. Internal stages do not
+  # Directory table: SELECT * FROM DIRECTORY(@_SRC.ST_DEFAULT) lists the files. Internal stages do not
   # auto-refresh it (that is an external-stage feature); ALTER STAGE ... REFRESH updates it.
   directory {
     enable = true
@@ -29,6 +29,6 @@ resource "snowflake_stage_internal" "dlt" {
 }
 
 output "stage_names" {
-  description = "Fully qualified names of the dlt stages, one per source layer"
-  value       = sort([for stage in snowflake_stage_internal.dlt : stage.fully_qualified_name])
+  description = "Fully qualified names of the default stages, one per source layer"
+  value       = sort([for stage in snowflake_stage_internal.default : stage.fully_qualified_name])
 }

@@ -1,0 +1,19 @@
+version: 2
+
+# Exposures: the consumers of the expose layer, so the lineage runs past the last model and
+# `dbt ls --select +exposure:<name>` builds exactly what a consumer needs.
+exposures:
+  - name: weather_dashboard
+    label: Weather dashboard
+    type: dashboard
+    maturity: low
+    # Replace with the dashboard's own address; the starter has no dashboard to point at.
+    url: https://example.org/dashboards/weather
+    description: >
+      Hourly weather per KNMI station, the starter's example consumer. Reads
+      exp__weather__station_weather and nothing else: the expose layer is the contract.
+    depends_on:
+      - ref('exp__weather__station_weather')
+    owner:
+      name: Platform Team
+      email: platform-admin@example.com

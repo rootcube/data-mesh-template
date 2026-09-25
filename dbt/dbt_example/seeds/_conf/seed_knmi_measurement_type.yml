@@ -1,0 +1,52 @@
+version: 2
+
+# Seeds config
+seeds:
+  - name: seed_knmi_measurement_type
+    description: >
+      The KNMI measurement types the staging model carries, keyed by the KNMI variable code
+      (T, FH, RH, Q, U), with the unit after the staging model's conversion.
+
+    config:
+      enabled: true
+      column_types:
+        measurement_type_code: varchar(10)
+        measurement_type_name: varchar(50)
+        measurement_type_desc: varchar(200)
+        unit: varchar(10)
+        measurement_type_sort: integer
+
+    columns:
+      - name: measurement_type_code
+        description: KNMI variable code.
+        data_type: varchar(10)
+
+        data_tests:
+          - unique:
+              name: seed_knmi_measurement_type__measurement_type_code__unique
+
+          - not_null:
+              name: seed_knmi_measurement_type__measurement_type_code__not_null
+
+      - name: measurement_type_name
+        description: Name of the measurement type.
+        data_type: varchar(50)
+
+        data_tests:
+          - unique:
+              name: seed_knmi_measurement_type__measurement_type_name__unique
+
+          - not_null:
+              name: seed_knmi_measurement_type__measurement_type_name__not_null
+
+      - name: measurement_type_desc
+        description: What KNMI measures, as its documentation describes it.
+        data_type: varchar(200)
+
+      - name: unit
+        description: Unit of the measurement value in the staging model and the fact.
+        data_type: varchar(10)
+
+      - name: measurement_type_sort
+        description: Sort order for displaying measurement types.
+        data_type: integer

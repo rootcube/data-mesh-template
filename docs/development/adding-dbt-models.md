@@ -5,8 +5,8 @@ icon: material/database-plus
 # Adding a dbt model
 
 A model is two files: the SQL in its layer and domain folder, and the YAML with the same name in
-that folder's `_conf/`. This page builds the first intermediate model of `dbt_example` on top of
-`stg__knmi__climate_hourly`, then sketches the step to a mart. The full rules are in the
+that folder's `_conf/`. This page builds a daily intermediate model of `dbt_example` on top of
+`stg__knmi__climate_hourly`, then points at the mart the project ships. The full rules are in the
 [dbt style guide](../conventions/dbt-style-guide.md); the layer background on
 [Layers](../architecture/layers.md).
 
@@ -47,7 +47,8 @@ dbt YAML may carry Jinja.
 ## Worked example: a daily model per station
 
 The staged KNMI data is one row per station per hour. A daily summary per station is a natural
-first INT model: `int__weather__station_day`, domain `weather`.
+next INT model beside the shipped `int__weather__observation`: `int__weather__station_day`,
+domain `weather`.
 
 ```sql title="dbt/dbt_example/models/03_int/weather/int__weather__station_day.sql"
 {{
@@ -194,21 +195,23 @@ project), so it renders `ref()` and `source()` without a connection.
 
 ## From INT to a mart
 
-The next layer turns the daily model into a fact. The house pattern, visible in
-`dbt_common`'s dimensions:
+The next layer turns an INT model into a fact. `dbt_example` ships the pattern for the hourly
+observations in `models/04_mrt/weather/`; read those files next to `dbt_common`'s dimensions:
 
 - The first column is a surrogate key named `id_<model>`. `dim__common__calendar` uses the
-  `YYYYMMDD` integer (`date_simple`); `dim__common__environment` uses `SHA1(environment_code)`.
+  `YYYYMMDD` integer (`date_simple`); `dim__weather__station` uses `SHA1` of the station code;
+  `fct__weather__observation` uses `dbt_utils.generate_surrogate_key` over its grain.
 - Dimensions end with `UNION ALL` on `stg__seed__unknown`, so facts can point at the unknown
-  member (`-1`, `-2`, `-3`) instead of `NULL`.
-- Facts carry the dimension keys they join to. A `fct__weather__station_day` would compute
-  `CAST(REPLACE(CAST(observation_date AS VARCHAR), '-', '') AS INTEGER) AS id_dim__common__calendar`
-  and get a `relationships` test to `dim__common__calendar`.
+  member (`-1`, `-2`, `-3`) instead of `NULL`: `COALESCE(stn.id_dim__weather__station, '-2')`.
+- Facts carry the dimension keys they join to, plus computed keys for the common dimensions:
+  `CAST(TO_CHAR(hour_start_at, 'YYYYMMDD') AS INTEGER) AS id_dim__common__calendar`, each with
+  a `relationships` test (`severity: warn`). A `fct__weather__station_day` on top of the daily
+  model would do the same with `observation_date`.
 
 Mart models live in `models/04_mrt/<domain>/`, materialize as tables, and reference INT models
 plus the dimensions they key into. A published view in `models/05_exp/<domain>/`
-(`exp__<domain>__<entity>`) then joins the star back into whatever flat shape a consumer or
-another project wants.
+(`exp__weather__station_weather`) then joins the star back into the flat shape a consumer wants,
+and `exposures/weather_dashboard.yml` names that consumer.
 
 ## Where Dagster comes in
 

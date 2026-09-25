@@ -142,7 +142,7 @@ source = airquality_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=f"ingest_{SOURCE}",
-    destination=snowflake_destination(),
+    destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )
 ```
@@ -166,10 +166,12 @@ More resources
 :   One `@dlt.resource` per endpoint, all yielded from the same source function, each with its
     own `table_name`. Each becomes its own table and its own Dagster asset.
 
-`snowflake_destination()` and `source_dataset()`
+`snowflake_destination(SOURCE)` and `source_dataset()`
 :   Always these two. They read `SNOWFLAKE_*` and `ENVIRONMENT` from `.env` through
-    `SnowflakeSettings`, so there is nothing to configure per source. Credentials are only
-    checked when the pipeline runs, which is why the module imports cleanly without a `.env`.
+    `SnowflakeSettings`, so there is nothing to configure per source; the source name only picks
+    the folder of the load files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`. Credentials
+    are only checked when the pipeline runs, which is why the module imports cleanly without a
+    `.env`.
 
 ## 5. defs.yaml
 
@@ -377,7 +379,7 @@ test calls the API or Snowflake.
 ## Checklist
 
 - [ ] Folder under `dlt_pipelines/pipelines/ingest/<source>/` with `__init__.py`, `constants.py`, `source.py`, `pipelines.py`, `defs.yaml`
-- [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `dataset_name=source_dataset()`
+- [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `destination=snowflake_destination(SOURCE)`, `dataset_name=source_dataset()`
 - [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
 - [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
 - [ ] `dbt/<project>/sources/src_<source>.yml` with the `env_var` schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key

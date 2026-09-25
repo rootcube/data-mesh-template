@@ -1,0 +1,6 @@
+measurement_type_code,measurement_type_name,measurement_type_desc,unit,measurement_type_sort
+"T","Temperature","Air temperature at 1.50 m, hourly value","C","1"
+"FH","Wind speed","Hourly mean wind speed","m/s","2"
+"RH","Precipitation","Hourly precipitation sum (0.05 for less than 0.05 mm)","mm","3"
+"Q","Global radiation","Hourly sum of global radiation","J/cm2","4"
+"U","Relative humidity","Relative humidity at 1.50 m","%","5"

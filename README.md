@@ -70,7 +70,7 @@ overrides/                   Zensical template overrides (page icons in the tabs
 .github/                     CI, release-please, Dependabot, the exported `main` ruleset
 ```
 
-Data flows KNMI API -> dlt -> `_SRC` (through the internal stage `_SRC.ST_DLT`) -> dbt (`_STG`,
+Data flows KNMI API -> dlt -> `_SRC` (through the internal stage `_SRC.ST_DEFAULT`) -> dbt (`_STG`,
 `_INT`, `_MRT`, `_EXP`) inside the project database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both. In development every engineer
 works in personal schemas (`DBT_<USERNAME>_STG`) of the shared `DB_EXAMPLE_DEV`.
 

@@ -439,9 +439,9 @@ The full workflow (dlt pipeline, source YAML, staging model) is in
 
 Seeds are static CSV files loaded into the reference layer (`_REF`, `+schema: ref`).
 
-- CSV files in `seeds/`, config in `seeds/_conf/seed_<name>.yml`. `dbt_example` has none yet;
-  the shared ones (`seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`) live in
-  `dbt/dbt_common/seeds/`.
+- CSV files in `seeds/`, config in `seeds/_conf/seed_<name>.yml`. `dbt_example` has
+  `seed_knmi_station` and `seed_knmi_measurement_type`; the shared ones (`seed_environment`, `seed_month`,
+  `seed_weekday`, `seed_unknown`) live in `dbt/dbt_common/seeds/`.
 - Comma-delimited, every value double-quoted.
 - `column_types` in the seed config where the CSV would otherwise be inferred wrongly.
 - Every seed gets a staging model `stg__seed__<name>` in `models/02_stg/seed/` applying explicit
@@ -471,6 +471,33 @@ seeds:
 
           - not_null:
               name: seed_unknown__unknown_id__not_null
+```
+
+## Exposures
+
+An exposure names a consumer of the expose layer (a dashboard, an application, another
+project), so the lineage runs past the last model and `dbt ls --select +exposure:<name>` lists
+exactly what that consumer needs.
+
+- One file per consumer in `dbt/<project>/exposures/<name>.yml` (`exposures/` sits in
+  `model-paths` next to `sources/`), the exposure named after the consumer.
+- `depends_on` points at `exp__` models only: the expose layer is the contract.
+- `owner` is the team that answers for the consumer, `url` its address.
+
+```yaml title="dbt/dbt_example/exposures/weather_dashboard.yml (condensed)"
+version: 2
+
+exposures:
+  - name: weather_dashboard
+    label: Weather dashboard
+    type: dashboard
+    maturity: low
+    url: https://example.org/dashboards/weather
+    depends_on:
+      - ref('exp__weather__station_weather')
+    owner:
+      name: Platform Team
+      email: platform-admin@example.com
 ```
 
 ## Tests

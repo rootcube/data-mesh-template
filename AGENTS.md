@@ -88,7 +88,7 @@ dlt_pipelines/                    # dlt package: pipelines/ingest/<source>/{cons
 dbt/                              # profiles.yml (shared profile `default`: dev, prd = Snowflake key pair, dummy = in-memory DuckDB)
 ├── .sqlfluff                     #   shared lint config (run sqlfluff from inside a project)
 ├── dbt_common/                   #   package: macros (schema naming, query tag, run logging, metadata upload), generic dims/seeds, generic tests
-└── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, packages.yml (local dbt_common)
+└── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/, packages.yml (local dbt_common)
 terraform/                        # administrators: YAML config (organisations, teams, projects, environments, layers, roles, computes, users) -> Snowflake
 scripts/                          # snowflake.py (key-pair setup/check/query/keygen), info.py, dbt_all.py
 tests/                            # pytest, offline only

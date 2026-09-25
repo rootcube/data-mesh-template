@@ -62,7 +62,7 @@ source = knmi_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=f"ingest_{SOURCE}",
-    destination=snowflake_destination(),
+    destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )
 ```
@@ -109,16 +109,19 @@ Every pipeline gets its destination and its dataset from two functions:
 
 ```python title="dlt_pipelines/utils/destination.py"
 SOURCE_LAYER = "src"
-STAGE = "ST_DLT"
+STAGE = "ST_DEFAULT"
 
 
-def snowflake_destination() -> Destination:
+def snowflake_destination(source: str) -> Destination:
     settings = SnowflakeSettings.from_env()
-    return dlt.destinations.snowflake(credentials=settings.dlt_credentials(), stage_name=load_stage(settings))
+    return dlt.destinations.snowflake(credentials=settings.dlt_credentials(), stage_name=load_stage(settings, source))
 
 
-def load_stage(settings: SnowflakeSettings) -> str:
-    return f"{settings.database}._{SOURCE_LAYER.upper()}.{STAGE}"
+def load_stage(settings: SnowflakeSettings, source: str) -> str:
+    path = f"dlt/ingest/{source}"
+    if settings.is_personal and settings.schema:
+        path = f"{settings.schema.lower()}/{path}"
+    return f"{settings.database}._{SOURCE_LAYER.upper()}.{STAGE}/{path}"
 
 
 def source_dataset() -> str:
@@ -135,16 +138,26 @@ dlt creates it on first load.
 `stage_name` is where the load files go. dlt writes each load as JSONL files under
 `.dlt/data/`, uploads them with `PUT` and loads the table with `COPY INTO`. Without a
 `stage_name` it would use the table's implicit stage; here it uses the internal stage
-`ST_DLT` that Terraform creates in the provisioned source layer of every project database
+`ST_DEFAULT` that Terraform creates in the provisioned source layer of every project database
 (`terraform/stages.tf`), so the files of every load are in one place per environment:
-`DB_EXAMPLE_DEV._SRC.ST_DLT`, with a folder per load id. It is the same stage in `dev`, where
-only the tables move to your personal schema. The ingest role holds `READ` and `WRITE` on it
+`DB_EXAMPLE_DEV._SRC.ST_DEFAULT`. Inside it, `load_stage()` gives every source a path that mirrors
+the asset key prefix, `dlt/ingest/<source>`; dlt adds a folder per load id (in double quotes)
+and names each file after its table:
+
+```
+dlt/ingest/knmi/"1758700000.123456"/knmi__climate_hourly.a1b2c3d4.0.jsonl
+```
+
+`LIST @_SRC.ST_DEFAULT/dlt/ingest/knmi/` lists every KNMI load. It is the same stage in `dev`,
+where the path starts with your lowercased `SNOWFLAKE_SCHEMA` prefix
+(`dbt_username/dlt/ingest/knmi/`), the way the tables move to your personal schema. The
+ingest role holds `READ` and `WRITE` on it
 (`READ ON STAGES`, `WRITE ON STAGES` in `terraform/config/roles/ingest.yaml`), and the engineer
 role inherits that in `dev`. dlt keeps the files after a successful `COPY INTO`
-(`keep_staged_files`, its default); `LIST @_SRC.ST_DLT` shows them, `REMOVE` cleans up. The
-stage has a directory table, so `SELECT * FROM DIRECTORY(@_SRC.ST_DLT)` works too. Internal
+(`keep_staged_files`, its default); `LIST @_SRC.ST_DEFAULT` shows them, `REMOVE` cleans up. The
+stage has a directory table, so `SELECT * FROM DIRECTORY(@_SRC.ST_DEFAULT)` works too. Internal
 stages do not refresh it automatically; `dbt_common.refresh_stages()` runs
-`ALTER STAGE _SRC.ST_DLT REFRESH` at the start of every `dbt run` and `dbt build`.
+`ALTER STAGE _SRC.ST_DEFAULT REFRESH` at the start of every `dbt run` and `dbt build`.
 
 Credentials are only validated when a pipeline runs, so importing the pipelines (which Dagster
 does on every code-location load) works without a `.env`. In `dev` the pipeline runs as your
@@ -212,6 +225,7 @@ resource.
 | Kinds | `dlt`, `snowflake` |
 | Job | `job_dlt_ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
 | Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_USERNAME_SRC.knmi__climate_hourly` in `dev` |
+| Stage path | `_SRC.ST_DEFAULT/dlt/ingest/<source>/`, then a folder per load id: `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, or `_SRC.ST_DEFAULT/dbt_username/dlt/ingest/knmi/` in `dev` |
 
 The asset key is what links ingestion to transformation. The dbt source in
 `dbt/dbt_example/sources/src_knmi.yml` declares the same key under

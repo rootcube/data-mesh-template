@@ -79,7 +79,7 @@ It contributes four things.
 | `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` (and `dummy`); no `+schema` means `target.schema`. Overrides dbt's default |
 | `set_query_tag` | Tags every Snowflake query with `dbt_invocation_id:<id>`, so a run is one filter in the query history |
 | `log_run_info` | The banner at the start of a run: invocation id, target, organization, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history |
-| `refresh_stages` | `ALTER STAGE _SRC.ST_DLT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
+| `refresh_stages` | `ALTER STAGE _SRC.ST_DEFAULT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
 | `log_run_summary` | The summary at the end: models, tests and seeds by status, failed and warned tests, failed models, the five slowest models, total runtime |
 | `upload_results` and `macros/dbt_artifacts/` | The run-metadata upload into the metadata layer (vendored from `dbt_artifacts` v2.10.0, Snowflake only, self-creating tables) |
 | `utc_now`, `utc_today` | `SYSDATE()`-based timestamps that ignore the session timezone |
@@ -165,16 +165,18 @@ to run first, and a monitoring project could later read those tables as sources.
 
 `dbt_project.yml` says what a project looks like:
 
-- `model-paths: ["models", "sources"]`: models per layer folder, source YAML in `sources/`.
+- `model-paths: ["models", "sources", "exposures"]`: models per layer folder, source YAML in
+  `sources/`, exposure YAML in `exposures/`.
 - The layer block: `02_stg`, `03_int` and `04_mrt` as `table`, `05_exp` as `view`, each with its
   `+schema` (`stg`, `int`, `mrt`, `exp`) and `layer=<name>` tag. Seeds go to `ref`.
 - `data_tests: +store_failures: true` with `+schema: tmp`.
 - `dbt_common: +enabled: true`.
 - The dispatch block and the `on-run-start` hook shown above.
 
-Today it holds one source (`src_knmi.yml`) and one model (`stg__knmi__climate_hourly`). The
-`03_int`, `04_mrt` and `05_exp` folders are empty and waiting; dbt warns about their unused
-config paths until the first model lands there.
+Today it holds one source (`src_knmi.yml`), two seeds (`seed_knmi_station`, `seed_knmi_measurement_type`)
+and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__observation`,
+`dim__weather__station`, `dim__weather__measurement_type` and `fct__weather__observation` to
+`exp__weather__station_weather`, whose consumer is the `weather_dashboard` exposure.
 
 Run it from the project folder, which is what `just dbt` does:
 
