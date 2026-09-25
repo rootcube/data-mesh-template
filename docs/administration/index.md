@@ -76,4 +76,4 @@ so a broken configuration never reaches `main`.
 | `just tf output -json user_role_grants` | Which roles each login holds |
 | `just tf output -json personal_schemas` | The personal schemas of each login |
 | `just tf output -json initial_passwords` | One-time passwords of persons created with `create: true` |
-| `just tf destroy` | Remove everything Terraform created; the `init.sql` objects stay. Databases carry `prevent_destroy`, so it fails until you delete that block ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
+| `just tf clean` | Remove every object the Terraform state tracks, databases and their data included, after you type the account name; the `init.sql` objects stay. `just tf destroy` refuses, because the databases carry `prevent_destroy` ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
