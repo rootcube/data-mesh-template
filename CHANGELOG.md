@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/rootcube/data-mesh-template/compare/v0.1.5...v0.1.6) (2026-09-25)
+
+
+### Features
+
+* add personal schema prefix support and update related documenta… ([36200f1](https://github.com/rootcube/data-mesh-template/commit/36200f1605af0e3dba54b07dbd6c4f3796d4e70d))
+* add personal schema prefix support and update related documentation ([eef641e](https://github.com/rootcube/data-mesh-template/commit/eef641e99d94f048bd6b49802a242412c7ef291e))
+
 ## [0.1.5](https://github.com/rootcube/data-mesh-template/compare/v0.1.4...v0.1.5) (2026-09-25)
 
 
