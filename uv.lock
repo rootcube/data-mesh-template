@@ -587,6 +587,7 @@ dependencies = [
     { name = "dbt-snowflake" },
     { name = "dlt", extra = ["snowflake"] },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "requests" },
     { name = "snowflake-connector-python" },
 ]
@@ -598,7 +599,6 @@ dev = [
     { name = "jsonschema" },
     { name = "pre-commit" },
     { name = "pytest" },
-    { name = "pyyaml" },
     { name = "ruff" },
     { name = "sqlfluff-templater-dbt" },
     { name = "ty" },
@@ -619,6 +619,7 @@ requires-dist = [
     { name = "dbt-snowflake", specifier = ">=1.11" },
     { name = "dlt", extras = ["snowflake"], specifier = ">=1.30" },
     { name = "python-dotenv", specifier = ">=1.1" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", specifier = ">=2.32" },
     { name = "snowflake-connector-python", specifier = ">=3.12" },
 ]
@@ -630,7 +631,6 @@ dev = [
     { name = "jsonschema", specifier = ">=4.20" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pytest", specifier = ">=8.3" },
-    { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.13" },
     { name = "sqlfluff-templater-dbt", specifier = ">=3.4" },
     { name = "ty", specifier = ">=0.0.1" },

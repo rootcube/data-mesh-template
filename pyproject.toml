@@ -21,6 +21,7 @@ dependencies = [
     "snowflake-connector-python>=3.12",
     "cryptography>=43",
     "python-dotenv>=1.1",
+    "pyyaml>=6.0",
 ]
 
 [dependency-groups]
@@ -32,7 +33,6 @@ dev = [
     "sqlfluff-templater-dbt>=3.4",
     "dagster-dg-cli>=1.13",
     "ty>=0.0.1",
-    "pyyaml>=6.0",
     "jsonschema>=4.20",
     "dbt-duckdb>=1.9",
 ]
