@@ -103,7 +103,7 @@ attributes:
     project_dir: '{{ context.project_root }}/dbt/dbt_example'
     profiles_dir: '{{ context.project_root }}/dbt'
     prepare_project_cli_args: ["parse", "--quiet"]
-  select: "*"
+  select: "fqn:*"
 ```
 
 `prepare_project_cli_args` makes the location run `dbt parse --quiet` on every load, so the

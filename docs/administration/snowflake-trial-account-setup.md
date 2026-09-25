@@ -11,8 +11,9 @@ and sets up your own key pair. Budget about fifteen minutes, most of it waiting 
 ## 1. Sign up
 
 1. Go to [signup.snowflake.com](https://signup.snowflake.com/) and fill in the form. Any
-   edition works; **Enterprise** is the default and fine. Pick a cloud and region close to you;
-   the region does not matter for the starter.
+   edition works; **Enterprise** is the default and fine (on Standard the bootstrap skips the one
+   Enterprise-only account setting, `PERIODIC_DATA_REKEYING`). Pick a cloud and region close to
+   you; the region does not matter for the starter.
 2. Open the activation mail and choose a **username** and **password**. The username becomes
    your Snowflake login (`CURRENT_USER()` returns it uppercased, `USERNAME` for `username`). Write
    both down; the bootstrap asks for them.
@@ -68,14 +69,16 @@ notification), then:
 
 1. logs in to `<organization>-<account>` and switches to `ACCOUNTADMIN`;
 2. generates `~/.snowflake/keys/terraform.p8` and runs `terraform/modules/snowflake/init.sql`
-   with its public key: `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`,
-   `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor;
+   with its public key: account parameters (UTC, ISO weeks and date formats, a few security
+   defaults), `TERRAFORM_USER` with the system roles `SYSADMIN`, `SECURITYADMIN` and
+   `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor;
 3. generates a key pair for your own user and registers it with `ALTER USER ... SET RSA_PUBLIC_KEY`;
 4. writes `terraform/config/users/<you>.yaml` (the `engineer` role in `development` on every
    project under `terraform/config/projects/`), puts the `TF_VAR_SNOWFLAKE_*` block in `.env`
    and runs `terraform init` and `terraform apply`. Read the plan and answer `yes`; it creates
    the databases, schemas, roles and warehouses of the `example` project in `development` and
-   `production` and grants you `RL_EXAMPLE_DEV__ENG`;
+   `production`, grants you `RL_EXAMPLE_DEV__ENG` and creates your personal schemas
+   (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...) in `DB_EXAMPLE_DEV`;
 5. connects with your key pair, proposes `RL_EXAMPLE_DEV__ENG`, `WH_EXAMPLE_DEV`,
    `DB_EXAMPLE_DEV` and a personal schema prefix (`DBT_<USERNAME>`), verifies the login and writes
    `.env`.

@@ -48,7 +48,8 @@ def compute_asset_key(node: Mapping[str, Any], project_name: str) -> AssetKey:
     if node.get("resource_type") == "source":
         return AssetKey([*prefix, "sources", node.get("source_name") or "", node.get("name") or ""])
 
-    segments = (node.get("original_file_path") or "").split("/")
+    # dbt writes the path with the OS separator, so a manifest parsed on Windows has backslashes.
+    segments = (node.get("original_file_path") or "").replace("\\", "/").split("/")
     dirs = segments[2:-1] if segments[0] == "packages" else segments[:-1]
     return AssetKey([*prefix, *dirs, node.get("name") or ""])
 

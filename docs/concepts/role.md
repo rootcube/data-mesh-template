@@ -24,7 +24,8 @@ Level
 :   `platform` roles span the whole Organisation; `project` roles are created per Project ×
     Environment. Terraform only instantiates project roles. The three platform-level
     definitions under `roles/global/` (administrator, monitoring, provisioning) are `disabled`
-    placeholders; provisioning itself runs as `RL_PLATFORM_PROVISIONING`, created once by
+    placeholders; provisioning itself runs through Snowflake's system roles `SYSADMIN`,
+    `SECURITYADMIN` and `USERADMIN`, granted to `TERRAFORM_USER` once by
     `terraform/modules/snowflake/init.sql`.
 
 Type
@@ -81,6 +82,11 @@ The `privileges` block has four parts, each keyed by environment code or `all`:
 | `layers` | The `_<LAYER>` schema and its current and future tables, views, functions, ... | Only for layers the project lists; `X ON TABLES` becomes an all-plus-future grant |
 | `roles` | Another project role, in the listed environments | The role **inherits** that role's privileges |
 
+Next to `privileges`, a role can carry a `personal` block (a starter addition): `environments`
+and a list of schema `privileges`. Every user holding the role in one of those environments
+gets their own schema per project layer, `<PREFIX>_<LAYER>`, created by Terraform, and the role
+gets those privileges on them. The engineer role uses it in `dev`.
+
 ## Privileges per layer and environment
 
 What each of the four roles may do, as defined in the YAML. "write" stands for `USAGE`,
@@ -96,7 +102,9 @@ TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELEC
     | `metadata` | write (tables only) | none | `USAGE`, `SELECT ON TABLES` |
     | `temporary` | write | write | write |
 
-    Database: `CREATE SCHEMA` in `dev`, for the personal schemas. Computes: `USAGE`,
+    Personal schemas: the `personal` block (`environments: [dev]`) gives every user with this
+    role their own `<PREFIX>_<LAYER>` schemas, created by Terraform, with write on them and
+    `READ`, `WRITE` on their load stage; the role has no `CREATE SCHEMA`. Computes: `USAGE`,
     `OPERATE`, `MONITOR` on `default`, `ingest` and `transform`. Inherits `transform` and
     `ingest` in `dev` and `tst`, and `analyst` everywhere. There is no `acc` block, so an
     engineer in acceptance would only see the temporary layer.
@@ -195,7 +203,8 @@ Which role a tool runs as is not decided in Terraform but in `.env`:
 
 Every project role becomes an account role `RL_<PROJECT>_<ENV>__<PURPOSE>` (the `code`
 uppercased) with a database grant, one grant set per listed layer, one per listed compute and
-the inheritance grants above. A platform role would be named `RL_PLATFORM__<PURPOSE>`; none is
+the inheritance grants above, and is itself granted to `SYSADMIN` (Snowflake's recommended
+hierarchy). `SECURITYADMIN` owns the roles and issues every grant. A platform role would be named `RL_PLATFORM__<PURPOSE>`; none is
 created by the starter.
 
 Next: [Compute](compute.md).

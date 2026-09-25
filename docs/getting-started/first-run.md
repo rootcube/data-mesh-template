@@ -29,8 +29,8 @@ last 30 days, hourly).
 
 1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt/ingest/knmi`).
 2. **Materialize**. The run fetches the observations and merges them into the table
-   `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, creating the schema
-   on first use.
+   `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, which Terraform
+   provisioned for you, through your own load stage `DBT_<USERNAME>_SRC.ST_DEFAULT`.
 3. Check:
 
     ```bash
@@ -73,7 +73,7 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 
 | Schema | Written by | Holds |
 |--------|------------|-------|
-| `DBT_<USERNAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded |
+| `DBT_<USERNAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded; the load files in the stage `ST_DEFAULT` |
 | `DBT_<USERNAME>_REF` | `dbt seed` | the `dbt_common` seeds: `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` |
 | `DBT_<USERNAME>_STG` | dbt | `stg__knmi__climate_hourly` and the `stg__seed__*` models |
 | `DBT_<USERNAME>_INT` | dbt | the `int__common__*` models |

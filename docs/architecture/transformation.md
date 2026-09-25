@@ -79,7 +79,7 @@ It contributes four things.
 | `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` (and `dummy`); no `+schema` means `target.schema`. Overrides dbt's default |
 | `set_query_tag` | Tags every Snowflake query with `dbt_invocation_id:<id>`, so a run is one filter in the query history |
 | `log_run_info` | The banner at the start of a run: invocation id, target, organization, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history |
-| `refresh_stages` | `ALTER STAGE _SRC.ST_DEFAULT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
+| `refresh_stages` | `ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` (`_SRC.ST_DEFAULT`, your personal `<PREFIX>_SRC.ST_DEFAULT` in `dev`) at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
 | `log_run_summary` | The summary at the end: models, tests and seeds by status, failed and warned tests, failed models, the five slowest models, total runtime |
 | `upload_results` and `macros/dbt_artifacts/` | The run-metadata upload into the metadata layer (vendored from `dbt_artifacts` v2.10.0, Snowflake only, self-creating tables) |
 | `utc_now`, `utc_today` | `SYSDATE()`-based timestamps that ignore the session timezone |
@@ -155,8 +155,8 @@ on-run-end:
 ```
 
 `upload_results` resolves the metadata schema through `generate_schema_name('mtd', none)`, so
-it writes to `_MTD` in the shared environments and to `<PREFIX>_MTD` in `dev`. It first creates
-that schema (in `dev`) and the `pre__dbt__*` tables if they do not exist, then inserts one row
+it writes to `_MTD` in the shared environments and to `<PREFIX>_MTD` in `dev`, both provisioned
+by Terraform. It first creates the `pre__dbt__*` tables if they do not exist, then inserts one row
 per model, test, seed, execution and so on for this invocation. On `dbt source freshness`
 runs it uploads only the freshness results and the invocation, not the graph. Nothing else has
 to run first, and a monitoring project could later read those tables as sources.
@@ -174,8 +174,8 @@ to run first, and a monitoring project could later read those tables as sources.
 - The dispatch block and the `on-run-start` hook shown above.
 
 Today it holds one source (`src_knmi.yml`), two seeds (`seed_knmi_station`, `seed_knmi_measurement_type`)
-and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__observation`,
-`dim__weather__station`, `dim__weather__measurement_type` and `fct__weather__observation` to
+and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__knmi_measurement`,
+`dim__weather__knmi_station`, `dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement` to
 `exp__weather__station_weather`, whose consumer is the `weather_dashboard` exposure.
 
 Run it from the project folder, which is what `just dbt` does:

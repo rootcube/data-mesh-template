@@ -47,7 +47,7 @@ transitively) by `upload_results`. Models, migration scripts, and integration te
   call `dbt_common.upload_results(results)` from its own `on-run-end` hook without depending on
   a monitoring project having run first. This macro is called at the top of `upload_results`
   (before the `datasets_to_load` logic) and makes the upload self-sufficient in any database:
-  - In dev, creates the personal metadata schema if it does not exist; elsewhere `_MTD` is provisioned.
+  - Creates no schema: Terraform provisions `_MTD` and, in dev, the personal `<prefix>_MTD`.
   - Runs a plain `create table if not exists <relation> (...)` (permanent table, not a CTAS) for
     each of the 11 datasets, with explicit column definitions matching
     `get_column_name_lists.sql`'s Snowflake column names/order exactly.

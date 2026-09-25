@@ -16,6 +16,21 @@ def test_own_model_key_follows_the_file_path() -> None:
     ]
 
 
+def test_windows_path_gives_the_same_key() -> None:
+    node = {
+        "package_name": "dbt_example",
+        "original_file_path": "models\\02_stg\\knmi\\stg__knmi__climate_hourly.sql",
+        "name": "stg__knmi__climate_hourly",
+    }
+    assert compute_asset_key(node, "dbt_example").path == [
+        "dbt_example",
+        "models",
+        "02_stg",
+        "knmi",
+        "stg__knmi__climate_hourly",
+    ]
+
+
 def test_package_node_is_prefixed_with_the_package() -> None:
     node = {"package_name": "dbt_common", "original_file_path": "seeds/seed_month.csv", "name": "seed_month"}
     assert compute_asset_key(node, "dbt_example").path == [

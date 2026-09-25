@@ -1,7 +1,7 @@
 {{
     config(
         materialized='table',
-        unique_key=['id_fct__weather__observation']
+        unique_key=['id_fct__weather__knmi_measurement']
     )
 }}
 
@@ -17,14 +17,14 @@ WITH cte_observation AS (
   , obs.measurement_type_code
   , obs.measurement_value
   FROM
-    {{ ref('int__weather__observation') }} AS obs
+    {{ ref('int__weather__knmi_measurement') }} AS obs
 
 )
 
 SELECT
-  {{ dbt_utils.generate_surrogate_key(['obs.station_code', 'obs.observed_at', 'obs.measurement_type_code']) }} AS id_fct__weather__observation
-, COALESCE(stn.id_dim__weather__station, '-2')                                                                 AS id_dim__weather__station
-, COALESCE(mst.id_dim__weather__measurement_type, '-2')                                                        AS id_dim__weather__measurement_type
+  {{ dbt_utils.generate_surrogate_key(['obs.station_code', 'obs.observed_at', 'obs.measurement_type_code']) }} AS id_fct__weather__knmi_measurement
+, COALESCE(stn.id_dim__weather__knmi_station, '-2')                                                            AS id_dim__weather__knmi_station
+, COALESCE(mst.id_dim__weather__knmi_measurement_type, '-2')                                                   AS id_dim__weather__knmi_measurement_type
 , CAST(TO_CHAR(obs.hour_start_at, 'YYYYMMDD') AS INTEGER)                                                      AS id_dim__common__calendar
 , CAST(TO_CHAR(obs.hour_start_at, 'HH24MISS') AS INTEGER)                                                      AS id_dim__common__time
 , obs.observed_at
@@ -34,8 +34,8 @@ SELECT
 FROM
   cte_observation AS obs
 
-  LEFT JOIN {{ ref('dim__weather__station') }} AS stn
+  LEFT JOIN {{ ref('dim__weather__knmi_station') }} AS stn
     ON stn.station_code = obs.station_code
 
-  LEFT JOIN {{ ref('dim__weather__measurement_type') }} AS mst
+  LEFT JOIN {{ ref('dim__weather__knmi_measurement_type') }} AS mst
     ON mst.measurement_type_code = obs.measurement_type_code

@@ -1,17 +1,81 @@
 -- =============================================================================
 -- Snowflake Platform Provisioning Setup for Terraform
 -- =============================================================================
--- Run this script as ACCOUNTADMIN
+-- Run this script as ACCOUNTADMIN (`just sf bootstrap` does). Every statement is
+-- idempotent, so it is safe to run again on an account that was set up before.
+--
+-- Terraform provisions through Snowflake's system roles, so every object ends up
+-- with the owner Snowflake recommends (see terraform/providers.tf):
+--   SYSADMIN       databases, schemas, stages, warehouses
+--   SECURITYADMIN  roles and all grants (MANAGE GRANTS)
+--   USERADMIN      users
 -- =============================================================================
 
 USE ROLE ACCOUNTADMIN;
 
 -- -----------------------------------------------------------------------------
--- 0. Configure some Global Account Settings
+-- 0. Account settings
 -- -----------------------------------------------------------------------------
+-- Account-level defaults; users and sessions can still override most of them.
 
-ALTER ACCOUNT SET ALLOW_CLIENT_MFA_CACHING = TRUE;
-ALTER ACCOUNT SET ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR = TRUE;
+-- Time: UTC everywhere, so timestamps do not depend on who or what ran the query.
+-- TIMESTAMP_NTZ for plain TIMESTAMP columns (Snowflake's default, made explicit).
+ALTER ACCOUNT SET
+    TIMEZONE               = 'UTC'
+    TIMESTAMP_TYPE_MAPPING = 'TIMESTAMP_NTZ'
+;
+
+-- Calendar: ISO 8601 weeks, starting on Monday (WEEK_START 1), week 1 being the week
+-- with the year's first Thursday (WEEK_OF_YEAR_POLICY 0).
+ALTER ACCOUNT SET
+    WEEK_START          = 1
+    WEEK_OF_YEAR_POLICY = 0
+;
+
+-- Output formats: ISO 8601, with millisecond precision and a numeric UTC offset.
+ALTER ACCOUNT SET
+    DATE_OUTPUT_FORMAT          = 'YYYY-MM-DD'
+    TIME_OUTPUT_FORMAT          = 'HH24:MI:SS'
+    TIMESTAMP_OUTPUT_FORMAT     = 'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM'
+    TIMESTAMP_NTZ_OUTPUT_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF3'
+    TIMESTAMP_LTZ_OUTPUT_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM'
+    TIMESTAMP_TZ_OUTPUT_FORMAT  = 'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM'
+;
+
+-- Security: AES-256 for files PUT into internal stages (default 128), no external
+-- stages with inline credentials, and no unloading to URLs typed into a query.
+ALTER ACCOUNT SET
+    CLIENT_ENCRYPTION_KEY_SIZE                      = 256
+    REQUIRE_STORAGE_INTEGRATION_FOR_STAGE_CREATION  = TRUE
+    REQUIRE_STORAGE_INTEGRATION_FOR_STAGE_OPERATION = TRUE
+    PREVENT_UNLOAD_TO_INLINE_URL                    = TRUE
+;
+
+-- Cost guardrail: cancel statements that run longer than 4 hours (default 2 days).
+-- Warehouses can set a lower STATEMENT_TIMEOUT_IN_SECONDS of their own.
+ALTER ACCOUNT SET
+    STATEMENT_TIMEOUT_IN_SECONDS = 14400
+;
+
+-- Convenience: cache the MFA token between client connections, full syntax errors.
+ALTER ACCOUNT SET
+    ALLOW_CLIENT_MFA_CACHING            = TRUE
+    ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR = TRUE
+;
+
+-- Re-encrypt data older than a year with fresh keys. Needs Enterprise Edition or higher,
+-- so the block skips it (and says so) on Standard Edition instead of failing the script.
+EXECUTE IMMEDIATE $$
+BEGIN
+    ALTER ACCOUNT SET PERIODIC_DATA_REKEYING = TRUE;
+    RETURN 'PERIODIC_DATA_REKEYING enabled';
+EXCEPTION
+    WHEN OTHER THEN
+        RETURN 'PERIODIC_DATA_REKEYING skipped: ' || SQLERRM;
+END;
+$$
+;
+
 
 -- -----------------------------------------------------------------------------
 -- 1. Create Service User (key pair authentication only)
@@ -49,7 +113,7 @@ ALTER RESOURCE MONITOR IF EXISTS RM_PLATFORM_PROVISIONING SET
 
 
 -- -----------------------------------------------------------------------------
--- 3. Create Warehouse
+-- 3. Create Warehouse (owned by SYSADMIN)
 -- -----------------------------------------------------------------------------
 CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM_PROVISIONING
   WAREHOUSE_SIZE = 'XSMALL'
@@ -68,22 +132,11 @@ ALTER WAREHOUSE IF EXISTS WH_PLATFORM_PROVISIONING SET
   COMMENT = 'Warehouse for Terraform platform provisioning'
 ;
 
-
--- -----------------------------------------------------------------------------
--- 4. Create Role
--- -----------------------------------------------------------------------------
-CREATE ROLE IF NOT EXISTS RL_PLATFORM_PROVISIONING
-;
-
-ALTER ROLE IF EXISTS RL_PLATFORM_PROVISIONING SET
-    COMMENT = 'Role for Terraform to manage Snowflake infrastructure'
-;
-
-GRANT ROLE RL_PLATFORM_PROVISIONING TO USER TERRAFORM_USER;
+GRANT OWNERSHIP ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURRENT GRANTS;
 
 
 -- -----------------------------------------------------------------------------
--- 5. Create Database for Terraform State/Metadata
+-- 4. Create Database for Terraform State/Metadata (owned by SYSADMIN)
 -- -----------------------------------------------------------------------------
 CREATE DATABASE IF NOT EXISTS DB_PLATFORM_PROVISIONING
 ;
@@ -96,51 +149,34 @@ ALTER DATABASE IF EXISTS DB_PLATFORM_PROVISIONING SET
 DROP SCHEMA IF EXISTS DB_PLATFORM_PROVISIONING.PUBLIC
 ;
 
-
--- -----------------------------------------------------------------------------
--- 6. Grant Account-Level Privileges to Role
--- -----------------------------------------------------------------------------
-
--- User management
-GRANT CREATE USER               ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-GRANT MANAGE GRANTS             ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Role management
-GRANT CREATE ROLE               ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Database management
-GRANT CREATE DATABASE           ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Warehouse management
-GRANT CREATE WAREHOUSE          ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Resource monitor management (not supported)
---GRANT CREATE RESOURCE MONITOR   ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Integration management
-GRANT CREATE INTEGRATION        ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Network policy management
-GRANT CREATE NETWORK POLICY     ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Share management
-GRANT CREATE SHARE              ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-GRANT IMPORT SHARE              ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- Account monitoring
-GRANT MONITOR USAGE             ON ACCOUNT TO ROLE RL_PLATFORM_PROVISIONING;
-
--- The provider needs a warehouse for its own queries and its default database
-GRANT USAGE, OPERATE            ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE RL_PLATFORM_PROVISIONING;
-GRANT USAGE                     ON DATABASE DB_PLATFORM_PROVISIONING TO ROLE RL_PLATFORM_PROVISIONING;
+GRANT OWNERSHIP ON DATABASE DB_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURRENT GRANTS;
 
 
 -- -----------------------------------------------------------------------------
--- 7. Assign Defaults to User
+-- 5. System roles for the Terraform user
+-- -----------------------------------------------------------------------------
+-- SECURITYADMIN inherits USERADMIN; granting USERADMIN as well lets the provider
+-- alias for users (terraform/providers.tf) use it as its primary role.
+GRANT ROLE SYSADMIN      TO USER TERRAFORM_USER;
+GRANT ROLE SECURITYADMIN TO USER TERRAFORM_USER;
+GRANT ROLE USERADMIN     TO USER TERRAFORM_USER;
+
+-- Every provider connection sets the warehouse; SYSADMIN owns it, USERADMIN (and
+-- through it SECURITYADMIN) may use it.
+GRANT USAGE, OPERATE ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE USERADMIN;
+GRANT USAGE          ON DATABASE  DB_PLATFORM_PROVISIONING TO ROLE USERADMIN;
+
+-- Earlier versions provisioned through a custom role. Dropping it hands whatever it
+-- still owned to ACCOUNTADMIN; `just sf bootstrap` then adopts or wipes those objects.
+DROP ROLE IF EXISTS RL_PLATFORM_PROVISIONING;
+
+
+-- -----------------------------------------------------------------------------
+-- 6. Assign Defaults to User
 -- -----------------------------------------------------------------------------
 
 ALTER USER IF EXISTS TERRAFORM_USER SET
-  DEFAULT_ROLE = RL_PLATFORM_PROVISIONING
+  DEFAULT_ROLE = SYSADMIN
   DEFAULT_WAREHOUSE = WH_PLATFORM_PROVISIONING
   DEFAULT_NAMESPACE = DB_PLATFORM_PROVISIONING
 ;
@@ -148,6 +184,6 @@ ALTER USER IF EXISTS TERRAFORM_USER SET
 -- -----------------------------------------------------------------------------
 -- Verification Queries
 -- -----------------------------------------------------------------------------
-SHOW GRANTS TO ROLE RL_PLATFORM_PROVISIONING;
 SHOW GRANTS TO USER TERRAFORM_USER;
 DESCRIBE USER TERRAFORM_USER;
+SHOW PARAMETERS IN ACCOUNT;

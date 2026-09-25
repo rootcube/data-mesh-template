@@ -24,7 +24,8 @@ All of this sits inside the project database, `DB_EXAMPLE_<ENV>`.
 | Metadata | `dbt_common` `on-run-end` hook | none | `mtd` (in the macro) | `_MTD` | `<PREFIX>_MTD` | tables created on demand | `pre__dbt__<dataset>` |
 | Temporary | dbt data tests | none | `tmp` | `_TMP` | `<PREFIX>_TMP` | `store_failures` tables | test names |
 
-`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`).
+`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`), the
+prefix of the personal schemas Terraform provisions for you (`terraform/personal.tf`).
 Materializations come from `dbt/dbt_example/dbt_project.yml` (`dbt_common` builds `03_int`
 as `view` by default, with the date, calendar, time and holiday models overriding to
 `table`); a model can override its folder default with `config(materialized=...)`.
@@ -51,8 +52,9 @@ A layer's schema depends on the environment. The rule lives in
 | `prd` | `_TMP` | (none) | `_TMP` |
 
 In the shared environments (`tst`, `acc`, `prd`) a layer's schema is `_<LAYER>`, provisioned by
-Terraform. In `dev` every engineer works in personal schemas, `<target.schema>_<LAYER>`, created
-on demand, so several people share one development database without stepping on each other.
+Terraform. In `dev` every engineer works in personal schemas, `<target.schema>_<LAYER>`, which
+Terraform provisions per engineer, so several people share one development database without
+stepping on each other.
 The `dummy` target counts as personal too. The macro only takes effect because
 `dbt/dbt_example/dbt_project.yml` puts `dbt_common` first in the dispatch order:
 
@@ -64,7 +66,7 @@ dispatch:
 
 Models without any `+schema` land in `target.schema`: your prefix in `dev`, and `_TMP` in the
 shared environments (the `profiles.yml` fallback when `SNOWFLAKE_SCHEMA` is unset). Nothing
-should end up there.
+should end up there; in `dev` Terraform does not provision the bare prefix, so such a model fails.
 
 Source YAML cannot call macros, so `dbt/dbt_example/sources/src_knmi.yml` spells the rule out
 with `env_var`:
@@ -143,9 +145,9 @@ Materialized as `table`. No joins, no business logic, read only by INT.
 ### Integration: business logic
 
 Organized by domain, not by source. Joins, enrichment, derived measures, reusable building
-blocks. `dbt_example` has the `weather` domain: `int__weather__observation` unpivots the hourly
-staging row into one row per station, hour and measurement type, and `int__weather__station`
-and `int__weather__measurement_type` carry the seeded stations and KNMI variables. The
+blocks. `dbt_example` has the `weather` domain: `int__weather__knmi_measurement` unpivots the hourly
+staging row into one row per station, hour and measurement type, and `int__weather__knmi_station`
+and `int__weather__knmi_measurement_type` carry the seeded stations and KNMI variables. The
 [Adding a dbt model](../development/adding-dbt-models.md) walkthrough adds a daily one.
 `dbt_common` contributes the common chain described below.
 
@@ -157,8 +159,8 @@ Dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) and aggregates (`agg__`
 `dbt_common` dimensions show the house pattern: a surrogate key named `id_<model>` as the first
 column (`id_dim__common__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
 `stg__seed__unknown` so every fact can point at an unknown member instead of a `NULL`.
-`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__station`,
-`dim__weather__measurement_type` and `fct__weather__observation`, one row per station, hour and
+`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__knmi_station`,
+`dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement`, one row per station, hour and
 measurement type, keyed to both weather dimensions and to `dim__common__calendar` and
 `dim__common__time`.
 
@@ -178,8 +180,8 @@ last model. Materialized as `view`, so they are always current.
 Neither is a modeling layer, but both show up after a `dbt build`.
 
 `_MTD` holds run metadata. `dbt_common`'s `on-run-end` hook calls `upload_results(results)`
-after every `run`, `build`, `test`, `seed` and `freshness` invocation; it creates the schema
-(in `dev`) and the `pre__dbt__*` tables on first use: `invocation`, `model`,
+after every `run`, `build`, `test`, `seed` and `freshness` invocation; it creates the
+`pre__dbt__*` tables on first use: `invocation`, `model`,
 `model_execution`, `test`, `test_execution`, `seed`, `seed_execution`, `source`,
 `source_freshness`, `snapshot`, `snapshot_execution` and `exposure`. The `dummy` target never
 connects, so it skips the upload.

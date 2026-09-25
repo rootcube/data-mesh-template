@@ -21,7 +21,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just sf bootstrap` | Fresh account, as `ACCOUNTADMIN` with a password: Terraform user and `init.sql`, your key pair, `config/users/<you>.yaml`, `TF_VAR_*` in `.env`, `terraform apply`, then the same context discovery and `.env` as `setup` (`--yes` auto-approves the plan) |
+| `just sf bootstrap` | Fresh account, as `ACCOUNTADMIN` with a password: Terraform user and `init.sql` (account parameters, system roles), your key pair, `config/users/<you>.yaml`, `TF_VAR_*` in `.env`, `terraform apply` (your personal schemas included), then the same context discovery and `.env` as `setup` (`--yes` auto-approves the plan). Objects that already exist are adopted into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner, or dropped first (`--existing ask|sync|wipe`, default `ask`; `--yes` picks sync) |
 | `just sf setup` | One-time interactive login, key pair, registration on your user, verification, `.env` |
 | `just sf setup --auth password` | Same, with password + MFA in the terminal instead of the browser |
 | `just sf context` | Pick the project you work in from the roles granted to you, then write role, warehouse, database and schema prefix to `.env`; no login needed (`--role`, `--yes`) |
@@ -66,6 +66,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` |
 | `just tf output -json initial_passwords` | One-time passwords of persons Terraform created |
 | `just tf output -json user_role_grants` | Roles per login |
+| `just tf output -json personal_schemas` | Personal schemas per login |
 | `just tf-validate-config` | Validate the YAML under `terraform/config/` against its JSON schemas and cross references |
 
 ## Docs

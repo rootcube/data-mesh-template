@@ -18,6 +18,12 @@ variable "layer_code" {
   }
 }
 
+variable "name_prefix" {
+  description = "Prefix in front of _<LAYER>: empty for the shared layer schema, DBT_<USERNAME> for a personal one"
+  type        = string
+  default     = ""
+}
+
 variable "comment" {
   description = "Comment/description for the schema"
   type        = string

@@ -23,7 +23,10 @@ export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests,ignore:
 # right after `just init` installs it, before the user restarts their shell.
 _uv_bin   := if os_family() == "windows" { home_directory() + "\\.local\\bin" } else { home_directory() / ".local" / "bin" }
 _path_sep := if os_family() == "windows" { ";" } else { ":" }
-export PATH := _uv_bin + _path_sep + env("PATH")
+# Same for `just install terraform` on Windows: winget adds its package folder to the user PATH,
+# which only shells started after the install pick up.
+_tf_bin   := if os_family() == "windows" { env("LOCALAPPDATA", "") + "\\Microsoft\\WinGet\\Packages\\Hashicorp.Terraform_Microsoft.Winget.Source_8wekyb3d8bbwe" + _path_sep } else { "" }
+export PATH := _uv_bin + _path_sep + _tf_bin + env("PATH")
 
 # Overridable: `just project=dbt_other dbt build` targets another dbt project under dbt/.
 project     := "dbt_example"
@@ -141,15 +144,18 @@ stop:
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers) and anything else on the port
 [windows]
 stop:
-    @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
+    @Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue }
 
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 dagster *args:
     uv run dagster {{args}}
 
+# `dagster definitions validate` is superseded by `dg check defs`, which does not read workspace.yaml;
+# PYTHONWARNINGS drops that one nag (the same filter sits in .pre-commit-config.yaml and ci.yml).
+
 # load every code location exactly like `just start` does, without the UI
 validate:
-    uv run dagster definitions validate -w workspace.yaml
+    PYTHONWARNINGS='ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
 
 # --- dlt --------------------------------------------------------------------
 

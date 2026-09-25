@@ -34,13 +34,6 @@ variable "SNOWFLAKE_USER" {
   default     = "TERRAFORM_USER"
 }
 
-# Mapped to TF_VAR_SNOWFLAKE_PROVISIONING_ROLE environment variable
-variable "SNOWFLAKE_PROVISIONING_ROLE" {
-  description = "Role Terraform provisions with (created by modules/snowflake/init.sql)"
-  type        = string
-  default     = "RL_PLATFORM_PROVISIONING"
-}
-
 # Mapped to TF_VAR_SNOWFLAKE_WAREHOUSE environment variable
 variable "SNOWFLAKE_WAREHOUSE" {
   description = "Warehouse for the provider's own queries (created by modules/snowflake/init.sql)"

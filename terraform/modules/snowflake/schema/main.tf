@@ -1,7 +1,7 @@
 # Snowflake Schema Module
 #
 # Creates a Snowflake schema following the platform naming conventions.
-# Naming Convention: SCH_<LAYER>
+# Naming Convention: _<LAYER>, or <PREFIX>_<LAYER> for a developer's personal schema
 
 terraform {
   required_providers {
@@ -13,7 +13,7 @@ terraform {
 }
 
 locals {
-  schema_name = upper("_${var.layer_code}")
+  schema_name = upper("${var.name_prefix}_${var.layer_code}")
 }
 
 resource "snowflake_schema" "this" {

@@ -175,9 +175,10 @@ Package (dbt)
 
 Personal schema
 :   An engineer's private copy of a layer schema in the development database:
-    `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_USERNAME_SRC` and `DBT_USERNAME_STG`. Created on
-    demand by dlt and dbt; possible because the engineer role holds `CREATE SCHEMA` on
-    `DB_<PROJECT>_DEV`. Lets several engineers share one development database.
+    `<SNOWFLAKE_SCHEMA>_<LAYER>`, for example `DBT_USERNAME_SRC` and `DBT_USERNAME_STG`. Created by
+    Terraform for every user holding the engineer role in `dev` (the role's `personal` block,
+    `terraform/personal.tf`), owned by `SYSADMIN`; the prefix is the user file's `schema_prefix`
+    or `DBT_<USERNAME>`. Lets several engineers share one development database.
 
 Pipeline (dlt)
 :   The runner object: a name (`ingest_knmi`), a destination and a dataset. `pipeline.run(source)`
@@ -207,9 +208,10 @@ Project
 
 Provisioning objects
 :   What `terraform/modules/snowflake/init.sql` creates once as `ACCOUNTADMIN`: the service
-    user `TERRAFORM_USER` (key pair only), the role `RL_PLATFORM_PROVISIONING`, the warehouse
-    `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and the resource
-    monitor `RM_PLATFORM_PROVISIONING`. Terraform runs as that user and role.
+    user `TERRAFORM_USER` (key pair only) with the system roles `SYSADMIN`, `SECURITYADMIN` and
+    `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database
+    `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`; it also sets
+    the account parameters. Terraform runs as that user through those three roles.
 
 Purpose
 :   The role code that ends a role name: `ENG` (engineer), `ANL` (analyst), `ING` (ingest),

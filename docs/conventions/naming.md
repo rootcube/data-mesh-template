@@ -39,7 +39,7 @@ Uppercased in Snowflake object names, lowercase everywhere in the repo.
 | Staging (seed) | `stg__seed__<name>` | `stg__seed__unknown` |
 | Intermediate | `int__<domain>__<entity>` | `int__common__calendar` |
 | Mart dimension | `dim__<domain>__<entity>` | `dim__common__calendar` |
-| Mart fact | `fct__<domain>__<entity>` | `fct__weather__observation` |
+| Mart fact | `fct__<domain>__<entity>` | `fct__weather__knmi_measurement` |
 | Mart bridge | `brg__<domain>__<entity>` | `brg__weather__station_region` |
 | Mart aggregate | `agg__<domain>__<entity>` | `agg__weather__station_daily` |
 | Expose | `exp__<domain>__<entity>` | `exp__weather__station_weather` |
@@ -51,8 +51,8 @@ Double underscores (`__`) separate the structural segments (layer, source or dom
 single underscores separate words within a segment. In staging, `<source>` is the dlt source
 folder name (`knmi`). From integration up, `<domain>` is a business domain (`common` for the
 shared calendar and time models, `weather` for the KNMI chain in `dbt_example`). The `brg__` and
-`agg__` examples are illustrative; `dbt_example` ships `dim__weather__station`,
-`dim__weather__measurement_type`, `fct__weather__observation` and `exp__weather__station_weather`.
+`agg__` examples are illustrative; `dbt_example` ships `dim__weather__knmi_station`,
+`dim__weather__knmi_measurement_type`, `fct__weather__knmi_measurement` and `exp__weather__station_weather`.
 
 The model name is also the last segment of its Dagster asset key and its Snowflake table or view
 name, so pick it once and carefully. The asset key carries the project name
@@ -64,7 +64,7 @@ names across the repo keep the catalog searchable.
 | Type | Pattern | Example |
 |---|---|---|
 | Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
-| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__observation` |
+| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__knmi_measurement` |
 | Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
 | Role-played foreign key (same dim twice) | `id_dim__<domain>__<entity>__<role>` | `id_dim__common__calendar__observed` |
 | Column in a role or context | `<column>__<context>` | `station_code__nearest` |
@@ -151,17 +151,18 @@ environment:
 |---|---|---|
 | Database | `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
-| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` | `DBT_USERNAME_STG` |
+| Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` or the user file's `schema_prefix` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
-| Source layer stage | `_SRC.ST_DEFAULT`, the default internal stage of each source layer; dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT` |
-| dlt load files | `<stage>/dlt/ingest/<source>/"<load id>"/<source>__<entity>.<file id>.<retry>.jsonl`, behind the lowercased `SNOWFLAKE_SCHEMA` prefix in dev | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `_SRC.ST_DEFAULT/dbt_username/dlt/ingest/knmi/` |
-| Provisioning (bootstrap) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
+| Source layer stage | `ST_DEFAULT`, the default internal stage of each source-layer schema (`_SRC`, and `<SNOWFLAKE_SCHEMA>_SRC` in dev); dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
+| dlt load files | `<stage>/dlt/ingest/<source>/<pipeline>__<load id>/<source>__<entity>.<file id>.<retry>.jsonl`, the pipeline being `ingest_<source>` | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/` |
+| Provisioning (bootstrap) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
 `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
 prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just sf setup` proposes `DBT_` plus the first part
-of your login.
+of your login, or the `schema_prefix` of your user file: the prefix Terraform provisioned your
+schemas with.
 
 Schemas inside a project database:
 
@@ -174,9 +175,10 @@ Schemas inside a project database:
 | `_MTD` | `dbt_common` on-run-end hook | Run metadata (`pre__dbt__*`) |
 
 In `dev` the same set exists per engineer under the personal prefix (`DBT_USERNAME_SRC`,
-`DBT_USERNAME_STG`, ...), created on demand by dlt and dbt; a model without `+schema` lands in the
-prefix itself (`DBT_USERNAME`). `SnowflakeSettings.schema_for_layer()` and
-`dbt_common.generate_schema_name` implement the rule; source YAML repeats it with `env_var`.
+`DBT_USERNAME_STG`, ...), provisioned by Terraform per engineer; a model without `+schema` would
+land in the prefix itself (`DBT_USERNAME`), which is not provisioned.
+`SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name` implement the rule;
+source YAML repeats it with `env_var`.
 
 Snowflake folds unquoted identifiers to uppercase, so `knmi__climate_hourly` and
 `KNMI__CLIMATE_HOURLY` are the same table. The connection settings are the `SNOWFLAKE_*`

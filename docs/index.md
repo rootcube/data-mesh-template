@@ -39,8 +39,8 @@ flowchart LR
 ```
 
 In development every engineer gets personal copies of those schemas (`DBT_<USERNAME>_SRC`,
-`DBT_<USERNAME>_STG`, ...) inside the shared `DB_EXAMPLE_DEV`. The other environments use the
-provisioned `_<LAYER>` schemas.
+`DBT_<USERNAME>_STG`, ...) inside the shared `DB_EXAMPLE_DEV`, provisioned by Terraform along
+with their role. The other environments use the provisioned `_<LAYER>` schemas.
 
 ## Two kinds of readers
 

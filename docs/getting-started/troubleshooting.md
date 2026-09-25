@@ -30,9 +30,18 @@ icon: material/lifebuoy
     `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your administrator can list your grants
     with `just tf output -json user_role_grants`.
 
-**dbt builds into `DBT_STG` instead of `DBT_<USERNAME>_STG`**
-:   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`. Set it
-    to your prefix (`DBT_<USERNAME>`), the same value `just sf setup` proposes.
+**`Insufficient privileges to operate on database` on your first load or build**
+:   dlt or dbt tried to create a schema, which the engineer role may not do: your personal
+    schemas do not exist yet, or `SNOWFLAKE_SCHEMA` in `.env` is not the prefix they were
+    created with. Terraform creates them when an administrator applies your
+    `terraform/config/users/` file (`just tf output -json personal_schemas` lists them);
+    `just sf check` shows which schemas exist. A different prefix needs `schema_prefix` in that
+    file and another apply.
+
+**dbt wants `DBT_STG` instead of `DBT_<USERNAME>_STG`**
+:   `SNOWFLAKE_SCHEMA` is empty in `.env`; `dbt/profiles.yml` then falls back to `DBT`, a prefix
+    nobody has schemas for. Set it to your prefix (`DBT_<USERNAME>`), the same value
+    `just sf setup` proposes.
 
 **`FileNotFoundError: .../.venv/bin/dbt` (or "bad interpreter") although the file exists**
 :   The checkout was moved or renamed after `.venv` was created; the scripts in it still name
@@ -78,3 +87,8 @@ icon: material/lifebuoy
 **Windows: scripts are disabled on this system**
 :   PowerShell's execution policy. Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
     once, in a PowerShell you own.
+
+**Windows: "No log file available" on a run's stdout/stderr tabs**
+:   Dagster only captures a step's output on Windows when `PYTHONLEGACYWINDOWSSTDIO` is set
+    (it warns "Compute log capture is disabled" at startup). `just start` sets it, together with
+    `PYTHONIOENCODING=utf-8`; set both yourself when you start `dagster dev` another way.

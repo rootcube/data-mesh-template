@@ -47,7 +47,7 @@ dbt YAML may carry Jinja.
 ## Worked example: a daily model per station
 
 The staged KNMI data is one row per station per hour. A daily summary per station is a natural
-next INT model beside the shipped `int__weather__observation`: `int__weather__station_day`,
+next INT model beside the shipped `int__weather__knmi_measurement`: `int__weather__station_day`,
 domain `weather`.
 
 ```sql title="dbt/dbt_example/models/03_int/weather/int__weather__station_day.sql"
@@ -199,10 +199,10 @@ The next layer turns an INT model into a fact. `dbt_example` ships the pattern f
 observations in `models/04_mrt/weather/`; read those files next to `dbt_common`'s dimensions:
 
 - The first column is a surrogate key named `id_<model>`. `dim__common__calendar` uses the
-  `YYYYMMDD` integer (`date_simple`); `dim__weather__station` uses `SHA1` of the station code;
-  `fct__weather__observation` uses `dbt_utils.generate_surrogate_key` over its grain.
+  `YYYYMMDD` integer (`date_simple`); `dim__weather__knmi_station` uses `SHA1` of the station code;
+  `fct__weather__knmi_measurement` uses `dbt_utils.generate_surrogate_key` over its grain.
 - Dimensions end with `UNION ALL` on `stg__seed__unknown`, so facts can point at the unknown
-  member (`-1`, `-2`, `-3`) instead of `NULL`: `COALESCE(stn.id_dim__weather__station, '-2')`.
+  member (`-1`, `-2`, `-3`) instead of `NULL`: `COALESCE(stn.id_dim__weather__knmi_station, '-2')`.
 - Facts carry the dimension keys they join to, plus computed keys for the common dimensions:
   `CAST(TO_CHAR(hour_start_at, 'YYYYMMDD') AS INTEGER) AS id_dim__common__calendar`, each with
   a `relationships` test (`severity: warn`). A `fct__weather__station_day` on top of the daily

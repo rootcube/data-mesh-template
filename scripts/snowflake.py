@@ -3,9 +3,10 @@
     just setup                 everything: `just init`, then this wizard, which asks whether the account is
                                fresh (-> bootstrap), already provisioned (-> setup) or provisioned from
                                another checkout (-> bootstrap, syncing or wiping what exists)
-    just sf bootstrap          fresh account, as ACCOUNTADMIN: Terraform service user, provisioning
-                                      (init.sql + terraform apply), your own key pair and .env, in one go;
-                                      objects that already exist are synced into the state or wiped
+    just sf bootstrap          fresh account, as ACCOUNTADMIN: account settings and Terraform service user
+                                      (init.sql), provisioning (terraform apply), your own key pair and .env,
+                                      in one go; objects that already exist are synced into the state (and
+                                      handed to their SYSADMIN/SECURITYADMIN/USERADMIN owner) or wiped
                                       (--existing ask|sync|wipe)
     just sf setup              one-time: log in interactively, create + register a key pair, write .env
     just sf context            pick the project you work in (from the roles granted to you) and write
@@ -289,7 +290,15 @@ def verify(settings: SnowflakeSettings) -> bool:
 
 
 def personal_prefix(user: str) -> str:
-    """Default prefix for personal schemas: DBT_<first part of the login>, DBT_USERNAME for username@example.com."""
+    """Prefix of the personal schemas Terraform provisions for `user` (terraform/personal.tf).
+
+    The `schema_prefix` of the user's file under terraform/config/users, else DBT_<first part of the
+    login>: DBT_USERNAME for username@example.com.
+    """
+    for path in sorted((TF_DIR / "config" / "users").glob("*.yaml")):
+        config = yaml.safe_load(path.read_text()) or {}
+        if str(config.get("login", "")).upper() == user.upper() and config.get("schema_prefix"):
+            return str(config["schema_prefix"]).upper()
     return "DBT_" + re.sub(r"[^A-Za-z0-9]+", "_", user.split("@")[0]).strip("_").upper()
 
 
@@ -306,6 +315,8 @@ def prompt_context(settings: SnowflakeSettings) -> SnowflakeSettings:
         role=ask("  Role (RL_<PROJECT>_DEV__ENG)", settings.role or None),
         warehouse=ask("  Warehouse (WH_<PROJECT>_DEV)", settings.warehouse or None),
         database=ask("  Database (DB_<PROJECT>_DEV)", settings.database or None),
+        # Terraform creates the personal schemas; another prefix needs `schema_prefix` in your
+        # terraform/config/users file and an apply first.
         schema=ask("  Personal schema prefix", settings.schema or personal_prefix(settings.user)),
     )
 
@@ -449,6 +460,17 @@ ADOPTABLE = {
 }
 
 
+# The system role Terraform creates each type as (terraform/providers.tf), so the owner an adopted object needs.
+OWNER = {
+    "snowflake_database": "SYSADMIN",
+    "snowflake_schema": "SYSADMIN",
+    "snowflake_stage_internal": "SYSADMIN",
+    "snowflake_warehouse": "SYSADMIN",
+    "snowflake_account_role": "SECURITYADMIN",
+    "snowflake_user": "USERADMIN",
+}
+
+
 def object_path(resource: dict[str, Any]) -> tuple[str, ...]:
     return tuple(str(resource[attr]) for attr in ADOPTABLE[resource["type"]][1])
 
@@ -515,6 +537,20 @@ def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str) 
         ok(f"Dropped {kind.lower()} {'.'.join(path)}")
 
 
+def transfer_ownership(conn: Any, resources: list[dict[str, Any]]) -> None:
+    """Hand adopted objects to the role Terraform manages them as, keeping the grants they have.
+
+    An account provisioned by an earlier version has them owned by RL_PLATFORM_PROVISIONING, which
+    init.sql drops (leaving them to ACCOUNTADMIN); personal schemas were owned by the engineer role.
+    """
+    for resource in resources:
+        kind = ADOPTABLE[resource["type"]][0].upper()
+        path = ".".join(map(quote_ident, object_path(resource)))
+        owner = OWNER[resource["type"]]
+        conn.cursor().execute(f"GRANT OWNERSHIP ON {kind} {path} TO ROLE {owner} COPY CURRENT GRANTS")
+        ok(f"{kind.lower()} {'.'.join(object_path(resource))} now owned by {owner}")
+
+
 def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: str, yes: bool) -> bool:
     """Handle objects Terraform would create that already exist (an account provisioned from another checkout).
 
@@ -533,11 +569,13 @@ def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: 
         if yes:
             mode = "sync"
         else:
-            print("  sync  adopt them into this checkout's Terraform state; data and grants stay as they are")
+            print("  sync  adopt them into this checkout's Terraform state; data and grants stay, owners become")
+            print("        SYSADMIN (databases, schemas, stages, warehouses), SECURITYADMIN (roles), USERADMIN (users)")
             print("  wipe  drop them (databases with all their schemas and data), then provision from scratch")
             choice = ask("sync, wipe or abort?", "sync").lower()
             mode = {"s": "sync", "w": "wipe"}.get(choice[:1], "abort")
     if mode == "sync":
+        transfer_ownership(conn, existing)
         write_imports(existing)
         ok(f"Wrote {ADOPT_FILE.name}: the apply below imports them before provisioning the rest")
         return True
@@ -632,7 +670,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         exact_user = conn.cursor().execute("SELECT CURRENT_USER()").fetchone()[0]
         ok(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
 
-        step("2/5 Terraform service user, provisioning role, warehouse and database (init.sql)")
+        step("2/5 Account settings, Terraform service user, warehouse and database (init.sql)")
         tf_private, tf_public = key_paths(TERRAFORM_KEY)
         if not tf_private.exists():
             generate_key_pair(TERRAFORM_KEY)
