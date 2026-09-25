@@ -19,7 +19,7 @@ One top-level package, `dlt_pipelines/`, backs the single `dlt` code location. O
 | `dlt_pipelines/pipelines/ingest/<source>/source.py` | The fetch logic: plain functions that yield dicts |
 | `dlt_pipelines/pipelines/ingest/<source>/pipelines.py` | The `@dlt.source`, its resources, and the module-level `source` and `pipeline` objects |
 | `dlt_pipelines/pipelines/ingest/<source>/defs.yaml` | `dagster_dlt.DltLoadCollectionComponent`: turns `source` and `pipeline` into Dagster assets |
-| `dlt_pipelines/utils/destination.py` | `snowflake_destination()`, `load_stage()` and `source_dataset()`: the one Snowflake destination, the internal stage its load files go through and the source-layer schema every pipeline loads into |
+| `dlt_pipelines/utils/destination.py` | `snowflake_destination(source)`, `load_stage(settings, source)` and `source_dataset()`: the one Snowflake destination, the stage path its load files go through (`_SRC.ST_DLT/dlt/ingest/<source>`) and the source-layer schema every pipeline loads into |
 | `dlt_pipelines/__main__.py` | The standalone runner behind `just dlt list` / `just dlt run <source>` |
 | `src/orchestrator/locations/dlt/definitions.py` | The code location: loads the component tree and adds `job_dlt_ingest_all` |
 | `.dlt/config.toml` | Runtime tuning (see below) |
@@ -80,7 +80,7 @@ source = knmi_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=f"ingest_{SOURCE}",
-    destination=snowflake_destination(),
+    destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )
 ```
@@ -90,6 +90,7 @@ What matters in it:
 - **Module-level `source` and `pipeline`.** Both the Dagster component and the standalone runner import exactly these two names. Rename them and both break.
 - **`name=ENTITY` and `table_name=f"{SOURCE}__{ENTITY}"`.** The resource name becomes the Dagster asset key (`dlt/ingest/knmi/climate_hourly`); the table name puts the source prefix on the Snowflake table (`knmi__climate_hourly`), because every source shares the one `_SRC` schema.
 - **`dataset_name=source_dataset()`.** The source-layer schema for the current environment; dlt creates it on first load in `dev`. dbt reads it through `sources/src_<source>.yml`.
+- **`destination=snowflake_destination(SOURCE)`.** The one Snowflake destination; the source name picks the folder of the load files in the stage, `_SRC.ST_DLT/dlt/ingest/<source>/`.
 - **`merge` with a primary key.** Running daily over an overlapping window stays free of duplicates. `just dlt run knmi --full-refresh` drops the source's tables and state first (`refresh="drop_sources"`).
 - **`max_table_nesting=0`.** Nested JSON stays in one table instead of fanning out into child tables.
 - **Fetching lives in `source.py`.** `fetch_hourly_observations()` uses `dlt.sources.helpers.requests` and yields plain dicts; dlt infers the schema and lowercases the KNMI field names. Mirror the API here; renames, casts and unit conversions belong in the dbt staging model.
@@ -123,7 +124,7 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 
 `dlt_pipelines/utils/destination.py` builds `dlt.destinations.snowflake(...)` from `SnowflakeSettings.from_env().dlt_credentials()`: the same `SNOWFLAKE_*` variables dbt and Dagster use, key-pair authentication only. Credentials are validated when a pipeline *runs*, not when the module is imported, so `just validate` and the Dagster code location work without a `.env`.
 
-`merge` loads go through a staging table that dlt would put in `<dataset>_staging` by default; the destination sets `staging_dataset_name_layout` to the temporary layer (`_TMP`, or `<SNOWFLAKE_SCHEMA>_TMP` in `dev`) so no extra schema is needed and the ingest role's grants on `_TMP` cover it. Load files go through a named internal stage, not the implicit table stage: `stage_name=load_stage(settings)` is `DB_<PROJECT>_<ENV>._SRC.ST_DLT`, created by Terraform in the provisioned source layer (`terraform/stages.tf`) and the same in every environment, `dev` included. dlt `PUT`s the JSONL files there under a folder per load id and runs `COPY INTO` from it; the ingest role has `READ` and `WRITE` on the stage, engineers inherit that in `dev`. Files stay after the load (dlt's `keep_staged_files` default); `just sf query "LIST @_SRC.ST_DLT"` shows them. The stage has a directory table (`directory { enable = true }` in `terraform/stages.tf`); query it with `SELECT * FROM DIRECTORY(@_SRC.ST_DLT)`. Internal stages have no auto refresh, so the `dbt_common.refresh_stages()` on-run-start hook runs `ALTER STAGE _SRC.ST_DLT REFRESH` at the start of every `dbt run` and `dbt build`.
+`merge` loads go through a staging table that dlt would put in `<dataset>_staging` by default; the destination sets `staging_dataset_name_layout` to the temporary layer (`_TMP`, or `<SNOWFLAKE_SCHEMA>_TMP` in `dev`) so no extra schema is needed and the ingest role's grants on `_TMP` cover it. Load files go through a named internal stage, not the implicit table stage: `stage_name=load_stage(settings, source)` is `DB_<PROJECT>_<ENV>._SRC.ST_DLT/dlt/ingest/<source>`: the stage Terraform creates in the provisioned source layer (`terraform/stages.tf`, the same in every environment, `dev` included) plus a path per source that mirrors the asset key prefix, behind your lowercased `SNOWFLAKE_SCHEMA` in `dev` (`dbt_username/dlt/ingest/knmi`). dlt `PUT`s the JSONL files there under a folder per load id, named after the table (`dlt/ingest/knmi/"<load id>"/knmi__climate_hourly.<file id>.0.jsonl`), and runs `COPY INTO` from it; the ingest role has `READ` and `WRITE` on the stage, engineers inherit that in `dev`. Files stay after the load (dlt's `keep_staged_files` default); `just sf query "LIST @_SRC.ST_DLT"` shows them. The stage has a directory table (`directory { enable = true }` in `terraform/stages.tf`); query it with `SELECT * FROM DIRECTORY(@_SRC.ST_DLT)`. Internal stages have no auto refresh, so the `dbt_common.refresh_stages()` on-run-start hook runs `ALTER STAGE _SRC.ST_DLT REFRESH` at the start of every `dbt run` and `dbt build`.
 
 ## Running a pipeline
 

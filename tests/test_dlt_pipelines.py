@@ -12,11 +12,11 @@ def test_discover_finds_knmi() -> None:
     assert discover()["knmi"] == "dlt_pipelines.pipelines.ingest.knmi.pipelines"
 
 
-def test_load_stage_is_the_provisioned_source_layer_stage_in_every_environment() -> None:
+def test_load_stage_is_the_source_layer_stage_with_a_path_per_source() -> None:
     dev = SnowflakeSettings(database="DB_EXAMPLE_DEV", schema="DBT_USERNAME", environment="dev")
     prd = SnowflakeSettings(database="DB_EXAMPLE_PRD", environment="prd")
-    assert load_stage(dev) == "DB_EXAMPLE_DEV._SRC.ST_DLT"
-    assert load_stage(prd) == "DB_EXAMPLE_PRD._SRC.ST_DLT"
+    assert load_stage(dev, "knmi") == "DB_EXAMPLE_DEV._SRC.ST_DLT/dbt_username/dlt/ingest/knmi"
+    assert load_stage(prd, "knmi") == "DB_EXAMPLE_PRD._SRC.ST_DLT/dlt/ingest/knmi"
 
 
 def test_load_window_never_starts_before_the_start_date() -> None:
@@ -30,6 +30,6 @@ def test_merge_staging_tables_go_to_the_temporary_layer(monkeypatch: pytest.Monk
     monkeypatch.setenv("SNOWFLAKE_DATABASE", "DB_EXAMPLE_DEV")
     monkeypatch.setenv("SNOWFLAKE_SCHEMA", "DBT_USERNAME")
     monkeypatch.setenv("ENVIRONMENT", "dev")
-    assert snowflake_destination().config_params["staging_dataset_name_layout"] == "dbt_username_tmp"
+    assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "dbt_username_tmp"
     monkeypatch.setenv("ENVIRONMENT", "prd")
-    assert snowflake_destination().config_params["staging_dataset_name_layout"] == "_tmp"
+    assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "_tmp"

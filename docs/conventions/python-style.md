@@ -205,7 +205,7 @@ Layer schemas
     `dbt_common.generate_schema_name` implements for dbt. Never spell a layer schema by hand.
 
 dlt destination and dataset
-:   `snowflake_destination()` and `source_dataset()` in `dlt_pipelines/utils/destination.py`
+:   `snowflake_destination(source)` and `source_dataset()` in `dlt_pipelines/utils/destination.py`
     build the destination and the source-layer schema every ingest pipeline loads into. A new
     pipeline calls them; it does not build its own.
 
