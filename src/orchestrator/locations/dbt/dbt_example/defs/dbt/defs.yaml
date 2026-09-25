@@ -7,7 +7,9 @@ attributes:
     profiles_dir: '{{ context.project_root }}/dbt'
     # Re-parse on every code-location load so the manifest always matches the models on disk.
     prepare_project_cli_args: ["parse", "--quiet"]
-  select: "*"
+  # Every node. Not a bare "*": dbt's CLI (click) expands that to the file names in the project
+  # directory on Windows, which then selects nothing.
+  select: "fqn:*"
 
   # Asset keys, groups and kinds come from DataMeshDbtTranslator in shared.py: the key follows
   # the file path (dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly, or

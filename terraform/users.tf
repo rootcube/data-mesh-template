@@ -52,6 +52,7 @@ resource "random_password" "user" {
 
 resource "snowflake_user" "person" {
   for_each = local.users_to_create
+  provider = snowflake.useradmin
 
   name                 = each.value.login
   email                = try(each.value.email, null)
@@ -65,6 +66,7 @@ resource "snowflake_user" "person" {
 
 resource "snowflake_grant_account_role" "user" {
   for_each = local.user_role_grant_map
+  provider = snowflake.securityadmin
 
   role_name = each.value.role_name
   user_name = each.value.login

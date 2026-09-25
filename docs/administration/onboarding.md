@@ -36,6 +36,7 @@ The fields, from `terraform/config/_validation/schemas/user.schema.json`:
 | `email` | no | Only used when creating the user. |
 | `type` | no | `person` (default) or `service`. |
 | `create` | no | `false` (default): the login exists already, only the grants are made. `true`: create the user; persons get a one-time password they must change at first login. |
+| `schema_prefix` | no | Prefix of the personal schemas (`<PREFIX>_SRC`, ...) and of `SNOWFLAKE_SCHEMA` in `.env`. Default: `DBT_` plus the login before the `@`, non-alphanumerics as `_`, uppercased. |
 | `disabled` | no | `true` removes the grants on the next apply, and drops the user if Terraform created it. |
 | `roles` | yes | One entry per project role: `project`, `role`, optional `environments`. |
 
@@ -54,9 +55,10 @@ just tf plan
 just tf apply
 ```
 
-`just tf output -json user_role_grants` shows the roles per login. For created persons, hand
-out the password from `just tf output -json initial_passwords`; Snowflake forces a change at
-the first login.
+`just tf output -json user_role_grants` shows the roles per login,
+`just tf output -json personal_schemas` the personal schemas the apply created (step 5). For
+created persons, hand out the password from `just tf output -json initial_passwords`; Snowflake
+forces a change at the first login.
 
 !!! note "Defaults on the user"
     Terraform sets no default role, warehouse or database on the user. `just sf setup`
@@ -95,16 +97,25 @@ SNOWFLAKE_SCHEMA=DBT_USERNAME
 
 ### 5. Personal schemas in development
 
-The engineer role holds `CREATE SCHEMA` on `DB_<PROJECT>_DEV` (`privileges.database.dev` in
-`terraform/config/roles/engineer.yaml`). dlt and dbt create `<SNOWFLAKE_SCHEMA>_<LAYER>` schemas
-on demand: `DBT_USERNAME_SRC` on the first load, `DBT_USERNAME_STG` and the other layers on the
-first `dbt build`, `DBT_USERNAME_MTD` for run metadata. Several engineers share the one
-development database without stepping on each other. The rule lives in
-`SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; every environment
-other than `dev` ignores the prefix and uses the provisioned `_<LAYER>` schemas.
+The engineer role has a `personal` block in `terraform/config/roles/engineer.yaml`
+(`environments: [dev]`). For every user who holds it there, the apply in step 2 creates one
+schema per project layer in `DB_<PROJECT>_DEV` (`terraform/personal.tf`): `DBT_USERNAME_SRC`,
+`DBT_USERNAME_REF`, `DBT_USERNAME_STG`, `DBT_USERNAME_INT`, `DBT_USERNAME_MRT`,
+`DBT_USERNAME_EXP`, `DBT_USERNAME_MTD` and `DBT_USERNAME_TMP`, plus the person's own load stage
+`DBT_USERNAME_SRC.ST_DEFAULT` (`terraform/stages.tf`). `SYSADMIN` owns them like every other
+schema; the engineer role gets the block's privileges on them (current and future grants), but
+no `CREATE SCHEMA`: dlt and dbt use the schemas, they never create them. So the apply has to
+come before the person's first dlt load or dbt run.
 
-Nothing is provisioned for personal schemas. They are owned by `RL_<PROJECT>_DEV__ENG`, the
-role that created them, and anyone with that role can drop them when a person leaves.
+The prefix is `schema_prefix` from the user file, or `DBT_` plus the login before the `@`, the
+same rule `just sf setup` uses to propose `SNOWFLAKE_SCHEMA`. To change it, set
+`schema_prefix` and apply, then update `SNOWFLAKE_SCHEMA` in the person's `.env`.
+
+Several engineers share the one development database without stepping on each other. The rule
+lives in `SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; every
+environment other than `dev` ignores the prefix and uses the provisioned `_<LAYER>` schemas.
+The privileges go to the shared engineer role, not to the person, so engineers can technically
+read and write each other's personal schemas.
 
 ## Key registration fallback
 
@@ -192,5 +203,5 @@ Deployed environments run dlt and dbt as system users: the `ingest` role
 ## Removing access
 
 Set `disabled: true` in the user's file, or delete the file, and `just tf apply`. The grants
-disappear; a user Terraform created is dropped as well. Personal schemas in the development
-database stay until someone with `RL_<PROJECT>_DEV__ENG` drops them.
+disappear; a user Terraform created is dropped as well. So are the person's personal schemas in
+the development database, with everything in them.

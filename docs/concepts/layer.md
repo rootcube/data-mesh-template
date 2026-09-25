@@ -143,7 +143,8 @@ the code uppercased: `DB_EXAMPLE_DEV._SRC`, `DB_EXAMPLE_DEV._STG`, ... ,
 `DB_EXAMPLE_PRD._TMP`. The leading underscore marks a provisioned layer schema.
 
 In `dev`, engineers work in personal copies of the same layers, `<SNOWFLAKE_SCHEMA>_<LAYER>`
-(`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ...), created on demand by dlt and dbt. The mapping is in
+(`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ...), which Terraform creates per engineer from the
+engineer role's `personal` block (`terraform/personal.tf`). The mapping is in
 `SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; see
 [Environment](environment.md#development-is-special).
 

@@ -10,10 +10,36 @@ desc: "Role for developing and maintaining ingestion and transformation pipeline
 disabled: false
 required: true
 
+# Personal schemas: in these environments every user holding this role (config/users) gets
+# their own copy of each project layer, <PREFIX>_SRC, <PREFIX>_STG, ... (see personal.tf).
+# Terraform creates them, owned by SYSADMIN, plus the user's own stage <PREFIX>_SRC.ST_DEFAULT;
+# this role gets the privileges below on them. The role cannot create schemas itself.
+personal:
+  environments: [dev]
+  privileges:
+    - USAGE
+    - MONITOR
+    - MODIFY
+    - CREATE TABLE
+    - CREATE VIEW
+    - CREATE MATERIALIZED VIEW
+    - CREATE SEQUENCE
+    - CREATE FUNCTION
+    - CREATE PROCEDURE
+    - CREATE FILE FORMAT
+    - SELECT ON TABLES
+    - INSERT ON TABLES
+    - UPDATE ON TABLES
+    - DELETE ON TABLES
+    - TRUNCATE ON TABLES
+    - SELECT ON VIEWS
+    - USAGE ON FUNCTIONS
+    - USAGE ON PROCEDURES
+    - USAGE ON FILE FORMATS
+    - READ ON STAGES
+    - WRITE ON STAGES
+
 privileges:
-  database:
-    # Personal schemas (<prefix>_STG, ...) in the development database
-    dev: [CREATE SCHEMA]
   computes:
     default:
       all: [USAGE, OPERATE, MONITOR]

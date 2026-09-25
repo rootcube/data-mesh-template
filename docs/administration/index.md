@@ -13,9 +13,9 @@ never need any of this; they get their access from you and then follow
 
 | Concern | Where it lives | Runbook |
 |---------|----------------|---------|
-| The one-time account bootstrap: `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING` | `terraform/modules/snowflake/init.sql`, run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
+| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING` | `terraform/modules/snowflake/init.sql`, run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
 | The mesh: organisation, teams, projects, environments, layers, roles, computes | one YAML file per object under `terraform/config/` | [Snowflake provisioning](snowflake-provisioning.md), [Concepts](../concepts/index.md) |
-| Who may assume which project role | `terraform/config/users/<name>.yaml` | [Onboarding](onboarding.md) |
+| Who may assume which project role, and the personal schemas that come with the engineer role in development | `terraform/config/users/<name>.yaml` | [Onboarding](onboarding.md) |
 | Key registration for people who cannot set their own key, and for service users | `ALTER USER ... SET RSA_PUBLIC_KEY` | [Onboarding](onboarding.md) |
 | Account settings the tooling relies on: the Anaconda terms for Python models | Snowsight, as `ORGADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
 | Terraform state | local `terraform.tfstate` until you move it to a remote backend | [Snowflake provisioning](snowflake-provisioning.md) |
@@ -27,10 +27,10 @@ never need any of this; they get their access from you and then follow
 flowchart LR
     YAML["terraform/config/<br/>organisations, teams, projects,<br/>environments, layers, roles,<br/>computes, users"]
     VALIDATE["just tf-validate-config<br/>JSON schemas + cross references"]
-    TF["just tf plan / apply<br/>as TERRAFORM_USER"]
+    TF["just tf plan / apply<br/>as TERRAFORM_USER<br/>(SYSADMIN, SECURITYADMIN, USERADMIN)"]
     subgraph sf["Snowflake, per project and environment"]
         DB["DB_&lt;PROJECT&gt;_&lt;ENV&gt;"]
-        SCH["schemas _SRC, _STG, ..."]
+        SCH["schemas _SRC, _STG, ...<br/>personal DBT_&lt;NAME&gt;_SRC, ... in dev"]
         RL["roles RL_&lt;PROJECT&gt;_&lt;ENV&gt;__&lt;PURPOSE&gt;"]
         WH["warehouses WH_&lt;PROJECT&gt;_&lt;ENV&gt;"]
         GR["grants: role x layer,<br/>role x warehouse, role x user"]
@@ -49,7 +49,7 @@ Everything is derived from the YAML. A new project is a copy of
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
 - [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)
 - [ ] An `ORGADMIN` accepted the Anaconda terms, or `int__common__holiday` is disabled in the project
-- [ ] Every engineer has a `terraform/config/users/<name>.yaml` with the `engineer` role in `development`, applied
+- [ ] Every engineer has a `terraform/config/users/<name>.yaml` with the `engineer` role in `development`, applied: the apply creates their personal schemas, which their first dlt load and dbt run need
 - [ ] Every engineer knows the account identifier, their login, `RL_<PROJECT>_DEV__ENG`, `DB_<PROJECT>_DEV` and `WH_<PROJECT>_DEV`
 - [ ] You know whether users may set their own `RSA_PUBLIC_KEY`; if not, plan to register keys for them
 - [ ] State lives in a remote backend if more than one administrator applies
@@ -71,5 +71,6 @@ so a broken configuration never reaches `main`.
 | `just tf apply` | Apply it |
 | `just tf output database_names` | The databases Terraform manages |
 | `just tf output -json user_role_grants` | Which roles each login holds |
+| `just tf output -json personal_schemas` | The personal schemas of each login |
 | `just tf output -json initial_passwords` | One-time passwords of persons created with `create: true` |
 | `just tf destroy` | Remove everything Terraform created; the `init.sql` objects stay |

@@ -25,7 +25,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 | `SNOWFLAKE_ROLE` | `RL_EXAMPLE_DEV__ENG` | Your engineer role in the project |
 | `SNOWFLAKE_WAREHOUSE` | `WH_EXAMPLE_DEV` | The project's warehouse |
 | `SNOWFLAKE_DATABASE` | `DB_EXAMPLE_DEV` | The project database of that environment |
-| `SNOWFLAKE_SCHEMA` | `DBT_USERNAME` | Prefix of your personal schemas in `dev` (`<prefix>_SRC`, `<prefix>_STG`, ...); also dbt's schema for models without a layer |
+| `SNOWFLAKE_SCHEMA` | `DBT_USERNAME` | Prefix of your personal schemas in `dev` (`<prefix>_SRC`, `<prefix>_STG`, ...), which Terraform provisions under the `schema_prefix` of your user file or `DBT_<USERNAME>`; also dbt's schema for models without a layer |
 
 `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PRIVATE_KEY_PATH`, `SNOWFLAKE_ROLE`,
 `SNOWFLAKE_WAREHOUSE` and `SNOWFLAKE_DATABASE` are required; `just info` and
@@ -42,7 +42,9 @@ reads the same names with `env_var()`, and `dbt/dbt_example/sources/src_knmi.yml
 | `dev` | empty | `_SRC` | `DBT_STG` (profile default `DBT`) | `DBT` |
 | `prd` | empty | `_SRC` | `_STG` | `_TMP` (profile default) |
 
-In `dev`, set the prefix; the second row is what goes wrong when you do not. The rule is
+In `dev`, set the prefix; the second row is what goes wrong when you do not (nobody has `DBT_*`
+schemas, so dbt fails). The last column is not provisioned in `dev` either, so every model needs
+a layer. The rule is
 `SnowflakeSettings.schema_for_layer()` for dlt and Dagster and
 `dbt_common.generate_schema_name` for dbt.
 
@@ -78,7 +80,9 @@ Terraform reads its provider settings from `TF_VAR_*` variables, kept in the sam
 | `TF_VAR_SNOWFLAKE_ORGANIZATION` | required | Organization part of the account identifier (`MYORG` in `MYORG-MYACCOUNT`) |
 | `TF_VAR_SNOWFLAKE_ACCOUNT` | required | Account part (`MYACCOUNT`) |
 | `TF_VAR_SNOWFLAKE_USER` | `TERRAFORM_USER` | Service user created by `terraform/modules/snowflake/init.sql` |
-| `TF_VAR_SNOWFLAKE_PROVISIONING_ROLE` | `RL_PLATFORM_PROVISIONING` | Role Terraform provisions with |
 | `TF_VAR_SNOWFLAKE_WAREHOUSE` | `WH_PLATFORM_PROVISIONING` | Warehouse for the provider's own queries |
 | `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH` | `~/.snowflake/keys/terraform.p8` | Private key of the service user (`just sf keygen terraform`) |
 | `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | unset | Only when that key is encrypted |
+
+There is no role variable: the providers in `terraform/providers.tf` connect as `SYSADMIN`,
+`SECURITYADMIN` and `USERADMIN`, which `init.sql` grants to the service user.

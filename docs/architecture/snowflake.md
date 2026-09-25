@@ -22,10 +22,17 @@ For every project in `terraform/config/projects/` and each of its environments:
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per layer schema (all and future tables, views, ...), grants per warehouse, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ANL`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` (X-Small, auto-suspend 60 s, created suspended) |
+| dlt load stage | internal stage `ST_DEFAULT` with a directory table in every source-layer schema, shared and personal | `_SRC.ST_DEFAULT`, `DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | `GRANT ROLE ... TO USER`, and the user itself when `create: true` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
+| User × engineer role in `dev` | personal schemas `<PREFIX>_<LAYER>`, one per layer (`terraform/personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... |
 
 The example project has two environments, so the same set exists once more with `PRD`:
 `DB_EXAMPLE_PRD`, `RL_EXAMPLE_PRD__*`, `WH_EXAMPLE_PRD`. Nothing is shared between the two.
+
+Terraform connects through Snowflake's system roles, so every object has the owner Snowflake
+recommends: `SYSADMIN` creates and owns the databases, schemas, stages and warehouses,
+`SECURITYADMIN` the roles and every grant, `USERADMIN` the users (`terraform/providers.tf`).
+Every project role is granted to `SYSADMIN`, the recommended role hierarchy.
 
 ```mermaid
 flowchart LR
@@ -36,7 +43,7 @@ flowchart LR
     R --> WH["WH_EXAMPLE_DEV"]
     R --> DB["DB_EXAMPLE_DEV"]
     DB --> LAYERS["_SRC · _REF · _STG · _INT · _MRT · _EXP · _MTD · _TMP"]
-    DB --> MINE["DBT_&lt;NAME&gt;_SRC · DBT_&lt;NAME&gt;_STG · ... (yours, created on demand)"]
+    DB --> MINE["DBT_&lt;NAME&gt;_SRC · DBT_&lt;NAME&gt;_STG · ... (yours, provisioned per user)"]
 ```
 
 ## Naming
@@ -52,7 +59,7 @@ flowchart LR
 | dlt table | `<source>__<entity>` in the source layer | `_SRC.knmi__climate_hourly` |
 | dbt model | the model name in its layer schema | `_STG.stg__knmi__climate_hourly` |
 | Run metadata | `pre__dbt__<dataset>` in `_MTD` | `_MTD.pre__dbt__model_execution` |
-| Provisioning (bootstrap, `init.sql`) | `TERRAFORM_USER`, `RL_PLATFORM_PROVISIONING`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING`, `RM_PLATFORM_PROVISIONING` | same |
+| Provisioning (bootstrap, `init.sql`) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING`, `RM_PLATFORM_PROVISIONING` | same |
 
 `<PROJECT>`, `<ENV>` and `<PURPOSE>` are the `code` fields of the YAML files, uppercased. The
 double underscore separates the scope (`RL_EXAMPLE_DEV`) from the purpose (`ENG`); a single
@@ -61,20 +68,27 @@ so `_stg` and `_STG` are the same schema.
 
 ## Personal schemas in development
 
-Development is shared: everyone who holds `RL_EXAMPLE_DEV__ENG` works in `DB_EXAMPLE_DEV`. The
-engineer role has `CREATE SCHEMA` on that database (`privileges.database: dev: [CREATE
-SCHEMA]` in `roles/engineer.yaml`, one of the starter's additions), and each engineer sets a
-personal prefix in `.env`:
+Development is shared: everyone who holds `RL_EXAMPLE_DEV__ENG` works in `DB_EXAMPLE_DEV`.
+Terraform gives every user with that role in `dev` a copy of each layer (`terraform/personal.tf`,
+driven by the `personal` block in `roles/engineer.yaml`, one of the starter's additions):
+`<PREFIX>_SRC`, `<PREFIX>_STG`, ..., owned by `SYSADMIN`, with the engineer role's privileges on
+them and a load stage of their own in `<PREFIX>_SRC`. The engineer role cannot create schemas
+itself. `<PREFIX>` is `schema_prefix` from the user's file under `terraform/config/users/`, or
+`DBT_` plus the part of the login before the `@`, uppercased (`DBT_USERNAME` for
+`username@example.com`). Each engineer has the same prefix in `.env`:
 
 ```dotenv
 SNOWFLAKE_SCHEMA=DBT_<USERNAME>
 ```
 
-`just sf setup` proposes `DBT_` plus the part of your login before the `@`, uppercased
-(`DBT_USERNAME` for `username@example.com`). From then on dlt loads into `DBT_USERNAME_SRC`, dbt builds
-`DBT_USERNAME_STG`, `DBT_USERNAME_INT`, ... and the metadata upload writes `DBT_USERNAME_MTD`, all created on
-first use. The provisioned `_<LAYER>` schemas of `DB_EXAMPLE_DEV` stay untouched by local runs.
+`just sf setup` proposes it by the same rule. From then on dlt loads into `DBT_USERNAME_SRC`, dbt builds
+`DBT_USERNAME_STG`, `DBT_USERNAME_INT`, ... and the metadata upload writes `DBT_USERNAME_MTD`. The
+schemas exist once an administrator has applied the user's file, so that comes before the first
+load or build. The provisioned `_<LAYER>` schemas of `DB_EXAMPLE_DEV` stay untouched by local runs.
 `tst`, `acc` and `prd` know no personal schemas; there the same code writes to `_<LAYER>`.
+
+The prefix keeps people apart, it does not lock them out: the privileges go to the shared
+engineer role, so engineers can read and write each other's personal schemas.
 
 The switch is `ENVIRONMENT` in `.env`, read by `SnowflakeSettings.schema_for_layer()`,
 `dbt_common.generate_schema_name` and the source YAML. See

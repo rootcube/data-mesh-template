@@ -24,7 +24,8 @@ All of this sits inside the project database, `DB_EXAMPLE_<ENV>`.
 | Metadata | `dbt_common` `on-run-end` hook | none | `mtd` (in the macro) | `_MTD` | `<PREFIX>_MTD` | tables created on demand | `pre__dbt__<dataset>` |
 | Temporary | dbt data tests | none | `tmp` | `_TMP` | `<PREFIX>_TMP` | `store_failures` tables | test names |
 
-`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`).
+`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`), the
+prefix of the personal schemas Terraform provisions for you (`terraform/personal.tf`).
 Materializations come from `dbt/dbt_example/dbt_project.yml` (`dbt_common` builds `03_int`
 as `view` by default, with the date, calendar, time and holiday models overriding to
 `table`); a model can override its folder default with `config(materialized=...)`.
@@ -51,8 +52,9 @@ A layer's schema depends on the environment. The rule lives in
 | `prd` | `_TMP` | (none) | `_TMP` |
 
 In the shared environments (`tst`, `acc`, `prd`) a layer's schema is `_<LAYER>`, provisioned by
-Terraform. In `dev` every engineer works in personal schemas, `<target.schema>_<LAYER>`, created
-on demand, so several people share one development database without stepping on each other.
+Terraform. In `dev` every engineer works in personal schemas, `<target.schema>_<LAYER>`, which
+Terraform provisions per engineer, so several people share one development database without
+stepping on each other.
 The `dummy` target counts as personal too. The macro only takes effect because
 `dbt/dbt_example/dbt_project.yml` puts `dbt_common` first in the dispatch order:
 
@@ -64,7 +66,7 @@ dispatch:
 
 Models without any `+schema` land in `target.schema`: your prefix in `dev`, and `_TMP` in the
 shared environments (the `profiles.yml` fallback when `SNOWFLAKE_SCHEMA` is unset). Nothing
-should end up there.
+should end up there; in `dev` Terraform does not provision the bare prefix, so such a model fails.
 
 Source YAML cannot call macros, so `dbt/dbt_example/sources/src_knmi.yml` spells the rule out
 with `env_var`:
@@ -178,8 +180,8 @@ last model. Materialized as `view`, so they are always current.
 Neither is a modeling layer, but both show up after a `dbt build`.
 
 `_MTD` holds run metadata. `dbt_common`'s `on-run-end` hook calls `upload_results(results)`
-after every `run`, `build`, `test`, `seed` and `freshness` invocation; it creates the schema
-(in `dev`) and the `pre__dbt__*` tables on first use: `invocation`, `model`,
+after every `run`, `build`, `test`, `seed` and `freshness` invocation; it creates the
+`pre__dbt__*` tables on first use: `invocation`, `model`,
 `model_execution`, `test`, `test_execution`, `seed`, `seed_execution`, `source`,
 `source_freshness`, `snapshot`, `snapshot_execution` and `exposure`. The `dummy` target never
 connects, so it skips the upload.

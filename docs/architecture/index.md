@@ -69,7 +69,8 @@ Terraform
 :   Reads `terraform/config/` and creates, per project and environment, a database
     `DB_<PROJECT>_<ENV>`, a schema `_<LAYER>` per layer, a role
     `RL_<PROJECT>_<ENV>__<PURPOSE>` per role with grants per layer and compute, and a warehouse
-    `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` per compute and size. Users get role grants.
+    `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` per compute and size. Users get role grants, and
+    engineers their personal schemas `<PREFIX>_<LAYER>` in `dev`.
 
 dbt
 :   One dbt project per Project (`dbt/dbt_example`). The shared profile `default` has one
@@ -113,7 +114,7 @@ terraform/                        # platform administrators: config/*.yaml -> Sn
 ├── README.md                     #   the runbook
 ├── config/                       #   organisations, teams, projects, environments, layers, roles, computes, users, privileges
 ├── modules/snowflake/            #   database, schema, role, warehouse and grant modules; init.sql (bootstrap)
-└── main.tf users.tf variables.tf outputs.tf providers.tf
+└── main.tf users.tf personal.tf stages.tf variables.tf outputs.tf providers.tf
 scripts/                          # snowflake.py (key pairs), info.py, dbt_all.py
 tests/                            # pytest, offline only
 .dagster/dagster.yaml             # DAGSTER_HOME (state is git-ignored, this file is not)

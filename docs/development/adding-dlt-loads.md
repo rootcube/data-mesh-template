@@ -116,7 +116,7 @@ from collections.abc import Iterator
 import dlt
 
 from dlt_pipelines.pipelines.ingest.airquality.source import fetch_measurements
-from dlt_pipelines.utils.destination import snowflake_destination, source_dataset
+from dlt_pipelines.utils.destination import pipeline_name, snowflake_destination, source_dataset
 
 SOURCE = "airquality"
 ENTITY = "measurement_hourly"
@@ -141,7 +141,7 @@ def airquality_source() -> Iterator[dlt.sources.DltResource]:
 source = airquality_source()
 
 pipeline = dlt.pipeline(
-    pipeline_name=f"ingest_{SOURCE}",
+    pipeline_name=pipeline_name(SOURCE),
     destination=snowflake_destination(SOURCE),
     dataset_name=source_dataset(),
 )
@@ -169,7 +169,8 @@ More resources
 `snowflake_destination(SOURCE)` and `source_dataset()`
 :   Always these two. They read `SNOWFLAKE_*` and `ENVIRONMENT` from `.env` through
     `SnowflakeSettings`, so there is nothing to configure per source; the source name only picks
-    the folder of the load files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`. Credentials
+    the folder of the load files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`
+    (`DBT_<USERNAME>_SRC.ST_DEFAULT/dlt/ingest/airquality/` in dev). Credentials
     are only checked when the pipeline runs, which is why the module imports cleanly without a
     `.env`.
 
@@ -208,7 +209,8 @@ just sf query "SELECT COUNT(1) FROM DBT_<USERNAME>_SRC.airquality__measurement_h
 ```
 
 `just sf check` prints your layer schemas if you are unsure of the prefix. In dev the
-schema is created on first load. `RUNTIME__LOG_LEVEL=INFO` in `.env` shows the extract,
+schema is your personal one that Terraform provisioned; dlt only adds the new tables to it.
+`RUNTIME__LOG_LEVEL=INFO` in `.env` shows the extract,
 normalize and load steps. Something wrong with the data? `just dlt run airquality --full-refresh`
 drops the source's tables and state and loads again.
 

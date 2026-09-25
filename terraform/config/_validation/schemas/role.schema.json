@@ -62,9 +62,36 @@
     },
     "privileges": {
       "$ref": "#/$defs/privileges"
+    },
+    "personal": {
+      "$ref": "#/$defs/personal"
     }
   },
   "$defs": {
+    "personal": {
+      "type": "object",
+      "description": "Personal schemas: in these environments every user holding this role gets a copy of each project layer (<PREFIX>_<LAYER>), created by Terraform and owned by SYSADMIN, with these privileges for the role",
+      "required": [
+        "environments",
+        "privileges"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "environments": {
+          "type": "array",
+          "description": "Environment codes with personal schemas, usually [dev]",
+          "items": {
+            "type": "string",
+            "pattern": "^(dev|tst|acc|prd|sbx)$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "privileges": {
+          "$ref": "#/$defs/layerPrivilegesByEnvironment/additionalProperties"
+        }
+      }
+    },
     "privileges": {
       "type": "object",
       "description": "Privileges for this role across different platform concepts",

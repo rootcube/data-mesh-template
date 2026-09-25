@@ -15,12 +15,24 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_REF`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
-| dlt load files | the default internal stage `ST_DEFAULT` of the source layer schema (`stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT` |
+| dlt load files | the default internal stage `ST_DEFAULT` of every source layer schema, shared and personal (`stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | role grants (and optionally the user itself) | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
+| User × role with a `personal` block | a schema `<PREFIX>_<LAYER>` per layer in the listed environments (`personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... in `DB_EXAMPLE_DEV` |
 
-Development is shared: engineers hold `CREATE SCHEMA` on `DB_<PROJECT>_DEV` and work in personal
-schemas `<PREFIX>_<LAYER>` (for example `DBT_USERNAME_STG`), which dlt and dbt create on demand. The
-other environments only use the provisioned `_<LAYER>` schemas.
+Development is shared: engineers work in personal schemas `<PREFIX>_<LAYER>` (for example
+`DBT_USERNAME_STG`) of `DB_<PROJECT>_DEV`. Terraform creates them for every user who holds the
+engineer role in `dev` (its `personal` block in `config/roles/engineer.yaml`) and grants the role
+the block's privileges on them; the engineer role cannot create schemas itself. `<PREFIX>` is the
+user file's `schema_prefix`, or `DBT_` plus the login before the `@` with non-alphanumerics as
+`_`, uppercased (`DBT_USERNAME` for `username@example.com`).
+`just tf output -json personal_schemas` lists them per login. The privileges go to the shared
+role, so engineers can read and write each other's personal schemas. The other environments only
+use the provisioned `_<LAYER>` schemas.
+
+Terraform connects as `TERRAFORM_USER` through Snowflake's system roles (`providers.tf`), so every
+object gets the owner Snowflake recommends: `SYSADMIN` creates and owns databases, schemas,
+stages and warehouses, `SECURITYADMIN` the roles and every grant, `USERADMIN` the users. Every
+project and platform role is granted to `SYSADMIN`.
 
 ## One-time bootstrap
 
@@ -39,7 +51,10 @@ not have (Terraform would fail on their grants), writes the `TF_VAR_*` block to 
 `terraform init` and `terraform apply` (you confirm the plan; `just sf bootstrap --yes` auto-approves) and ends
 like `just sf setup`. Rerunning it is safe: the prompts default to the values already in
 `.env`, `init.sql` is idempotent, existing keys are kept when you say so, and Terraform applies
-only the difference.
+only the difference. Objects Terraform would create that already exist (an account provisioned
+from another checkout: `just setup` answer 3, or `--existing ask|sync|wipe`) are either synced
+into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner with
+`GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first.
 
 The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yourself:
 
@@ -51,9 +66,12 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
 
 2. Open `modules/snowflake/init.sql`, uncomment the `RSA_PUBLIC_KEY` line in the `ALTER USER`
    block of `TERRAFORM_USER` and paste the public key body, then run the whole script as
-   `ACCOUNTADMIN` in Snowsight. It creates `TERRAFORM_USER`, the role `RL_PLATFORM_PROVISIONING`
-   (with usage on the provisioning warehouse and database), the warehouse
-   `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and a resource monitor.
+   `ACCOUNTADMIN` in Snowsight. It sets the account parameters below, creates `TERRAFORM_USER`
+   with the system roles `SYSADMIN` (its default role), `SECURITYADMIN` and `USERADMIN`, the
+   warehouse `WH_PLATFORM_PROVISIONING` and the database `DB_PLATFORM_PROVISIONING` (both owned
+   by `SYSADMIN`, usable by `USERADMIN`) and a resource monitor. It drops
+   `RL_PLATFORM_PROVISIONING`, the custom role earlier versions provisioned with; what that role
+   still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it.
    The script is idempotent; rerun it after edits. If the user already holds a key in
    `RSA_PUBLIC_KEY` (another administrator's machine), use `RSA_PUBLIC_KEY_2` for the second one.
 
@@ -73,6 +91,15 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
     just tf-validate-config
     just tf plan
     ```
+
+The account parameters `init.sql` sets (users and sessions can still override most of them):
+`TIMEZONE = 'UTC'` and `TIMESTAMP_TYPE_MAPPING = 'TIMESTAMP_NTZ'`; ISO weeks starting on Monday
+(`WEEK_START = 1`, `WEEK_OF_YEAR_POLICY = 0`); ISO 8601 output formats for `DATE`, `TIME` and the
+`TIMESTAMP` types; AES-256 for files `PUT` into internal stages (`CLIENT_ENCRYPTION_KEY_SIZE`);
+`REQUIRE_STORAGE_INTEGRATION_FOR_STAGE_CREATION` and `_OPERATION` and
+`PREVENT_UNLOAD_TO_INLINE_URL`; a four-hour `STATEMENT_TIMEOUT_IN_SECONDS`;
+`ALLOW_CLIENT_MFA_CACHING` and `ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR`; and
+`PERIODIC_DATA_REKEYING`, which needs Enterprise Edition and is skipped with a message on Standard.
 
 ## Configuration
 
@@ -108,12 +135,18 @@ databases, schemas, roles and warehouses it adds.
         environments: [development]
     ```
 
-2. `just tf apply`. For created users, hand out the password from
-   `just tf output -json initial_passwords`.
+2. `just tf apply`. Besides the grants, this creates the person's personal schemas
+   (`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... with the stage `DBT_USERNAME_SRC.ST_DEFAULT`),
+   so it has to happen before their first dlt load or dbt run. For created users, hand out the
+   password from `just tf output -json initial_passwords`.
 
 3. The person runs `just sf setup`, which logs in once, registers a key pair and writes
    their `.env` with `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
-   `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and a personal schema prefix such as `DBT_USERNAME`.
+   `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and their personal schema prefix, `DBT_USERNAME`.
+
+A different prefix is `schema_prefix: DBT_OTHER` in the user file plus a `just tf apply`.
+`just sf setup` proposes it from that file; a `.env` that already holds `SNOWFLAKE_SCHEMA` needs
+the new value by hand.
 
 System users for deployed environments (the transform and ingest roles) are created by hand:
 `CREATE USER <login> TYPE = SERVICE`, then `just sf keygen <login>` and
@@ -126,12 +159,14 @@ System users for deployed environments (the transform and ingest roles) are crea
 
 ## Differences from rootcube/platform
 
-This folder is a port of the platform repository's Terraform with three additions, kept small
+This folder is a port of the platform repository's Terraform with four additions, kept small
 so they can flow back upstream:
 
 - `config/users/` and `users.tf`: role grants to logins (and optional user creation).
+- `personal` on a role and `personal.tf`: personal schemas per user holding the role (the
+  engineer role in dev), with the user file's optional `schema_prefix`.
 - `privileges.database` on a role: extra database privileges per environment on top of the
-  implicit `USAGE` (engineers get `CREATE SCHEMA` in dev for their personal schemas).
+  implicit `USAGE` (none of the shipped roles needs any).
 - `config/layers/metadata.yaml` (`_MTD`): where dbt writes run metadata.
 
 The provider is Snowflake only; the dbt Cloud, GitHub and Kubernetes providers of the platform

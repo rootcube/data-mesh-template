@@ -102,8 +102,9 @@ roles:
       - development
 ```
 
-That grants `RL_ENERGY_DEV__ENG`, which carries `CREATE SCHEMA` on `DB_ENERGY_DEV` for the
-personal schemas. See [Onboarding](../administration/onboarding.md).
+That grants `RL_ENERGY_DEV__ENG` and creates the engineer's personal schemas in
+`DB_ENERGY_DEV` (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...), with the same prefix as in
+every other project. See [Onboarding](../administration/onboarding.md).
 
 ## 3. Copy the dbt project (engineer)
 
@@ -192,7 +193,7 @@ attributes:
     project_dir: '{{ context.project_root }}/dbt/dbt_energy'
     profiles_dir: '{{ context.project_root }}/dbt'
     prepare_project_cli_args: ["parse", "--quiet"]
-  select: "*"
+  select: "fqn:*"
 ```
 
 `build_dbt_defs()` gives the location `job_dbt_energy_build_all` for free.
@@ -266,7 +267,7 @@ Administrator:
 
 - [ ] `terraform/config/projects/<project>.yaml` with its own `code`; `just tf-validate-config` passes
 - [ ] `just tf apply` created `DB_<PROJECT>_<ENV>`, the layer schemas, the roles and the warehouse
-- [ ] Engineers hold `RL_<PROJECT>_DEV__ENG` through `terraform/config/users/`
+- [ ] Engineers hold `RL_<PROJECT>_DEV__ENG` through `terraform/config/users/`, applied, so their personal schemas exist in `DB_<PROJECT>_DEV`
 
 Engineer:
 

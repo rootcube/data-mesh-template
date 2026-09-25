@@ -68,8 +68,9 @@ Sources (KNMI API, ...) -> dlt -> _SRC -> dbt (_STG -> _INT -> _MRT -> _EXP) -> 
 Snowflake naming: database `DB_<PROJECT>_<ENV>`, layer schemas `_SRC`, `_REF`, `_STG`, `_INT`,
 `_MRT`, `_EXP`, `_MTD` (run metadata), `_TMP` (test failures), roles `RL_<PROJECT>_<ENV>__<PURPOSE>`
 (`ENG`, `ANL`, `ING`, `TFM`), warehouses `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]`. In `dev` every
-engineer works in personal schemas prefixed with `SNOWFLAKE_SCHEMA` (`DBT_USERNAME_STG`); the other
-environments use the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
+engineer works in personal schemas prefixed with `SNOWFLAKE_SCHEMA` (`DBT_USERNAME_STG`), which
+Terraform provisions per engineer (dlt and dbt cannot create schemas); the other environments use
+the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
 `dbt_common.generate_schema_name` implement that rule; dbt source YAML repeats it with `env_var`.
 Detail: [Architecture](docs/architecture/index.md), [Concepts](docs/concepts/index.md).
 

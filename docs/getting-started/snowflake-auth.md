@@ -30,7 +30,9 @@ walks through four steps:
 4. **Context, verification and `.env`.** You confirm role, warehouse, database and the prefix
    of your personal schemas. The defaults are your user's default role, warehouse and database
    in Snowflake, falling back to what `.env` already holds, and `DBT_<USERNAME>` for the prefix
-   (`DBT_USERNAME` for `username@example.com`). Press Enter to keep a default, or type the
+   (`DBT_USERNAME` for `username@example.com`, or the `schema_prefix` of your file under
+   `terraform/config/users/`): the prefix Terraform created your schemas with, so keep it.
+   Press Enter to keep a default, or type the
    values your administrator gave you. A fresh connection with the key proves it works, then
    the script writes everything to `.env`:
 
@@ -64,7 +66,7 @@ it that way when you edit by hand.
 | `SNOWFLAKE_ROLE` | Your engineer role, `RL_<PROJECT>_DEV__ENG`. |
 | `SNOWFLAKE_DATABASE` | The project's development database, `DB_<PROJECT>_DEV`, shared by every engineer. |
 | `SNOWFLAKE_WAREHOUSE` | The project's default warehouse, `WH_<PROJECT>_DEV`. |
-| `SNOWFLAKE_SCHEMA` | The prefix of your personal schemas. dlt loads into `<prefix>_SRC`; dbt builds `<prefix>_STG`, `<prefix>_INT`, `<prefix>_MRT` and `<prefix>_EXP`, seeds `<prefix>_REF`, run metadata `<prefix>_MTD`, stored test failures `<prefix>_TMP`. |
+| `SNOWFLAKE_SCHEMA` | The prefix of your personal schemas, which Terraform provisions for you. dlt loads into `<prefix>_SRC` (through its stage `<prefix>_SRC.ST_DEFAULT`); dbt builds `<prefix>_STG`, `<prefix>_INT`, `<prefix>_MRT` and `<prefix>_EXP`, seeds `<prefix>_REF`, run metadata `<prefix>_MTD`, stored test failures `<prefix>_TMP`. |
 
 ## Pointing `.env` at a project
 

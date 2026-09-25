@@ -110,8 +110,8 @@ For every environment the project lists, Terraform creates:
 | Grants | database, schema, warehouse and role-to-role grants per role | `USAGE` on `DB_EXAMPLE_DEV` for every role |
 
 The database module drops the default `PUBLIC` schema, so a project database holds layer
-schemas only (plus, in `dev`, the personal schemas engineers create). Time Travel retention is
-the module default of one day.
+schemas only (plus, in `dev`, the personal schemas Terraform creates per engineer). Time Travel
+retention is the module default of one day.
 
 ## Adding a project
 

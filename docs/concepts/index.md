@@ -106,15 +106,18 @@ or relies on, with the place they bite.
 | One dbt project and one Dagster code location per Project | `dbt/dbt_<project>/` plus `src/orchestrator/locations/dbt/dbt_<project>/` |
 | Exactly one project builds the `dbt_common` models | Duplicate asset keys across code locations are an error in Dagster |
 
-## Three additions to the platform model
+## Four additions to the platform model
 
 `terraform/README.md` lists what this starter adds on top of rootcube/platform, kept small so
 they can flow back upstream:
 
 1. `config/users/` and `users.tf`: role grants to logins, and optional user creation.
-2. `privileges.database` on a role: extra database privileges per environment on top of the
-   implicit `USAGE`. Engineers get `CREATE SCHEMA` in `dev` for their personal schemas.
-3. `config/layers/metadata.yaml` (`_MTD`): the layer where dbt writes run metadata.
+2. `personal` on a role and `personal.tf`: personal schemas per user holding the role. The
+   engineer role gets them in `dev`, prefixed with the user file's `schema_prefix` or
+   `DBT_<USERNAME>`.
+3. `privileges.database` on a role: extra database privileges per environment on top of the
+   implicit `USAGE`; none of the shipped roles needs any.
+4. `config/layers/metadata.yaml` (`_MTD`): the layer where dbt writes run metadata.
 
 The platform repository's other providers are not part of the starter. The provider is
 Snowflake only.

@@ -52,7 +52,7 @@ review.
 
 An engineer works in the development environment of one project: the shared database
 `DB_<PROJECT>_DEV`, personal schemas prefixed with your `SNOWFLAKE_SCHEMA` (`DBT_<USERNAME>_SRC`,
-`DBT_<USERNAME>_STG`, ...), the project's engineer role `RL_<PROJECT>_DEV__ENG` and its warehouse
+`DBT_<USERNAME>_STG`, ..., provisioned for you by Terraform), the project's engineer role `RL_<PROJECT>_DEV__ENG` and its warehouse
 `WH_<PROJECT>_DEV`. `just sf setup` writes those into `.env`; nothing else needs
 configuring. The starter ships one project, `example`, so out of the box that is
 `DB_EXAMPLE_DEV`. The other environments (`tst`, `acc`, `prd`) use the provisioned `_<LAYER>`
