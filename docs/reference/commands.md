@@ -90,7 +90,8 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 `just check` mirrors the CI workflow (`.github/workflows/ci.yml`): the jobs there are Python
 (ruff, ty, pytest), dbt parse + Dagster definitions, Terraform fmt + validate + config
-validation, and the docs build.
+validation, the docs build, and the fresh-machine setup (`just init` through `just start`) on
+Linux, macOS and Windows.
 
 ## Variables
 

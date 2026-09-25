@@ -86,7 +86,7 @@ Distilled from `AGENTS.md`. These are hard rules, not suggestions.
     ```bash
     uv run ruff format .
     uv run ruff check --fix .
-    cd dbt/dbt_example && uv run sqlfluff fix models
+    cd dbt/dbt_example && uv run sqlfluff fix models --config ../.sqlfluff
     uv run ty check
     uv run pytest
     uv run dagster definitions validate -w workspace.yaml

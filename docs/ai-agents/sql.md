@@ -98,10 +98,10 @@ Always run at least steps 1 and 2 before presenting changes.
 === "sqlfluff directly"
 
     ```bash
-    cd dbt/dbt_example && uv run sqlfluff fix models
+    cd dbt/dbt_example && uv run sqlfluff fix models --config ../.sqlfluff
     ```
 
-sqlfluff runs from inside the dbt project because the dbt templater resolves `dbt_project.yml` from the working directory; the `just` recipes `cd` there for you. The templater uses the `dummy` target (an in-memory DuckDB), so it never connects. A "dbt templater error" almost always means missing packages: `just dbt deps` first.
+sqlfluff runs from inside the dbt project because the dbt templater resolves `dbt_project.yml` from the working directory; the `just` recipes `cd` there for you. They also name `dbt/.sqlfluff` with `--config`, because sqlfluff searches for a config above the working directory only as far as your home directory: a checkout on another drive than your profile finds nothing and fails on the missing dialect. The templater uses the `dummy` target (an in-memory DuckDB), so it never connects. A "dbt templater error" almost always means missing packages: `just dbt deps` first.
 
 ### 2. Parse and compile
 

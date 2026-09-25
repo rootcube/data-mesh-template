@@ -120,7 +120,7 @@ in the repo. The two hooks that call `just` need it on the `PATH`, also for a co
 
 ## What CI runs
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request, four jobs in
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request, five jobs in
 parallel:
 
 | Job | Steps |
@@ -129,9 +129,11 @@ parallel:
 | dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
 | Docs | `uv sync --locked --group docs`, `zensical build --strict` |
+| Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
 
-Every job installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after changing
-dependencies, run `uv lock` and commit `uv.lock`. CI has no Snowflake credentials. Everything it does works with the `dummy` target and an empty
+Every job but `Setup` installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after changing
+dependencies, run `uv lock` and commit `uv.lock`. `Setup` installs the way an engineer does, through
+`just init`. CI has no Snowflake credentials. Everything it does works with the `dummy` target and an empty
 `DAGSTER_HOME`; that is the design constraint behind the `dummy` target and the lazy credential
 checks in dlt and the Dagster resource.
 

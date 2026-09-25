@@ -19,7 +19,7 @@ through pull requests, and release-please turns the conventional commits on it i
 
 ```mermaid
 flowchart LR
-    A[short-lived branch] -->|push + pull request| B[CI: 4 jobs]
+    A[short-lived branch] -->|push + pull request| B[CI: 5 jobs]
     B -->|review| C[merge to main]
     C -->|release-please| D[release PR]
     D -->|merge| E[tag + GitHub release]
@@ -30,7 +30,7 @@ flowchart LR
 2. **Commit.** Pre-commit hooks run on every `git commit` (install them once with
    `just pre-commit-install`). If a hook fails, fix the cause and commit again. Never
    `git commit --no-verify`; CI runs the same checks anyway.
-3. **Open a pull request to `main`.** CI runs the four jobs from `.github/workflows/ci.yml` on
+3. **Open a pull request to `main`.** CI runs the five jobs from `.github/workflows/ci.yml` on
    every pull request and on every push to `main`.
 4. **Review and merge.** Keep diffs small and single-purpose ("one thing at a time", per
    `AGENTS.md`). A reviewable pull request touches one concern: one dlt load, one dbt model with
@@ -98,7 +98,7 @@ follow a release is chained off the `release_created` and `tag_name` outputs of 
 ## Protected main
 
 `main` accepts pull requests only: no direct pushes, no force pushes, no deletion, every
-review thread resolved, the four CI jobs green, and the rule applies to administrators too.
+review thread resolved, the required CI checks green, and the rule applies to administrators too.
 The rule is a repository ruleset named `main`; its export is `.github/rulesets/main.json`.
 Apply it on a fresh repository with the GitHub CLI (`just install gh`, then `gh auth login`)
 or import the file under **Settings > Rules > Rulesets**:
@@ -144,9 +144,12 @@ CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`:
 | `dbt-and-dagster` | `dbt deps` + `dbt parse` in every project (`dummy` target), `sqlfluff lint models`, `dagster definitions validate` |
 | `terraform` | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
 | `docs` | `zensical build --strict` (a broken link fails the build) |
+| `setup` | On Linux, macOS and Windows: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
 
 `just check` runs the first two locally plus the YAML validation of the third;
-`just docs build --strict` covers the last one.
+`just docs build --strict` covers the docs. The `setup` matrix is not a required check in the
+`main` ruleset: it is the fresh-machine test of the setup path, and a runner hiccup on one OS
+should not block a pull request. Treat a red leg as a bug in that recipe all the same.
 
 release-please, on every push to `main`, from `.github/workflows/release-please.yml`: the release
 pull request, and on its merge the tag and the GitHub release. It is not a check on your pull

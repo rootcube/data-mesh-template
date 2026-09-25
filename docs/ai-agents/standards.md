@@ -55,7 +55,7 @@ Details agents trip over:
 
 ### 2. CI
 
-`.github/workflows/ci.yml` repeats everything in four independent jobs:
+`.github/workflows/ci.yml` repeats everything in five independent jobs:
 
 | Job | Steps |
 |---|---|
@@ -63,8 +63,14 @@ Details agents trip over:
 | `dbt-and-dagster` | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` (with `DBT_TARGET=dummy`) |
 | `terraform` | `terraform fmt -check -recursive terraform`, `init -backend=false`, `validate`, then `validate_configs.py` through `uv` |
 | `docs` | `uv sync --locked --group docs`, `zensical build --strict` (a broken link fails the build) |
+| `setup` | On Linux, macOS and Windows: `just init`, `just info`, `just check`, `just sf keygen`, then `just start` until the UI answers with every code location loaded, and `just stop` until the port is free |
 
-Every job installs with `uv sync --locked`, so a `uv.lock` that no longer matches `pyproject.toml` fails CI: after changing dependencies, run `uv lock` and commit `uv.lock`. `terraform init` honors the committed `terraform/.terraform.lock.hcl`. `just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
+Every job but `setup` installs with `uv sync --locked`, so a `uv.lock` that no longer matches `pyproject.toml` fails CI: after changing dependencies, run `uv lock` and commit `uv.lock`. `terraform init` honors the committed `terraform/.terraform.lock.hcl`. `just check` is the local equivalent of the first two jobs plus the YAML validation of the third. Run `just docs build --strict` after editing `docs/`.
+
+The `setup` job is the fresh-machine test: no uv, no `.venv`, no `.env`, no dbt packages, what a new
+engineer's checkout looks like. It installs through `just init` rather than `uv sync --locked`,
+because that is the command the engineer runs, so the `[unix]` and `[windows]` recipe bodies and
+everything they call get exercised on every pull request instead of by hand on three machines.
 
 Dependency bumps come from Dependabot (`.github/dependabot.yml`: `uv.lock`, GitHub Actions, Terraform providers, weekly and grouped). Both workflows pin every action to a full commit SHA with a trailing `# vX.Y.Z` comment, which Dependabot keeps up to date. Review them like any pull request; CI runs on them. dbt packages in `packages.yml` and the pre-commit hook revisions are bumped by hand.
 

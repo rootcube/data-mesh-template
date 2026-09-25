@@ -30,6 +30,10 @@ export PATH := _uv_bin + _path_sep + _tf_bin + env("PATH")
 project     := "dbt_example"
 dbt_project := "dbt" / project
 tf_dir      := "terraform"
+# sqlfluff discovers a config above the working directory only by walking from there to your home
+# directory. A checkout on another drive than your profile (Windows) shares no path with it, so the
+# shared dbt/.sqlfluff is never found; pass it explicitly and the lookup stops mattering.
+sqlfluff_config := justfile_directory() / "dbt" / ".sqlfluff"
 port        := "3000"
 
 # list recipes (default)
@@ -204,7 +208,7 @@ dbt-all *args:
 
 # lint or fix SQL with sqlfluff from the dbt project, e.g. `just sqlfluff lint models`
 sqlfluff *args:
-    cd {{dbt_project}}; uv run sqlfluff {{args}}
+    cd {{dbt_project}}; uv run sqlfluff {{args}} --config '{{sqlfluff_config}}'
 
 # --- Terraform (platform administrators) -----------------------------------
 
@@ -228,13 +232,13 @@ docs cmd="serve" *args:
 fmt:
     uv run ruff format .
     uv run ruff check --fix .
-    cd {{dbt_project}}; uv run sqlfluff fix models
+    cd {{dbt_project}}; uv run sqlfluff fix models --config '{{sqlfluff_config}}'
 
 # lint Python and SQL without changing files
 lint:
     uv run ruff check .
     uv run ruff format --check .
-    cd {{dbt_project}}; uv run sqlfluff lint models
+    cd {{dbt_project}}; uv run sqlfluff lint models --config '{{sqlfluff_config}}'
 
 # type check Python with ty
 typecheck:
