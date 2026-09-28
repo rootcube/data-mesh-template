@@ -1,7 +1,9 @@
 version: 2
 
 # Exposures: the consumers of the expose layer, so the lineage runs past the last model and
-# `dbt ls --select +exposure:<name>` builds exactly what a consumer needs.
+# `dbt build --select +exposure:<name> --indirect-selection cautious` builds exactly what a consumer
+# needs. Without `cautious` the selection also picks up tests that reference models outside it, here
+# the fact's relationships tests against the common calendar and time dimensions.
 exposures:
   - name: weather_dashboard
     label: Weather dashboard

@@ -83,7 +83,8 @@ Dummy target (dbt)
 :   The `dummy` output in `dbt/profiles.yml`: an in-memory DuckDB, so dbt can parse and
     compile and sqlfluff can lint without Snowflake credentials. Used by `just check`, the
     pre-commit hooks and CI (`DBT_TARGET=dummy`). It counts as a personal environment for
-    schema naming, and the `on-run-end` metadata upload skips it.
+    schema naming, and every hook that talks to Snowflake skips it: the run banner, the
+    stage refresh and the `on-run-end` metadata upload.
 
 Engineer
 :   One of the two personas. Works in the repository: dlt loads, dbt models, Python assets,
