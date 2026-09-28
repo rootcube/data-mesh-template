@@ -108,6 +108,13 @@ jobs:
           DBT_TARGET: dummy
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
           DAGSTER_HOME: ${{ github.workspace }}/.dagster
+      # The step above loads each location on its own, so only this one sees a dlt key and the dbt
+      # source that claims it drifting apart.
+      - run: uv run python scripts/check_asset_keys.py
+        env:
+          DBT_TARGET: dummy
+          DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+          DAGSTER_HOME: ${{ github.workspace }}/.dagster
 
   terraform:
     name: Terraform fmt + validate
@@ -162,9 +169,11 @@ jobs:
       run:
         shell: bash
     env:
-      # No credentials here, so dbt talks to the in-memory DuckDB. `dagster dev` re-parses the dbt
-      # project on load, which the Snowflake target cannot survive with an empty SNOWFLAKE_USER.
-      # DBT_TARGET is unset in .env, so this reaches dbt; a value .env does set would win over it.
+      # No credentials here, so dbt talks to the in-memory DuckDB: every dbt invocation needs a
+      # target it can reach with an empty SNOWFLAKE_USER. That is the `dbt parse` of `just init` and
+      # `just check`, which writes the manifest the Dagster dbt locations build from, and the
+      # re-parse `dagster dev` runs when it loads one. DBT_TARGET is unset in .env, so this reaches
+      # dbt; a value .env does set would win over it.
       DBT_TARGET: dummy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

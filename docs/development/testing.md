@@ -28,11 +28,15 @@ instance.
 | `tests/test_dbt_asset_keys.py` | `compute_asset_key()`: the path-based key for a project's own models, the `packages/<package>/` prefix for package nodes, Windows path separators, and a `config.meta.dagster.asset_key` that overrides all of it |
 | `tests/test_dbt_source_freshness.py` | The freshness chain: `diff_freshness()` (first tick, unchanged, advanced, a source dbt could not query), `dbt_selector()`, the `<kind>__<location>__<name>` names of the jobs, schedule and sensor, their default status, and one sensor tick over a `sources.json` in `tmp_path` (run request, observation, cursor, then a skip) |
 | `tests/test_dlt_location.py` | The dlt location derives, per source, a `job__dlt__ingest_<source>` selecting only that source's assets and its daily schedule; `job__dlt__ingest_all` has an opt-in schedule, stopped by default |
+| `tests/test_schema_rule.py` | The layer-to-schema rule in all three places: `schema_for_layer()`, the `dbt_common.generate_schema_name` macro and the inline `schema:` of `sources/src_knmi.yml`, rendered with plain jinja2 over the environments, both prefixes and every layer |
+| `tests/test_validate_configs.py` | `terraform/config/_validation/validate_configs.py`: schemas, project and role cross references, user role assignments, duplicate user file names, required versus disabled, required configs per project. One passing config tree under `tmp_path` and a broken one per rule |
 
 Conventions for new tests: a `test_<module>.py` next to these, plain functions, `tmp_path` for
 files, no network. Logic worth testing lives in plain functions (a date chunker, a settings
 reader), not inside an asset body. `pyproject.toml` configures pytest (`testpaths = ["tests"]`,
-`addopts = "-q"`); `ty` type-checks `tests/` along with the source packages.
+`addopts = "-q"`); `ty` type-checks `tests/` along with the source packages. A rule that exists in
+more than one language (the layer schemas, the asset keys) gets a test that renders the other
+implementations and compares them, so the copies cannot drift apart unnoticed.
 
 ## dbt tests
 
@@ -65,7 +69,7 @@ necessary, not sufficient.
 ## `just validate`
 
 ```bash
-just validate    # dagster definitions validate -w workspace.yaml
+just validate    # dagster definitions validate -w workspace.yaml, then scripts/check_asset_keys.py
 ```
 
 Loads every code location in `workspace.yaml`, each in its own subprocess. It catches import
@@ -74,6 +78,11 @@ locations read the manifest the last `dbt parse` wrote (`just init` and `just ch
 only `dagster dev` re-parses on load), so run `just dbt-all parse --target dummy` after editing
 models before you trust the result. Run it after any change to `src/`, `dlt_pipelines/`, `dbt/`
 or `workspace.yaml`. If it fails, `just start` will fail the same way.
+
+Because each location loads on its own, that command cannot see the one thing they share: the asset
+keys that carry lineage across them. `scripts/check_asset_keys.py` loads them all in one process and
+compares the `dlt/` keys, so a dbt source whose `config.meta.dagster.asset_key` no longer matches a
+dlt asset is an error, and a dlt asset no dbt source claims a warning (it may be unused).
 
 Dagster's CLI marks `dagster definitions validate` as superseded by `dg check defs`, which
 only loads the project's `defs_module` from `pyproject.toml` and ignores `workspace.yaml`. The
@@ -89,15 +98,20 @@ What CI runs, apart from the Terraform fmt and validate legs, in one recipe:
 just check
 ```
 
-1. `just lint`: `ruff check`, `ruff format --check`, `sqlfluff lint models` in the dbt project
-2. `just typecheck`: `ty check` over `src/`, `dlt_pipelines/`, `scripts/`, `tests/`
+1. `just lint`: `ruff check`, `ruff format --check`, `sqlfluff lint models` in every project under
+   `dbt/`, `dbt_common` included
+2. `just typecheck`: `ty check` over `src/`, `dlt_pipelines/`, `scripts/`, `tests/` and
+   `terraform/config/_validation/`
 3. `just test`: pytest
 4. `dbt parse --target dummy` in every project (`scripts/dbt_all.py`), as is and again with
    `--use-v2-parser`, so the projects stay ready for dbt v2
-5. `dagster definitions validate -w workspace.yaml`
+5. `just validate`: `dagster definitions validate -w workspace.yaml` and the asset key contract
+   (`scripts/check_asset_keys.py`)
 6. The Terraform YAML validation (`terraform/config/_validation/validate_configs.py`, the same
    thing `just tf-validate-config` runs)
-7. `just docs build --strict`
+7. `scripts/check_doc_fences.py`: every fence titled with a repository path is a verbatim copy of
+   that file
+8. `just docs build --strict`
 
 `just fmt` first (`ruff check --fix`, ruff format, `sqlfluff fix models`) saves a round trip.
 
@@ -113,8 +127,9 @@ The hooks in `.pre-commit-config.yaml`:
 | `ty-check` | `ty check` (whole project) | any `*.py` change |
 | `dbt-parse` | `dbt parse --target dummy` in every project | `dbt/**/*.sql`, `.yml`, `.yaml`, `.csv`, `.py` |
 | `dbt-parse-v2` | the same parse with `--use-v2-parser`, so the projects stay ready for dbt v2 | same files |
-| `sqlfluff-lint` | `just sqlfluff lint models` (inside `dbt/dbt_example`) | `dbt/dbt_example/models/**/*.sql` |
-| `dagster-validate` | `just validate` | `src/**` and `dlt_pipelines/**` `.py`/`.yaml` |
+| `sqlfluff-lint` | `sqlfluff lint models` in every project under `dbt/` | `dbt/**/models/**/*.sql` |
+| `dagster-validate` | `just validate` (definitions plus the asset key contract) | `src/**` and `dlt_pipelines/**` `.py`/`.yaml` |
+| `doc-fences` | `scripts/check_doc_fences.py` | `docs/**` |
 | `terraform-fmt` | `terraform fmt -recursive terraform` | `*.tf` (needs the `terraform` binary, so in practice administrators) |
 | `validate-configs` | `validate_configs.py` (schemas and cross-references) | `terraform/config/**` `.yaml`/`.json` |
 
@@ -133,9 +148,9 @@ job that lists what the change touches, then five check jobs in parallel:
 | Job | Steps |
 |-----|-------|
 | Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
-| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
+| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in every project under `dbt/`, `dagster definitions validate -w workspace.yaml` and `check_asset_keys.py`, both with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
-| Docs | `uv sync --locked --group docs`, `zensical build --strict` |
+| Docs | `uv sync --locked --group docs`, `check_doc_fences.py`, `zensical build --strict` |
 | Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
 
 On a pull request each check job runs only when the change touches its inputs; a skipped job
@@ -158,9 +173,11 @@ checks in dlt and the Dagster resource.
 |-------|-------|-------------|----|
 | ruff, ty | `just lint`, `just typecheck` | yes | yes |
 | pytest | `just test` | no | yes |
-| sqlfluff | `just lint` | yes (`dbt_example` models) | yes |
+| sqlfluff | `just lint` | yes (every project under `dbt/`) | yes |
 | dbt parse (dummy) | `just dbt-all parse --target dummy` | yes | yes |
 | Dagster definitions | `just validate` | yes | yes |
+| dlt/dbt asset keys | `just validate` | yes, in the same hook (so not on a `dbt/` edit) | yes |
 | Terraform YAML | `just tf-validate-config` | yes | yes |
 | dbt data tests | `just dbt build` | no | no (needs a Snowflake connection) |
+| doc fences | `just check` | yes (`docs/` files) | yes (Docs job) |
 | docs | `just docs build --strict` | no | yes |
