@@ -5,7 +5,7 @@ import logging
 from dlt.common.destination import Destination
 
 from dlt_pipelines.utils.snowflake_stage import snowflake_named_folders
-from orchestrator.resources.snowflake import APPLICATION, SnowflakeSettings
+from orchestrator.resources.snowflake import SnowflakeSettings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,9 +37,7 @@ def snowflake_destination(source: str) -> Destination:
         LOGGER.warning("dlt destination for %s is incomplete, unset: %s", source, ", ".join(missing))
     return snowflake_named_folders(
         pipeline_name=pipeline_name(source),
-        # `application` tags dlt's Snowflake sessions like every other connection of the platform;
-        # dlt would send its own "dltHub_dlt".
-        credentials=settings.dlt_credentials() | {"application": APPLICATION},
+        credentials=settings.dlt_credentials(),
         stage_name=load_stage(settings, source),
         # `merge` loads into a staging table first; keep those in the temporary layer (`_TMP`, or the
         # personal `<PREFIX>_TMP` in dev) instead of dlt's default `<dataset>_staging` schema, which

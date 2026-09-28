@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from orchestrator.resources.snowflake import SnowflakeSettings
+from orchestrator.resources.snowflake import APPLICATION, SnowflakeSettings
 
 
 def test_from_env_reads_prefixed_variables() -> None:
@@ -33,12 +33,18 @@ def test_blank_values_keep_defaults_and_show_up_as_missing() -> None:
     ]
 
 
-def test_dlt_credentials_drop_empty_values() -> None:
+def test_dlt_credentials_drop_empty_values_and_carry_the_application_tag() -> None:
     settings = SnowflakeSettings(account="ORG-ACCOUNT", user="u", private_key_path="/keys/k.p8", role="r")
     creds = settings.dlt_credentials()
     # The key path comes back in the OS's native form (backslashes on Windows).
     key_path = str(Path("/keys/k.p8"))
-    assert creds == {"host": "ORG-ACCOUNT", "username": "u", "private_key_path": key_path, "role": "r"}
+    assert creds == {
+        "host": "ORG-ACCOUNT",
+        "username": "u",
+        "private_key_path": key_path,
+        "role": "r",
+        "application": APPLICATION,
+    }
 
 
 def test_layer_schemas_are_personal_in_dev_and_shared_elsewhere() -> None:

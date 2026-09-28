@@ -39,9 +39,7 @@ from dagster_dbt.components.dbt_project.component import DbtProjectComponent, Db
 
 from orchestrator.locations.dbt.source_freshness import build_source_freshness_defs
 from orchestrator.resources.snowflake import SnowflakeSettings
-
-# src/orchestrator/locations/dbt/shared.py -> repository root
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+from orchestrator.utils.paths import PROJECT_ROOT
 
 
 def compute_asset_key(node: Mapping[str, Any], project_name: str) -> AssetKey:
