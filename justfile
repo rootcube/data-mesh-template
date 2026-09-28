@@ -119,7 +119,7 @@ install tool="all":
 # install a tool uv does not manage: all | uv | terraform | direnv (winget); `gh` is optional and not part of `all`
 [windows]
 install tool="all":
-    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { winget install --id Hashicorp.Terraform -e } "direnv" { winget install --id direnv.direnv -e; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { winget install --id GitHub.cli -e; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
+    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { if (Get-Command terraform -ErrorAction SilentlyContinue) { "terraform already installed" } else { winget install --id Hashicorp.Terraform -e } } "direnv" { if (Get-Command direnv -ErrorAction SilentlyContinue) { "direnv already installed" } else { winget install --id direnv.direnv -e }; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { if (Get-Command gh -ErrorAction SilentlyContinue) { "gh already installed" } else { winget install --id GitHub.cli -e }; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
 
 # --- Snowflake --------------------------------------------------------------
 
@@ -163,9 +163,18 @@ stop:
     # `dagster dev` shuts its daemon and code servers down on SIGTERM; a second instance would
     # otherwise fight the first one's daemon ("Another ... daemon is still sending heartbeats").
     # Only listeners: a plain `lsof -i :port` also lists clients, such as a browser showing the UI.
+    # lsof is missing on a bare Linux, and a failing `lsof` reads the same as a free port; connect
+    # to it instead, so the wait below happens either way.
+    listening() {
+        if command -v lsof >/dev/null 2>&1; then
+            lsof -ti tcp:{{port}} -sTCP:LISTEN >/dev/null 2>&1
+        else
+            uv run python -c "import socket, sys; sys.exit(socket.socket().connect_ex(('127.0.0.1', {{port}})) != 0)"
+        fi
+    }
     if pkill -TERM -f "dagster dev -w workspace.yaml -h 127.0.0.1 -p {{port}}" 2>/dev/null; then
         echo "stopping dagster dev on port {{port}}"
-        for _ in $(seq 1 20); do lsof -ti tcp:{{port}} -sTCP:LISTEN >/dev/null 2>&1 || break; sleep 0.5; done
+        for _ in $(seq 1 20); do listening || break; sleep 0.5; done
     fi
     # Still listening: a dagster process that ignored the SIGTERM, or something that is not ours.
     for pid in $(lsof -ti tcp:{{port}} -sTCP:LISTEN 2>/dev/null); do

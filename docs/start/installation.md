@@ -21,12 +21,14 @@ the same; HTTPS needs nothing set up.
 It is idempotent, so run it again whenever something looks stale. In order:
 
 1. Installs **uv** if it is missing (macOS and Linux via the official install script, Windows via PowerShell).
-2. Runs `uv sync --all-groups`: creates `.venv/` with Python 3.13 and installs the locked dependencies, the docs tooling included (Dagster, dlt, dbt, the Snowflake connector, ruff, ty, pytest, sqlfluff, and dbt-duckdb for offline dbt parsing and linting).
-3. Copies `.env.example` to `.env` if you have no `.env` yet.
-4. Creates the local state folders `.dagster/` and `.dlt/data/`.
-5. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
-6. Runs `dbt parse --target dummy` in every dbt project, so `just validate` has a manifest to read.
-7. Runs `direnv allow` when direnv is installed.
+2. Deletes `.venv/` when the checkout has moved since it was created: its scripts hold the old path.
+3. Runs `uv sync --all-groups`: creates `.venv/` with Python 3.13 and installs the locked dependencies, the docs tooling included (Dagster, dlt, dbt, the Snowflake connector, ruff, ty, pytest, sqlfluff, and dbt-duckdb for offline dbt parsing and linting).
+4. Reinstalls the git pre-commit hook if you have one, for the same reason. It does not install one; `just pre-commit-install` does that.
+5. Copies `.env.example` to `.env` if you have no `.env` yet.
+6. Creates the local state folders `.dagster/` and `.dlt/data/`.
+7. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
+8. Runs `dbt parse --target dummy` in every dbt project, so `just validate` has a manifest to read.
+9. Runs `direnv allow` when direnv is installed (macOS and Linux only).
 
 It ends with `Done. Next: just setup`. `just setup` runs `init` itself and then asks one question:
 a fresh account you hold `ACCOUNTADMIN` on gets the full bootstrap and provisioning
