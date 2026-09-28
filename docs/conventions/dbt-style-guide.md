@@ -478,8 +478,11 @@ seeds:
 ## Exposures
 
 An exposure names a consumer of the expose layer (a dashboard, an application, another
-project), so the lineage runs past the last model and `dbt ls --select +exposure:<name>` lists
-exactly what that consumer needs.
+project), so the lineage runs past the last model and
+`dbt ls --select +exposure:<name> --indirect-selection cautious` lists exactly what that consumer
+needs. Without `cautious` the selection also picks up tests that reference models outside it, such
+as a fact's `relationships` tests against the common dimensions, and a build of that selection
+alone fails on them.
 
 - One file per consumer in `dbt/<project>/exposures/<name>.yml` (`exposures/` sits in
   `model-paths` next to `sources/`), the exposure named after the consumer.

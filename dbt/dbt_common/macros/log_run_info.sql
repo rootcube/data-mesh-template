@@ -1,8 +1,9 @@
-/*{# Logs run context at the start of each dbt invocation. #}*/
+/*{# Logs run context at the start of each dbt invocation. The banner reads its values from
+   Snowflake, so the dummy target (in-memory DuckDB, no connection) is skipped. #}*/
 
 {% macro log_run_info() %}
 
-  {% if not execute %}
+  {% if not execute or target.name | trim | lower == 'dummy' %}
     {{ return('') }}
   {% endif %}
 
