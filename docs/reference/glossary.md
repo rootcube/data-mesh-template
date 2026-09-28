@@ -5,7 +5,7 @@ icon: material/alphabetical
 # Glossary
 
 The words these docs use, in alphabetical order. Concept terms come from the platform model
-(see [Concepts](../concepts/index.md)); where a term belongs to one tool, the tool is in
+(see [Concepts](../understand/index.md)); where a term belongs to one tool, the tool is in
 brackets.
 
 Access, access role
@@ -13,7 +13,7 @@ Access, access role
     (`terraform/config/accesses/<tier>.yaml`; a layer adds its own extras under `privileges`).
     A role names one tier per layer and environment; every layer × tier is an account role
     `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` (four per layer) that holds the privileges and is
-    granted to the project roles that name it. See [Access](../concepts/access.md).
+    granted to the project roles that name it. See [Access](../understand/access.md).
 
 Asset (Dagster)
 :   Dagster's unit of data: the declaration of a table or other artifact plus the function that
@@ -24,7 +24,7 @@ Asset key (Dagster)
 :   The path-like identifier of an asset. dlt loads: `dlt/ingest/<source>/<resource>`; dbt
     models and seeds: `<project>/<path>/<name>` (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`), the
     same in every environment. Equal keys in different code locations are how lineage crosses locations. See
-    [Orchestration](../architecture/orchestration.md).
+    [Orchestration](../understand/orchestration.md).
 
 Code location (Dagster)
 :   An independently loaded bundle of definitions, listed in `workspace.yaml` and started in
@@ -42,7 +42,7 @@ Compute
     compute and size, named `WH_<PROJECT>_<ENV>` for the `default` compute (no suffix) and
     `WH_<PROJECT>_<ENV>__<COMPUTE>_<SIZE>` otherwise (`WH_EXAMPLE_DEV__TFM_S`). The starter
     ships `default` (required), `ingest` and `transform`; `analysis` and `reporting` are
-    disabled. See [Compute](../concepts/compute.md).
+    disabled. See [Compute](../understand/compute.md).
 
 `_conf/`
 :   The folder next to a model's SQL that holds its YAML (description, columns, tests), with
@@ -96,7 +96,7 @@ Environment
     `code`. Five ship: development (`dev`, required), test (`tst`), acceptance (`acc`),
     production (`prd`, required) and sandbox (`sbx`); test and sandbox are `disabled: true` in
     the starter. The `example` project deploys to development and production. `ENVIRONMENT` in
-    `.env` selects the one a checkout runs as. See [Environment](../concepts/environment.md).
+    `.env` selects the one a checkout runs as. See [Environment](../understand/environment.md).
 
 Full refresh (dlt)
 :   `just dlt run <source> --full-refresh`: drop the source's tables and state in the
@@ -115,7 +115,7 @@ Hooks (dbt)
 Job (Dagster)
 :   A named asset selection or op graph you can launch as one run, `job__<location>__<name>`.
     The dlt location derives one per source and one for all; every dbt location gets the same
-    set from the factory. The set: [Orchestration](../architecture/orchestration.md#jobs).
+    set from the factory. The set: [Orchestration](../understand/orchestration.md#jobs).
 
 `just`
 :   The task runner. Every command in these docs is a recipe in the `justfile`; run bare `just`
@@ -142,8 +142,8 @@ Layer
     schema per layer in every project database. The `example` project uses source (`_SRC`),
     reference (`_REF`), staging (`_STG`), integration (`_INT`), mart (`_MRT`), expose (`_EXP`),
     metadata (`_MTD`) and temporary (`_TMP`); import and preparation exist but are unused,
-    application is disabled. See [Layer](../concepts/layer.md) and
-    [Layers in practice](../architecture/layers.md).
+    application is disabled. See [Layer](../understand/layer.md) and
+    [Layers in practice](../understand/layer.md).
 
 Layer schema
 :   The schema a layer lives in. In `tst`, `acc` and `prd` the provisioned `_<LAYER>` schema
@@ -176,7 +176,7 @@ Organisation
 :   The top of the platform model and the governance boundary:
     `terraform/config/organisations/<key>.yaml` with a `code`, `name` and `desc`. The starter
     ships `example`. Teams belong to an organisation. See
-    [Organisation](../concepts/organisation.md).
+    [Organisation](../understand/organisation.md).
 
 Package (dbt)
 :   A dbt project installed into another with `dbt deps` (`packages.yml`). Here the local
@@ -196,7 +196,7 @@ Pipeline (dlt)
 Platform administrator
 :   The other persona. Owns the Snowflake account: runs `init.sql` once, maintains the YAML
     under `terraform/config/`, applies it with Terraform, onboards people and service users.
-    See [Administration](../administration/index.md).
+    See [Administration](../operate/index.md).
 
 Primary key (dlt)
 :   The columns that identify a row for `merge`. `climate_hourly` uses
@@ -212,8 +212,8 @@ Project
     `terraform/config/projects/<key>.yaml` with `team`, `code`, `environments`, `layers`,
     `computes` and `roles`. Each project and environment pair becomes a database
     `DB_<PROJECT>_<ENV>`; in the repo a project is one dbt project and one Dagster code
-    location. The starter ships `example`. See [Project](../concepts/project.md) and
-    [Adding a project](../development/adding-projects.md).
+    location. The starter ships `example`. See [Project](../understand/project.md) and
+    [Adding a project](../build/adding-projects.md).
 
 Provisioning objects
 :   What `terraform/modules/snowflake/init.sql` creates once as `ACCOUNTADMIN`: the service
@@ -246,7 +246,7 @@ Role
     Becomes the account role `RL_<PROJECT>_<ENV>__<PURPOSE>`, which inherits one access role
     per layer. Person roles: engineer (required), analyst; system
     roles: ingest (required, dlt), transform (required, dbt). Reporting exists but is unused
-    in the starter, operator and the platform roles (`roles/global/`) are disabled. See [Role](../concepts/role.md).
+    in the starter, operator and the platform roles (`roles/global/`) are disabled. See [Role](../understand/role.md).
 
 Schedule (Dagster)
 :   A cron that launches a job, `schedule__<location>__<name>`: per dlt source its daily load
@@ -267,7 +267,7 @@ Service user
 :   A Snowflake user of `TYPE = SERVICE`, key pair only, for tooling: `TERRAFORM_USER` for
     provisioning, and the users deployed environments run dlt and dbt as (holding `__ING` or
     `__TFM`). Created by hand, granted roles through `terraform/config/users/`; see
-    [Onboarding](../administration/onboarding.md).
+    [Onboarding](../operate/onboarding.md).
 
 `SnowflakeSettings`
 :   The dataclass in `src/orchestrator/resources/snowflake.py` that reads `SNOWFLAKE_*` and
@@ -291,7 +291,7 @@ Source layer, `_SRC`
 
 Team
 :   Owns projects: `terraform/config/teams/<key>.yaml` with `organisation`, `code`, `name`,
-    `type` and `owners`. The starter ships `platform`. See [Team](../concepts/team.md).
+    `type` and `owners`. The starter ships `platform`. See [Team](../understand/team.md).
 
 User
 :   A person or service that may assume project roles: `terraform/config/users/<name>.yaml`

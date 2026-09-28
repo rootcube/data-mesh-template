@@ -64,7 +64,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` (refused while the databases carry `prevent_destroy`; see [State and teardown](../administration/snowflake-provisioning.md#state-and-teardown)) |
+| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` (refused while the databases carry `prevent_destroy`; see [State and teardown](../operate/snowflake-provisioning.md#state-and-teardown)) |
 | `just tf clean` | Remove every object this checkout's Terraform state tracks, databases and their data included. It lists them and asks you to type the account name, has Terraform destroy the rest, drops the databases as `TERRAFORM_USER` and removes them from the state last, then names what stays: the `init.sql` objects (`TERRAFORM_USER` with its system roles and key, `WH_PLATFORM_PROVISIONING`) and the account parameters, with the SQL to drop or unset them. `just tf apply` provisions everything again. A state that tracks nothing is reported as an error, not as success: the account may still be provisioned, and `just sf bootstrap --existing sync` adopts it |
 | `just tf output -json initial_passwords` | One-time passwords of persons Terraform created |
 | `just tf output -json user_role_grants` | Roles per login |

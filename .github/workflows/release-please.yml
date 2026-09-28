@@ -1,4 +1,4 @@
-# Release flow (docs/conventions/git-workflow.md): release-please keeps a release PR up
+# Release flow (docs/reference/git-workflow.md): release-please keeps a release PR up
 # to date from the conventional commits on main. Merging that PR bumps pyproject.toml and
 # uv.lock, writes CHANGELOG.md, tags vX.Y.Z and creates the GitHub release.
 # Tags created with the default GITHUB_TOKEN do not trigger other workflows: anything that
@@ -18,7 +18,7 @@ jobs:
   release-please:
     name: Release PR / tag
     # Inert in a copy of the template, so it never continues upstream's versioning in someone else's
-    # repository (docs/getting-started/adopting.md: put your own name here, or drop the workflow).
+    # repository (docs/start/adopting.md: put your own name here, or drop the workflow).
     if: github.repository == 'rootcube/data-mesh-template'
     runs-on: ubuntu-latest
     outputs:

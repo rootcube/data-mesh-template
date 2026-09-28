@@ -408,7 +408,7 @@ def test_discover_context_without_a_project_role_leaves_the_context_empty(
     settings = SnowflakeSettings(user="JANE", role="ACCOUNTADMIN", warehouse="COMPUTE_WH", database="SNOWFLAKE")
     found = script.discover_context(FakeConnection(grants("JANE")), settings, None, interactive=False)
     assert (found.role, found.warehouse, found.database, found.schema) == ("", "", "", "DBT_JANE")
-    assert "docs/administration/onboarding.md" in capsys.readouterr().out
+    assert "docs/operate/onboarding.md" in capsys.readouterr().out
 
 
 def test_discover_context_keeps_a_project_role_from_env_that_is_not_granted_directly(

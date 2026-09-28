@@ -30,7 +30,7 @@ winget install --id Git.Git -e
 Inside the checkout, `just install <tool>` adds the optional extras: `terraform` (needed for the
 fresh-account path), `direnv` or `gh`; `all` installs `uv`, `terraform` and `direnv`. Details and
 alternatives:
-[Prerequisites](docs/getting-started/prerequisites.md).
+[Prerequisites](docs/start/prerequisites.md).
 
 ### Run
 
@@ -46,7 +46,7 @@ just start       # Dagster UI on http://localhost:3000
    [trial](https://signup.snowflake.com/) is enough): it installs Terraform if missing, creates the
    Terraform service user, provisions the `example` project, registers your key pair and writes
    `.env`. It asks for the organization, account name, user and password. Step by step:
-   [Snowflake Trial Account setup](docs/administration/snowflake-trial-account-setup.md).
+   [Snowflake Trial Account setup](docs/operate/snowflake-trial-account-setup.md).
 2. **Provisioned**, an administrator ran Terraform and granted you a project role: one interactive
    login, your key pair registered on your user, `.env` filled in. Same as `just sf setup`.
 
@@ -54,7 +54,7 @@ just start       # Dagster UI on http://localhost:3000
 project later.
 
 Adopting this as your own platform?
-[Making it yours](docs/getting-started/adopting.md) covers renaming or removing the example,
+[Making it yours](docs/start/adopting.md) covers renaming or removing the example,
 taking over the release furniture, and keeping your copy in step with upstream.
 
 Run bare `just` for the full recipe list, or see the docs page *Reference > Commands*.

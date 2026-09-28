@@ -14,9 +14,9 @@ team owns **projects**, a project exists in **environments**, and every project 
 pair gets its **layers** (schemas), **roles** (grants) and **computes** (warehouses) in Snowflake.
 One small repository that runs on a laptop and grows into a mesh of projects.
 
-[:material-rocket-launch: Get started](getting-started/index.md){ .md-button .md-button--primary }
-[:material-shape-outline: Concepts](concepts/index.md){ .md-button }
-[:material-shield-account: Administration](administration/index.md){ .md-button }
+[:material-rocket-launch: Get started](start/index.md){ .md-button .md-button--primary }
+[:material-shape-outline: Concepts](understand/index.md){ .md-button }
+[:material-shield-account: Administration](operate/index.md){ .md-button }
 
 ---
 
@@ -45,10 +45,10 @@ with their role. The other environments use the provisioned `_<LAYER>` schemas.
 ## Two kinds of readers
 
 **Engineers** work in the repository: they add dlt loads, dbt models and Python assets and run
-them through Dagster. Start at [Getting started](getting-started/index.md).
+them through Dagster. Start at [Getting started](start/index.md).
 
 **Platform administrators** run Terraform: they bootstrap the Snowflake account, describe the
-mesh in YAML and onboard people. Start at [Administration](administration/index.md).
+mesh in YAML and onboard people. Start at [Administration](operate/index.md).
 
 <div class="grid cards" markdown>
 
@@ -59,7 +59,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Four commands from a fresh clone to a running Dagster UI: install, one-time Snowflake
     login with key-pair setup, check, start.
 
-    [:octicons-arrow-right-24: Quickstart](getting-started/index.md)
+    [:octicons-arrow-right-24: Quickstart](start/index.md)
 
 -   :material-shape-outline:{ .lg .middle } **Concepts**
 
@@ -68,7 +68,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Organisation, team, project, environment, layer, role and compute: the model behind every
     name in Snowflake and every folder in the repo.
 
-    [:octicons-arrow-right-24: The model](concepts/index.md)
+    [:octicons-arrow-right-24: The model](understand/index.md)
 
 -   :material-sitemap:{ .lg .middle } **Architecture**
 
@@ -77,7 +77,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     How the dlt pipelines, the layered dbt projects and the Dagster code locations fit
     together, and what the model looks like in Snowflake.
 
-    [:octicons-arrow-right-24: Overview](architecture/index.md)
+    [:octicons-arrow-right-24: Overview](understand/index.md)
 
 -   :material-hammer-wrench:{ .lg .middle } **Development**
 
@@ -86,7 +86,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Task-oriented guides: add a dlt load, a dbt model, a whole project, or a Python asset, and
     test your work.
 
-    [:octicons-arrow-right-24: How-tos](development/index.md)
+    [:octicons-arrow-right-24: How-tos](build/index.md)
 
 -   :material-ruler-square:{ .lg .middle } **Conventions**
 
@@ -95,7 +95,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Python and SQL style, the dbt style guide, naming, git workflow. The same rules a
     production platform uses.
 
-    [:octicons-arrow-right-24: House rules](conventions/index.md)
+    [:octicons-arrow-right-24: House rules](reference/index.md)
 
 -   :material-robot:{ .lg .middle } **AI agents**
 
@@ -104,7 +104,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Working on this repo with coding agents: the instruction set in `AGENTS.md` plus
     per-technology guides and standards.
 
-    [:octicons-arrow-right-24: Agent guide](ai-agents/index.md)
+    [:octicons-arrow-right-24: Agent guide](reference/ai-agents.md)
 
 -   :material-shield-account:{ .lg .middle } **Administration**
 
@@ -113,7 +113,7 @@ mesh in YAML and onboard people. Start at [Administration](administration/index.
     Bootstrap the Snowflake account, turn YAML into databases, schemas, roles and warehouses
     with Terraform, and onboard people and service users.
 
-    [:octicons-arrow-right-24: Runbooks](administration/index.md)
+    [:octicons-arrow-right-24: Runbooks](operate/index.md)
 
 -   :material-book-open-variant:{ .lg .middle } **Reference**
 
@@ -148,5 +148,5 @@ The starter ships one organisation (`example`), one team (`platform`) and one pr
     just start       # Dagster UI on http://localhost:3000
     ```
 
-    Step by step: [Snowflake Trial Account setup](administration/snowflake-trial-account-setup.md)
-    for a fresh account, [Getting started](getting-started/index.md) for a provisioned platform.
+    Step by step: [Snowflake Trial Account setup](operate/snowflake-trial-account-setup.md)
+    for a fresh account, [Getting started](start/index.md) for a provisioned platform.
