@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/rootcube/data-mesh-template/compare/v0.1.15...v0.1.16) (2026-09-28)
+
+
+### Bug Fixes
+
+* **dagster:** drop the dead package-path branch and document the .env and asset-key rules ([#54](https://github.com/rootcube/data-mesh-template/issues/54)) ([f515ce9](https://github.com/rootcube/data-mesh-template/commit/f515ce94d9dbd3037dcaf6fe852dc0b2eb6083b2))
+
 ## [0.1.15](https://github.com/rootcube/data-mesh-template/compare/v0.1.14...v0.1.15) (2026-09-28)
 
 
