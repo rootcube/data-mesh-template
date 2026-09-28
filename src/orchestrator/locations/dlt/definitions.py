@@ -9,8 +9,6 @@ schedules carry the daily load; the all-sources schedule starts stopped everywhe
 loading everything in one run instead (start it and stop the per-source ones, or a load runs twice).
 """
 
-from pathlib import Path
-
 from dagster import (
     AssetSelection,
     ComponentTree,
@@ -23,15 +21,14 @@ from dagster import (
 import dlt_pipelines as _dlt_pipelines
 from dlt_pipelines.__main__ import discover
 from orchestrator.resources.snowflake import SnowflakeSettings
+from orchestrator.utils.paths import PROJECT_ROOT
 
-# src/orchestrator/locations/dlt/definitions.py -> repository root
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 # Daily at 06:00 UTC, when yesterday's KNMI hours are complete.
 INGEST_CRON = "0 6 * * *"
 
 
 def _build_defs() -> Definitions:
-    loaded = ComponentTree.from_module(defs_module=_dlt_pipelines, project_root=_PROJECT_ROOT).build_defs()
+    loaded = ComponentTree.from_module(defs_module=_dlt_pipelines, project_root=PROJECT_ROOT).build_defs()
     # Stopped in dev and dummy, so nothing loads by itself on a laptop; running everywhere else.
     per_source_status = (
         DefaultScheduleStatus.STOPPED if SnowflakeSettings.from_env().is_personal else DefaultScheduleStatus.RUNNING

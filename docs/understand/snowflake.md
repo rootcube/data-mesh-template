@@ -145,7 +145,7 @@ flowchart LR
 ```
 
 Connections through the Snowflake connector identify themselves with the application name
-`DATA_MESH_STARTER`; dbt and dlt bring their own. dbt runs tag their queries with
+`DATA_MESH_STARTER`, dlt's sessions included; dbt brings its own. dbt runs tag their queries with
 `dbt_invocation_id:<id>`, so the Snowsight query history filters cleanly.
 
 ## Checking your connection

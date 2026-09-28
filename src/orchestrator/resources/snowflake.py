@@ -124,5 +124,7 @@ class SnowflakeSettings:
             "role": self.role,
             "warehouse": self.warehouse,
             "database": self.database,
+            # Tag dlt's sessions like every other connection of the platform; dlt sends "dltHub_dlt" otherwise.
+            "application": APPLICATION,
         }
         return {k: v for k, v in creds.items() if v}
