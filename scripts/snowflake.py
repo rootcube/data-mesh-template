@@ -776,16 +776,32 @@ def write_imports(resources: list[dict[str, Any]]) -> None:
     )
 
 
-def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str) -> None:
-    """DROP the objects, innermost first (a database takes its schemas and stages with it)."""
-    order = ["snowflake_stage_internal", "snowflake_schema", "snowflake_database"]
+def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str, take_ownership: bool = False) -> None:
+    """DROP the objects, outermost first: a database takes its schemas and stages with it, whoever owns them.
+
+    Dropping needs OWNERSHIP, which a role only inherits through the hierarchy, and an account an earlier version
+    provisioned has objects outside it (personal schemas dbt created as the engineer role, before custom roles
+    rolled up to SYSADMIN). The bootstrap's wipe therefore runs with `take_ownership`: ACCOUNTADMIN's MANAGE
+    GRANTS hands each object to the system role Terraform manages it as first. `just tf clean` drops as SYSADMIN
+    what Terraform created as SYSADMIN and needs no such step.
+    """
+    order = ["snowflake_database", "snowflake_schema", "snowflake_stage_internal"]
     order += ["snowflake_warehouse", "snowflake_account_role", "snowflake_user"]
+    gone: set[tuple[str, ...]] = set()  # dropped databases and schemas, everything in them went along
     for resource in sorted(resources, key=lambda r: order.index(r["type"])):
         kind = ADOPTABLE[resource["type"]][0].upper()
         path = object_path(resource)
         if kind == "USER" and path[0].upper() == current_user.upper():
             continue
-        conn.cursor().execute(f"DROP {kind} IF EXISTS {'.'.join(map(quote_ident, path))}")
+        if any(path[:n] in gone for n in range(1, len(path))):
+            continue
+        name = ".".join(map(quote_ident, path))
+        if take_ownership:
+            owner = OWNER[resource["type"]]
+            conn.cursor().execute(f"GRANT OWNERSHIP ON {kind} {name} TO ROLE {owner} COPY CURRENT GRANTS")
+        conn.cursor().execute(f"DROP {kind} IF EXISTS {name}")
+        if kind in ("DATABASE", "SCHEMA"):
+            gone.add(path)
         ok(f"Dropped {kind.lower()} {'.'.join(path)}")
 
 
@@ -853,7 +869,7 @@ def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: 
         ok(f"Wrote {ADOPT_FILE.name}: the apply below imports them before provisioning the rest")
         return True
     if mode == "wipe" and (yes or ask('Type "wipe" to drop them for good') == "wipe"):
-        drop_objects(conn, existing, current_user)
+        drop_objects(conn, existing, current_user, take_ownership=True)
         return True
     print("Aborted; nothing was changed in Snowflake.")
     return False
