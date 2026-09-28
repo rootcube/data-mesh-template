@@ -293,12 +293,15 @@ def context_for_role(role: str) -> dict[str, str]:
 
 def choose_role(roles: list[str], wanted: str | None, interactive: bool) -> str | None:
     """Pick a project role: the requested one, the only one, or the engineer role of the lowest environment."""
+    if wanted:
+        if not roles and PROJECT_ROLE.match(wanted.upper()):
+            # SHOW GRANTS TO USER lists direct grants only, so an asked-for project role is all there is to go on.
+            return wanted.upper()
+        if wanted.upper() not in roles:
+            sys.exit(f"{wanted} is not granted to you; granted project roles: {', '.join(roles) or 'none'}")
+        return wanted.upper()
     if not roles:
         return None
-    if wanted:
-        if wanted.upper() not in roles:
-            sys.exit(f"{wanted} is not granted to you; granted project roles: {', '.join(roles)}")
-        return wanted.upper()
     ordered = sorted(roles, key=role_sort_key)
     if len(ordered) == 1 or not interactive:
         return ordered[0]
@@ -319,7 +322,10 @@ def discover_context(
     role = choose_role(granted_project_roles(conn, settings.user), wanted_role, interactive)
     if role is None and PROJECT_ROLE.match(settings.role):
         # SHOW GRANTS TO USER lists direct grants only; a project role reached through another role stays.
-        warn(f"No project role is granted to you directly; keeping {settings.role} from .env.")
+        warn(
+            f"No project role is granted to you directly; keeping {settings.role} from .env. Another one: "
+            "`just sf context --role RL_<PROJECT>_<ENV>__<PURPOSE>`."
+        )
         chosen = settings
     elif role is None:
         warn(
@@ -332,6 +338,8 @@ def discover_context(
         found = context_for_role(role)
         print(f"Project role {role}: database {found['database']}, warehouse {found['warehouse']}")
         chosen = dataclasses.replace(settings, **found)
+    if chosen.is_personal and chosen.role and not role_has_personal_schemas(chosen.role):
+        print(f"{chosen.role} has no personal schemas, so it reads the shared _<LAYER> schemas.")
     return dataclasses.replace(chosen, schema=personal_schema(chosen))
 
 
@@ -436,9 +444,31 @@ def usable_prefix(value: str) -> str | None:
     return prefix
 
 
+def role_has_personal_schemas(role: str) -> bool:
+    """Whether Terraform provisions personal schemas for `role` (a `personal:` block in terraform/config/roles).
+
+    True when no role configuration matches the purpose, so an unknown or unreadable config keeps the
+    prefix the settings already carry.
+    """
+    match = PROJECT_ROLE.match(role)
+    if match is None:
+        return True
+    for path in sorted((TF_DIR / "config" / "roles").rglob("*.yaml")):
+        config = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        if str(config.get("code", "")).upper() != match["purpose"]:
+            continue
+        environments = (config.get("personal") or {}).get("environments") or []
+        return match["env"].lower() in [str(environment).lower() for environment in environments]
+    return True
+
+
 def personal_schema(settings: SnowflakeSettings) -> str:
-    """SNOWFLAKE_SCHEMA for `settings`: the usable prefix it has, else the user's own; empty outside dev."""
-    if not settings.is_personal:
+    """SNOWFLAKE_SCHEMA for `settings`: the usable prefix it has, else the user's own; empty outside dev.
+
+    Empty too for a dev role Terraform gives no personal schemas (analyst, reporting): it reads the
+    shared `_<LAYER>` schemas.
+    """
+    if not settings.is_personal or not role_has_personal_schemas(settings.role):
         return ""
     return usable_prefix(settings.schema) or personal_prefix(settings.user)
 
@@ -469,7 +499,7 @@ def prompt_context(settings: SnowflakeSettings) -> SnowflakeSettings:
         warehouse=ask("  Warehouse (WH_<PROJECT>_DEV)", settings.warehouse or None),
         database=ask("  Database (DB_<PROJECT>_DEV)", settings.database or None),
     )
-    if not confirmed.is_personal:
+    if not confirmed.is_personal or not role_has_personal_schemas(confirmed.role):
         return dataclasses.replace(confirmed, schema="")
     return dataclasses.replace(confirmed, schema=ask_prefix(personal_schema(confirmed)))
 
@@ -960,13 +990,15 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
     step("3/3 Verifying key-pair login and writing .env")
     # Role, warehouse, database and a usable schema prefix come from the project roles granted to you
-    # (discover_context), never from this login's session, which may well run as ACCOUNTADMIN.
-    settings = SnowflakeSettings(
+    # (discover_context), never from this login's session, which may well run as ACCOUNTADMIN. The
+    # context in .env is the starting point, as it is for `just sf context`: without it discover_context
+    # cannot keep a project role that is granted through a role hierarchy.
+    settings = dataclasses.replace(
+        SnowflakeSettings.from_env(current),
         account=account,
         user=exact_user,
         private_key_path=str(private_path),
         private_key_passphrase=passphrase,
-        schema=current.get("SNOWFLAKE_SCHEMA", ""),
     )
     if finish_settings(settings, args):
         return 1
@@ -979,7 +1011,8 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     refresh_windows_path()  # installed by an earlier run, but this shell predates it
     if shutil.which("terraform") is None:
         step("Installing Terraform (just install terraform)")
-        subprocess.run(["just", "install", "terraform"], cwd=ROOT, check=True)
+        # A failure (no Homebrew, say) prints its own advice; the PATH check below has the last word.
+        subprocess.run(["just", "install", "terraform"], cwd=ROOT, check=False)
         refresh_windows_path()
         if shutil.which("terraform") is None:
             sys.exit("terraform still not on PATH; open a new shell or install it by hand, then rerun `just setup`")

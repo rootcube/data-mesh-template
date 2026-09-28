@@ -1,3 +1,4 @@
+import argparse
 import base64
 import dataclasses
 import hashlib
@@ -148,6 +149,12 @@ class FakeConnection:
 
     def fetchall(self) -> list[list[str]]:
         return self.rows
+
+    def fetchone(self) -> list[str] | None:
+        return self.rows[0] if self.rows else None
+
+    def close(self) -> None:
+        return None
 
 
 PLANNED = [
@@ -406,6 +413,68 @@ def test_discover_context_keeps_a_project_role_from_env_that_is_not_granted_dire
     )
     found = script.discover_context(FakeConnection(grants("JANE")), settings, None, interactive=False)
     assert (found.role, found.warehouse, found.database) == ("RL_EXAMPLE_DEV__ENG", "WH_EXAMPLE_DEV", "DB_EXAMPLE_DEV")
+
+
+def test_setup_keeps_the_project_context_in_env_when_no_project_role_is_granted_directly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A role granted through a hierarchy is invisible to SHOW GRANTS TO USER; setup must not blank it."""
+    script = load_script()
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG\n"
+        "SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV\n"
+        "SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV\n"
+        "SNOWFLAKE_SCHEMA=DBT_JANE\n"
+    )
+    monkeypatch.setattr(script, "ENV_FILE", env_file)
+    monkeypatch.setattr(script, "ENV_EXAMPLE", env_file)
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    conn = FakeConnection({script.CONTEXT_SQL: (["user", "role"], [["JANE", "ACCOUNTADMIN"]]), **grants("JANE")})
+    monkeypatch.setattr(script, "interactive_connect", lambda account, user, auth: conn)
+    monkeypatch.setattr(script, "register_key_pair", lambda *args: (tmp_path / "jane.p8", ""))
+    monkeypatch.setattr(SnowflakeSettings, "connect", lambda self, **overrides: conn)
+    monkeypatch.setattr(script, "verify", lambda settings: True)
+    args = argparse.Namespace(
+        account="MYORG-MYACCOUNT",
+        user="JANE",
+        auth="password",
+        key_name="jane",
+        passphrase=False,
+        slot=1,
+        role=None,
+        yes=True,
+    )
+    assert script.cmd_setup(args) == 0
+    written = dotenv_values(env_file)
+    assert [written[f"SNOWFLAKE_{k}"] for k in ("ROLE", "WAREHOUSE", "DATABASE", "SCHEMA")] == [
+        "RL_EXAMPLE_DEV__ENG",
+        "WH_EXAMPLE_DEV",
+        "DB_EXAMPLE_DEV",
+        "DBT_JANE",
+    ]
+
+
+def test_choose_role_takes_an_asked_for_role_when_show_grants_lists_none() -> None:
+    script = load_script()
+    assert script.choose_role([], wanted="rl_example_dev__eng", interactive=False) == "RL_EXAMPLE_DEV__ENG"
+    with pytest.raises(SystemExit):
+        script.choose_role([], wanted="ACCOUNTADMIN", interactive=False)
+
+
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [("RL_EXAMPLE_DEV__ENG", "DBT_JANE"), ("RL_EXAMPLE_DEV__ANL", ""), ("RL_EXAMPLE_DEV__RPT", "")],
+)
+def test_discover_context_gives_a_prefix_only_to_dev_roles_with_personal_schemas(
+    role: str, expected: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The `personal:` block in terraform/config/roles decides, not the environment alone."""
+    script = load_script()
+    settings = SnowflakeSettings(user="JANE")
+    found = script.discover_context(FakeConnection(grants("JANE", role)), settings, None, interactive=False)
+    assert (found.role, found.schema) == (role, expected)
+    assert ("shared _<LAYER> schemas" in capsys.readouterr().out) is (expected == "")
 
 
 def test_prompt_context_takes_the_environment_of_a_typed_role(monkeypatch: pytest.MonkeyPatch) -> None:
