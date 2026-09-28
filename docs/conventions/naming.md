@@ -158,7 +158,7 @@ environment:
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
 | Source layer stage | `ST_DEFAULT`, the default internal stage of each source-layer schema (`_SRC`, and `<SNOWFLAKE_SCHEMA>_SRC` in dev); dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
 | dlt load files | `<stage>/dlt/ingest/<source>/<pipeline>__<load id>/<source>__<entity>.<file id>.<retry>.jsonl`, the pipeline being `ingest_<source>` | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/` |
-| Provisioning (bootstrap) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` | same |
+| Provisioning (bootstrap) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING` | same |
 
 An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
 `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
