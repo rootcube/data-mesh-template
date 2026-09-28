@@ -19,7 +19,15 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from dagster import AssetKey, AssetSelection, AssetSpec, ComponentTree, Definitions, define_asset_job
+from dagster import (
+    AssetKey,
+    AssetSelection,
+    AssetSpec,
+    ComponentLoadContext,
+    ComponentTree,
+    Definitions,
+    define_asset_job,
+)
 from dagster_dbt.asset_utils import get_node
 from dagster_dbt.components.dbt_project.component import DbtProjectComponent, DbtProjectComponentTranslator
 
@@ -54,6 +62,15 @@ def compute_asset_key(node: Mapping[str, Any], project_name: str) -> AssetKey:
     return AssetKey([*prefix, *dirs, node.get("name") or ""])
 
 
+def compute_group_name(key: AssetKey) -> str:
+    """Group of a dbt asset: its key without the last segment.
+
+    A one-segment key (a `meta.dagster.asset_key` override with a single element) leaves nothing
+    to group by, and Dagster rejects an empty group name, so that key groups under itself.
+    """
+    return "/".join(key.path[:-1]) or key.path[0]
+
+
 class DataMeshDbtTranslator(DbtProjectComponentTranslator):
     """Keys from the file path, groups from the key, `kinds` from the materialization."""
 
@@ -64,7 +81,7 @@ class DataMeshDbtTranslator(DbtProjectComponentTranslator):
         key = compute_asset_key(node, project_name)
         materialized = (node.get("config") or {}).get("materialized")
         kinds = {"dbt", materialized} if materialized else {"dbt"}
-        return spec.replace_attributes(key=key, group_name="/".join(key.path[:-1]), kinds=kinds)
+        return spec.replace_attributes(key=key, group_name=compute_group_name(key), kinds=kinds)
 
 
 class DataMeshDbtProjectComponent(DbtProjectComponent):
@@ -73,6 +90,17 @@ class DataMeshDbtProjectComponent(DbtProjectComponent):
     @cached_property
     def translator(self) -> DbtProjectComponentTranslator:
         return DataMeshDbtTranslator(self, self.translation_settings)
+
+    def build_defs_from_state(self, context: ComponentLoadContext, state_path: Path | None) -> Definitions:
+        """Build the assets from the project on disk, never from the `.local_defs_state` snapshot.
+
+        dagster-dbt copies the project into `.local_defs_state/` and, whenever that snapshot exists,
+        builds the assets from the copy; it only refreshes it under `dagster dev`. Everything else
+        (`dagster definitions validate`) would then validate a snapshot instead of the models on
+        disk. Ignoring the snapshot costs nothing: the dev-time refresh runs `dbt parse` against the
+        real project dir, so `dbt/<project>/target/manifest.json` is what both paths read.
+        """
+        return super().build_defs_from_state(context, state_path=None)
 
 
 def build_dbt_defs(project_name: str, defs_module: ModuleType) -> Definitions:
