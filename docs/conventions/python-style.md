@@ -13,12 +13,7 @@ patterns to reuse instead of reinventing.
 ruff is the only Python linter and formatter. Configuration lives in `pyproject.toml`:
 
 ```toml title="pyproject.toml"
-[tool.ruff]
-line-length = 120
-extend-exclude = ["dbt", "terraform", "site", "docs"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+--8<-- "pyproject.toml:69:75"
 ```
 
 | Rule set | What it catches |

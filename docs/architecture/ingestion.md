@@ -110,29 +110,7 @@ This maps to `pipeline.run(source, refresh="drop_sources")` in `dlt_pipelines/__
 Every pipeline gets its destination and its dataset from two functions:
 
 ```python title="dlt_pipelines/utils/destination.py"
-SOURCE_LAYER = "src"
-STAGE = "ST_DEFAULT"
-
-
-def pipeline_name(source: str) -> str:
-    return f"ingest_{source}"
-
-
-def snowflake_destination(source: str) -> Destination:
-    settings = SnowflakeSettings.from_env()
-    return snowflake_named_folders(
-        pipeline_name=pipeline_name(source),
-        credentials=settings.dlt_credentials(),
-        stage_name=load_stage(settings, source),
-    )
-
-
-def load_stage(settings: SnowflakeSettings, source: str) -> str:
-    return f"{settings.database}.{settings.schema_for_layer(SOURCE_LAYER)}.{STAGE}/dlt/ingest/{source}"
-
-
-def source_dataset() -> str:
-    return SnowflakeSettings.from_env().schema_for_layer(SOURCE_LAYER)
+--8<-- "dlt_pipelines/utils/destination.py"
 ```
 
 `SnowflakeSettings.from_env()` reads the `SNOWFLAKE_*` variables and `ENVIRONMENT` from `.env`.

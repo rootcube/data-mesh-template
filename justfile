@@ -345,6 +345,7 @@ check: lint typecheck test
     uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
     just validate
     uv run python terraform/config/_validation/validate_configs.py
+    uv run python scripts/check_doc_fences.py
     just docs build --strict
 
 # run all pre-commit hooks on all files
