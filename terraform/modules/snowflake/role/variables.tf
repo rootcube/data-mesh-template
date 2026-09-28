@@ -16,13 +16,14 @@ variable "project" {
 }
 
 variable "environment" {
-  description = "The environment (SBX, DEV, TST, ACC, PRD) - required for project roles"
+  description = "The environment (SBX, DEV, TST, ACC, PRD, or any other in config/environments) - required for project roles"
   type        = string
   default     = ""
 
   validation {
-    condition     = var.environment == "" || contains(["SBX", "DEV", "TST", "ACC", "PRD"], var.environment)
-    error_message = "Environment must be empty or one of: SBX, DEV, TST, ACC, PRD."
+    # Same shape as `code` in environment.schema.json, so a new environment needs no module change.
+    condition     = var.environment == "" || can(regex("^[a-z]{3}$", lower(var.environment)))
+    error_message = "Environment must be empty or three letters (see config/environments)."
   }
 }
 

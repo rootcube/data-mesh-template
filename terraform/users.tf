@@ -62,6 +62,14 @@ resource "random_password" "user" {
 
   length  = 20
   special = false
+
+  # Snowflake's default password policy wants a digit and both cases; without these minimums the
+  # generator leaves out a digit about once in fifty and `CREATE USER` is rejected, with the same
+  # password re-sent on every retry. Changing them replaces the password of a person already
+  # created here, who then gets the new one-time password (README.md, Onboarding a person).
+  min_upper   = 1
+  min_lower   = 1
+  min_numeric = 1
 }
 
 resource "snowflake_user" "person" {

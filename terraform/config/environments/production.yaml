@@ -9,3 +9,7 @@ desc: "Live data products with stable contracts and strict governance"
 sort: 400
 disabled: false
 required: true
+
+# Time Travel retention of the DB_*_PRD databases. 1 day is the Standard Edition maximum;
+# Enterprise editions may raise it up to 90.
+data_retention_days: 1

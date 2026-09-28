@@ -9,12 +9,13 @@ variable "project" {
 }
 
 variable "environment" {
-  description = "The environment (SBX, DEV, TST, ACC, PRD)"
+  description = "The environment (SBX, DEV, TST, ACC, PRD, or any other in config/environments)"
   type        = string
 
   validation {
-    condition     = contains(["SBX", "DEV", "TST", "ACC", "PRD"], var.environment)
-    error_message = "Environment must be one of: SBX, DEV, TST, ACC, PRD."
+    # Same shape as `code` in environment.schema.json, so a new environment needs no module change.
+    condition     = can(regex("^[a-z]{3}$", lower(var.environment)))
+    error_message = "Environment must be three letters (see config/environments)."
   }
 }
 

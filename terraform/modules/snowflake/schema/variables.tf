@@ -43,7 +43,7 @@ variable "with_managed_access" {
 }
 
 variable "data_retention_time_in_days" {
-  description = "Number of days for which Snowflake retains historical data; null (the default) inherits the database's Time Travel, set per environment in the database module"
+  description = "Number of days for which Snowflake retains historical data; null (the default) inherits the database's Time Travel (`data_retention_days` in config/environments)"
   type        = number
   default     = null
 

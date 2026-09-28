@@ -9,3 +9,7 @@ desc: "Business validation and sign-off in near-production setup"
 sort: 300
 disabled: false
 required: false
+
+# Time Travel retention of the DB_*_ACC databases. 1 day is the Standard Edition maximum;
+# Enterprise editions may raise it up to 90.
+data_retention_days: 1

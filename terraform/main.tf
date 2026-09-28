@@ -371,6 +371,9 @@ module "database" {
 
   project_code     = each.value.project_key
   environment_code = each.value.environment_code
+
+  # Time Travel retention of the environment, the module's default when the YAML leaves it out
+  data_retention_time_in_days = try(local.environments[each.value.environment_key].data_retention_days, null)
 }
 
 # -----------------------------------------------------------------------------
