@@ -74,7 +74,9 @@ notification), then:
 3. generates `~/.snowflake/keys/terraform.p8`, asking for an optional passphrase (or for the
    passphrase of an existing encrypted key), and runs `terraform/modules/snowflake/init.sql`
    with its public key: `TERRAFORM_USER` with the system roles `SYSADMIN`, `SECURITYADMIN` and
-   `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor;
+   `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor,
+   and drops what the trial came with: `COMPUTE_WH`, the `SNOWFLAKE_LEARNING_*` role, warehouse
+   and database, and `SNOWFLAKE_SAMPLE_DATA`;
 4. generates a key pair for your own user and registers it with `ALTER USER ... SET RSA_PUBLIC_KEY`.
    It always asks for a passphrase and warns first: this key signs in as a user holding
    `ACCOUNTADMIN`, so give it one, and use a separate login without `ACCOUNTADMIN` for daily work;

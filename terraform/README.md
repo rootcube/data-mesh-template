@@ -81,7 +81,11 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
    warehouse `WH_PLATFORM_PROVISIONING` and the database `DB_PLATFORM_PROVISIONING` (both owned
    by `SYSADMIN`, usable by `USERADMIN`) and a resource monitor. It drops
    `RL_PLATFORM_PROVISIONING`, the custom role earlier versions provisioned with; what that role
-   still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it.
+   still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it. It also drops
+   what a new account comes with: `COMPUTE_WH`, the `SNOWFLAKE_LEARNING_*` role, warehouse and
+   database (after `SYSTEM$DISABLE_SNOWFLAKE_LEARNING_ENVIRONMENT()`, so Snowflake does not
+   provision them again) and `SNOWFLAKE_SAMPLE_DATA` (`CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM
+   SHARE SFC_SAMPLES.SAMPLE_DATA` brings the share back).
    The script is idempotent; rerun it after edits. If the user already holds a key in
    `RSA_PUBLIC_KEY` (another administrator's machine), use `RSA_PUBLIC_KEY_2` for the second one.
    For the account parameters below, also run `modules/snowflake/account_settings.sql` as
