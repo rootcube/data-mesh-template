@@ -319,17 +319,19 @@ docs cmd="serve" *args:
 
 # --- Quality ----------------------------------------------------------------
 
-# format Python (ruff) and SQL (sqlfluff)
+# format Python (ruff) and SQL (sqlfluff, every project under dbt/)
 fmt:
     uv run ruff check --fix .
     uv run ruff format .
-    cd {{dbt_project}}; uv run sqlfluff fix models --config '{{sqlfluff_config}}'
+    just sqlfluff fix models
+    just project=dbt_common sqlfluff fix models
 
-# lint Python and SQL without changing files
+# lint Python and SQL (every project under dbt/) without changing files
 lint:
     uv run ruff check .
     uv run ruff format --check .
-    cd {{dbt_project}}; uv run sqlfluff lint models --config '{{sqlfluff_config}}'
+    just sqlfluff lint models
+    just project=dbt_common sqlfluff lint models
 
 # type check Python with ty
 typecheck:
@@ -345,6 +347,7 @@ check: lint typecheck test
     uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
     just validate
     uv run python terraform/config/_validation/validate_configs.py
+    uv run python scripts/check_doc_fences.py
     just docs build --strict
 
 # run all pre-commit hooks on all files
@@ -360,3 +363,27 @@ pre-commit-install:
 [private]
 _dirs:
     @uv run python -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('.dagster', '.dlt/data')]"
+
+# --- Local state ------------------------------------------------------------
+
+# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+[unix]
+reset-local:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -d .dagster ]; then find .dagster -mindepth 1 -maxdepth 1 ! -name dagster.yaml -exec rm -rf {} +; fi
+    rm -rf .dlt/data src/orchestrator/defs/.local_defs_state dbt/*/target dbt/*/logs logs .cache
+    mkdir -p .dagster .dlt/data
+    uv run python scripts/dbt_all.py deps --quiet
+    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    echo "local state reset"
+
+# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+[windows]
+reset-local:
+    @Get-ChildItem .dagster -Exclude dagster.yaml -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+    @Remove-Item -Path .dlt\data, src\orchestrator\defs\.local_defs_state, dbt\*\target, dbt\*\logs, logs, .cache -Recurse -Force -ErrorAction SilentlyContinue
+    @New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
+    uv run python scripts/dbt_all.py deps --quiet
+    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    @Write-Host "local state reset"

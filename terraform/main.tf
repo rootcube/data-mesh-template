@@ -301,9 +301,9 @@ locals {
         access_key       = access_key
         access_code      = access.code
 
-        # Database and schema names
+        # Database, and the key of the layer schema in module.schema (which names it)
         database_name = pel.database_name
-        schema_name   = upper("_${pel.layer_code}")
+        schema_key    = pel.key
 
         privileges = local.layer_access_privileges[pel.layer_key][access_key]
       }
@@ -517,7 +517,7 @@ module "access_role" {
   project     = upper(each.value.project_key)
   environment = upper(each.value.environment_code)
   purpose     = upper("${each.value.layer_code}__${each.value.access_code}")
-  comment     = "Access role: ${each.value.access_key} on layer ${each.value.layer_key} (${each.value.database_name}.${each.value.schema_name})"
+  comment     = "Access role: ${each.value.access_key} on layer ${each.value.layer_key} (${each.value.database_name}.${module.schema[each.value.schema_key].schema_name})"
 
   # Not granted to SYSADMIN directly: access roles reach it through the project roles that hold them.
 }
@@ -533,7 +533,7 @@ module "access_role_grant" {
 
   role_name     = module.access_role[each.key].name
   database_name = each.value.database_name
-  schema_name   = each.value.schema_name
+  schema_name   = module.schema[each.value.schema_key].schema_name
   privileges    = each.value.privileges
 
   # Ensure databases and schemas exist before creating grants

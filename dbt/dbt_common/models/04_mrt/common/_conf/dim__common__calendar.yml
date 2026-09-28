@@ -97,7 +97,7 @@ models:
               name: dim__common__calendar__month_name__not_null
 
       - name: week_nr
-        description: The week number of the year
+        description: The week number of the year, per the WEEK_OF_YEAR_POLICY session parameter (iso_week_nr does not depend on it)
         data_type: integer
 
         data_tests:

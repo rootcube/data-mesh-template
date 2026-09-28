@@ -103,14 +103,7 @@ defs = build_dbt_defs("dbt_example", _defs_module)
 resource their ops run through. The tree contains one component:
 
 ```yaml title="src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
-type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
-
-attributes:
-  project:
-    project_dir: '{{ context.project_root }}/dbt/dbt_example'
-    profiles_dir: '{{ context.project_root }}/dbt'
-    prepare_project_cli_args: ["parse", "--quiet"]
-  select: "fqn:*"
+--8<-- "src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
 ```
 
 `prepare_project_cli_args` makes the location run `dbt parse --quiet` on every load, so the
@@ -214,16 +207,7 @@ Run history and event logs land there, git-ignored; the one versioned file is th
 config:
 
 ```yaml title=".dagster/dagster.yaml"
-telemetry:
-  enabled: false
-
-run_coordinator:
-  module: dagster.core.run_coordinator
-  class: DefaultRunCoordinator
-
-run_launcher:
-  module: dagster.core.launcher
-  class: DefaultRunLauncher
+--8<-- ".dagster/dagster.yaml"
 ```
 
 Runs start immediately in a subprocess (no daemon queue), with no limit on concurrent runs; a

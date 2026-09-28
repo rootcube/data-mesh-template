@@ -118,9 +118,12 @@ them and asks first; users and sessions can still override most of them):
 (`WEEK_START = 1`, `WEEK_OF_YEAR_POLICY = 0`); ISO 8601 output formats for `DATE`, `TIME` and the
 `TIMESTAMP` types; AES-256 for files `PUT` into internal stages (`CLIENT_ENCRYPTION_KEY_SIZE`);
 `REQUIRE_STORAGE_INTEGRATION_FOR_STAGE_CREATION` and `_OPERATION` and
-`PREVENT_UNLOAD_TO_INLINE_URL`; a four-hour `STATEMENT_TIMEOUT_IN_SECONDS`;
-`ALLOW_CLIENT_MFA_CACHING` and `ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR`; and
+`PREVENT_UNLOAD_TO_INLINE_URL`; a four-hour `STATEMENT_TIMEOUT_IN_SECONDS`; and
 `PERIODIC_DATA_REKEYING`, which needs Enterprise Edition and is skipped with a message on Standard.
+
+`ALLOW_CLIENT_MFA_CACHING` and `ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR` sit at the bottom of the
+same script, commented out: both trade a security default for convenience account-wide. Each says
+what it gives up and the narrower route (`ALTER SESSION` for the unredacted errors).
 
 ## Configuration
 
@@ -135,9 +138,10 @@ One YAML file per object, validated against the JSON schemas in `config/_validat
 | `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere, so a project that still lists it plans to drop its database and the plan fails (see State and teardown); `data_retention_days` sets Time Travel |
 | `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names; optional `privileges` adds to an access tier on that layer (stages in `source`) |
 | `accesses/` | the access tiers view, read, edit, full | the privileges of a tier on a layer schema; each layer × tier becomes an access role |
-| `roles/` | project roles (engineer, analyst, ingest, transform) and platform roles (`global/`, disabled) | privileges per compute and database, an access tier per layer and environment, inherited roles |
+| `roles/` | project roles (engineer, analyst, ingest, transform, reporting, and operator disabled) and platform roles (`global/`, disabled) | privileges per compute and database, an access tier per layer and environment, inherited roles |
 | `computes/` | warehouse profiles and sizes | `default` has no suffix |
 | `users/` | who may assume which project roles | see onboarding below; the file name is the key, also in a sub-folder; `users/local/` (git-ignored) holds the files `just sf bootstrap` writes for your own account |
+| `privileges/` | Snowflake privileges per object type | reference only: Terraform reads no bundles, roles name an access tier per layer instead |
 
 A new project is a copy of `projects/example.yaml` with its own `code`; `just tf plan` shows the
 databases, schemas, roles and warehouses it adds.
@@ -259,6 +263,20 @@ Terraform cannot use until an `ACCOUNTADMIN` registers its public key on `TERRAF
 
 State is local (`terraform.tfstate`, git-ignored). Move it to a remote backend before several
 administrators share the configuration.
+
+Keep the state file itself confidential, encrypted in a remote backend. Besides the one-time
+passwords of created users it holds the result of the `SHOW USERS` check in `users.tf`: the name,
+login, email, owner and last login of every user in the account, whenever at least one enabled
+user file has `create: false`.
+
+!!! warning "Share the user files before you share the state"
+    `config/users/local/` is git-ignored, and `users.tf` and `personal.tf` are driven purely by
+    the user files a checkout happens to have. Once two administrators share one backend, an
+    `apply` from the checkout that lacks the other's file revokes their role grants and **drops
+    their personal schemas**, with everything in them. The schemas carry no `prevent_destroy` (it
+    would block `just tf clean`, which destroys everything but the databases), so nothing stops
+    that plan. Commit a user file per person under `config/users/` and keep `users/local/` for
+    single-administrator accounts.
 
 Databases carry `prevent_destroy` (`modules/snowflake/database/main.tf`): a plan that would drop
 one fails, whether it comes from `just tf destroy` or from removing an environment from a project

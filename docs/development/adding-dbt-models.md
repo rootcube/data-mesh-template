@@ -48,9 +48,10 @@ dbt YAML may carry Jinja.
 
 The staged KNMI data is one row per station per hour. A daily summary per station is a natural
 next INT model beside the shipped `int__weather__knmi_measurement`: `int__weather__station_day`,
-domain `weather`.
+domain `weather`. The `unique_key` below documents the grain: a `table` materialization rebuilds in
+full, so dbt only acts on it once the model turns `incremental`.
 
-```sql title="dbt/dbt_example/models/03_int/weather/int__weather__station_day.sql"
+```sql title="dbt/dbt_example/models/03_int/weather/int__weather__station_day.sql (new file)"
 {{
     config(
         materialized='table',
@@ -100,7 +101,7 @@ The YAML, mirroring the staging model's: a description, `data_type` on every col
 test named `<model>__<test>` or `<model>__<column>__<test>` so failures read well in the
 terminal and in `_TMP`.
 
-```yaml title="dbt/dbt_example/models/03_int/weather/_conf/int__weather__station_day.yml"
+```yaml title="dbt/dbt_example/models/03_int/weather/_conf/int__weather__station_day.yml (new file)"
 version: 2
 
 models:

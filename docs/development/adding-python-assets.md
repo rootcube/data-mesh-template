@@ -43,7 +43,7 @@ as asset metadata. It opens its own connection with `SnowflakeSettings.from_env(
 the repo has no Dagster resources yet, and one connection per asset is simpler than a resource
 dict until several assets share one. Every signature gets full annotations.
 
-```python title="src/orchestrator/locations/dbt/dbt_example/assets.py"
+```python title="src/orchestrator/locations/dbt/dbt_example/assets.py (new file)"
 """Python assets of the dbt_example location."""
 
 from dagster import AssetExecutionContext, AssetKey, MaterializeResult, asset
@@ -103,7 +103,7 @@ Points worth copying:
 with `Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs,
 schedules and sensors:
 
-```python title="src/orchestrator/locations/dbt/dbt_example/definitions.py"
+```python title="src/orchestrator/locations/dbt/dbt_example/definitions.py (with the asset merged)"
 """Dagster code location for the dbt_example project (see locations/dbt/shared.py)."""
 
 from dagster import Definitions
@@ -147,7 +147,7 @@ If the asset is its own concern, give it its own location rather than growing `d
 1. Create `src/orchestrator/locations/<name>/` with `__init__.py`, `assets.py` and a
    `definitions.py` that exposes a top-level `defs`:
 
-    ```python title="src/orchestrator/locations/<name>/definitions.py"
+    ```python title="src/orchestrator/locations/<name>/definitions.py (new file)"
     """Dagster code location <name>."""
 
     from dagster import Definitions

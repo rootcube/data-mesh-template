@@ -41,7 +41,7 @@ argument of `just dlt run airquality`. Keep it short, lowercase, letters only.
 Everything that is a setting rather than logic: the URL, what to fetch, how far back. Sizing
 comments help the next reader.
 
-```python title="dlt_pipelines/pipelines/ingest/airquality/constants.py"
+```python title="dlt_pipelines/pipelines/ingest/airquality/constants.py (new file)"
 """Constants for the airquality ingest pipeline."""
 
 AIRQUALITY_MEASUREMENTS_URL = "https://example.org/api/v1/measurements"
@@ -62,7 +62,7 @@ The HTTP calls, as a generator of plain dicts. Use `dlt.sources.helpers.requests
 `requests` session with retries built in. Yield records exactly as the API returns them; renames
 and casts belong in the dbt staging model.
 
-```python title="dlt_pipelines/pipelines/ingest/airquality/source.py"
+```python title="dlt_pipelines/pipelines/ingest/airquality/source.py (new file)"
 """Fetch hourly measurements from the airquality API."""
 
 import logging
@@ -103,7 +103,7 @@ Full type hints on every function; `just typecheck` runs `ty` over `dlt_pipeline
 The dlt objects. Two module-level names are the contract: `source` and `pipeline`. Copy the
 KNMI file and change the names, the primary key and the fetch function.
 
-```python title="dlt_pipelines/pipelines/ingest/airquality/pipelines.py"
+```python title="dlt_pipelines/pipelines/ingest/airquality/pipelines.py (new file)"
 """dlt pipeline: airquality hourly measurements -> Snowflake source layer (airquality__measurement_hourly).
 
 Every source lands in the project's source layer (`_SRC`, or your personal `<PREFIX>_SRC` in dev)
@@ -122,7 +122,9 @@ SOURCE = "airquality"
 ENTITY = "measurement_hourly"
 
 
-@dlt.source(name=f"{SOURCE}__{ENTITY}", max_table_nesting=0)
+# The source is named after the source, not after one of its entities: a second resource joins it
+# without renaming anything. The table name carries `<source>__<entity>`.
+@dlt.source(name=SOURCE, max_table_nesting=0)
 def airquality_source() -> Iterator[dlt.sources.DltResource]:
     """Hourly air-quality measurements for a handful of stations, last 7 days."""
 
@@ -162,6 +164,11 @@ Choices to make:
     segment of the asset key); the table name carries the source prefix because every source of
     the project shares one `_SRC` schema.
 
+`name=SOURCE` on the source
+:   The dlt source name is the source, never one of its entities: it names the dlt schema and has
+    to hold for every resource the source grows. Asset keys do not depend on it; `defs.yaml` sets
+    them.
+
 More resources
 :   One `@dlt.resource` per endpoint, all yielded from the same source function, each with its
     own `table_name`. Each becomes its own table and its own Dagster asset.
@@ -178,7 +185,7 @@ More resources
 
 The Dagster side, again a copy with the source name changed in two places:
 
-```yaml title="dlt_pipelines/pipelines/ingest/airquality/defs.yaml"
+```yaml title="dlt_pipelines/pipelines/ingest/airquality/defs.yaml (new file)"
 type: dagster_dlt.DltLoadCollectionComponent
 
 attributes:
@@ -236,7 +243,7 @@ make `dbt source freshness` check the table, which is what lets
 `sensor__dbt_example__source_freshness` rebuild its downstream when a load lands
 ([Orchestration](../architecture/orchestration.md#schedules-and-sensors)).
 
-```yaml title="dbt/dbt_example/sources/src_airquality.yml"
+```yaml title="dbt/dbt_example/sources/src_airquality.yml (new file)"
 version: 2
 
 sources:
@@ -284,7 +291,7 @@ sources:
 Then the staging model, in the house SQL style (a `cte_` CTE, explicit table names with `AS`,
 leading commas, two-space indent, uppercase keywords, `CAST()`), plus its YAML in `_conf/`:
 
-```sql title="dbt/dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly.sql"
+```sql title="dbt/dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly.sql (new file)"
 {{
     config(
         materialized='table',
@@ -316,7 +323,7 @@ FROM
   cte_source AS obs
 ```
 
-```yaml title="dbt/dbt_example/models/02_stg/airquality/_conf/stg__airquality__measurement_hourly.yml"
+```yaml title="dbt/dbt_example/models/02_stg/airquality/_conf/stg__airquality__measurement_hourly.yml (new file)"
 version: 2
 
 models:
