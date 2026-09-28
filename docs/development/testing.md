@@ -125,8 +125,8 @@ in the repo. The two hooks that call `just` need it on the `PATH`, also for a co
 
 ## What CI runs
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request, five jobs in
-parallel:
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: a `Changed paths`
+job that lists what the change touches, then five check jobs in parallel:
 
 | Job | Steps |
 |-----|-------|
@@ -135,6 +135,14 @@ parallel:
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
 | Docs | `uv sync --locked --group docs`, `zensical build --strict` |
 | Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
+
+On a pull request each check job runs only when the change touches its inputs; a skipped job
+counts as passed for the required checks. Python and Terraform watch their own trees, dbt + Dagster
+watches `dbt/`, `src/`, `dlt_pipelines/` and `workspace.yaml`, Docs watches `docs/`, `mkdocs.yml`,
+`overrides/` and the files the pages include with `--8<--`, and the Setup matrix only the tooling
+path: the justfile, `scripts/`, `.env.example`, `.envrc` and the dbt package files. A dependency
+change (`pyproject.toml`, `uv.lock`, `.python-version`) or an edit to `ci.yml` runs everything, as
+do pushes to `main` and manual runs.
 
 Every job but `Setup` installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after changing
 dependencies, run `uv lock` and commit `uv.lock`. `Setup` installs the way an engineer does, through

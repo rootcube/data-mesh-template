@@ -18,8 +18,52 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  changes:
+    # Which parts of the repository a pull request touches, so the jobs below skip what it cannot
+    # have broken. A skipped job counts as passed for the ruleset's required checks, where a
+    # workflow-level `paths:` filter would leave them pending and block the merge. Pushes to
+    # `main`, manual runs and a change to this file check everything, and so does a failure of
+    # this job: the other jobs then run instead of skipping.
+    name: Changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      dbt: ${{ steps.filter.outputs.dbt }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+      docs: ${{ steps.filter.outputs.docs }}
+      setup: ${{ steps.filter.outputs.setup }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: filter
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          else
+            files=all
+          fi
+          if printf '%s\n' "$files" | grep -qx .github/workflows/ci.yml; then files=all; fi
+          # Files the docs include with --8<-- belong to the docs build too.
+          includes=$(grep -rhoE -- '--8<-- "[^":]+' docs | cut -d '"' -f 2 | sort -u | paste -sd '|' - || true)
+          area() {
+            # area <output> <regex>: true when a changed file matches
+            if [ "$files" = all ] || printf '%s\n' "$files" | grep -qE "$2"; then hit=true; else hit=false; fi
+            echo "$1=$hit" >> "$GITHUB_OUTPUT"
+          }
+          area python    '^(src|dlt_pipelines|scripts|tests)/|^(pyproject\.toml|uv\.lock|\.python-version)$'
+          area dbt       '^(dbt|src|dlt_pipelines)/|^(workspace\.yaml|scripts/dbt_all\.py|pyproject\.toml|uv\.lock)$'
+          area terraform '^terraform/|^(pyproject\.toml|uv\.lock)$'
+          area docs      "^(docs|overrides)/|^(mkdocs\.yml|pyproject\.toml|uv\.lock)$|^(${includes})$"
+          area setup     '^(justfile|\.env\.example|\.envrc|pyproject\.toml|uv\.lock|\.python-version)$|^scripts/|^dbt/[^/]+/(packages|package-lock)\.yml$'
+          cat "$GITHUB_OUTPUT"
+
   python:
     name: Python (ruff, ty, pytest)
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.python == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,6 +77,9 @@ jobs:
 
   dbt-and-dagster:
     name: dbt parse + Dagster definitions
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.dbt == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -59,6 +106,9 @@ jobs:
 
   terraform:
     name: Terraform fmt + validate
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.terraform == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -76,6 +126,9 @@ jobs:
 
   docs:
     name: Docs build
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.docs == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -90,6 +143,9 @@ jobs:
     # `just start` / `just stop` round trip. The steps run in bash everywhere (Git Bash on
     # Windows); `just` itself runs its recipes in PowerShell there, as on an engineer's machine.
     name: Setup (${{ matrix.os }})
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.setup == 'true') }}
     strategy:
       fail-fast: false
       matrix:
