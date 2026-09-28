@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/rootcube/data-mesh-template/compare/v0.1.11...v0.1.12) (2026-09-28)
+
+
+### Bug Fixes
+
+* drop trial defaults in Snowflake setup and update documentation ([f9fc1e4](https://github.com/rootcube/data-mesh-template/commit/f9fc1e4d5b1016fd70e26da2db6605edeeb381c0))
+
 ## [0.1.11](https://github.com/rootcube/data-mesh-template/compare/v0.1.10...v0.1.11) (2026-09-28)
 
 
