@@ -72,7 +72,7 @@ forces a change at the first login.
 ### 3. What the person runs
 
 ```bash
-git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
+git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
 just init
 just sf setup
 just sf check
