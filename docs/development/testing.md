@@ -27,7 +27,7 @@ instance.
 | `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` source; the load stage, merge staging in the temporary layer and `truncate_staging_dataset` from `.dlt/config.toml` |
 | `tests/test_dbt_asset_keys.py` | `compute_asset_key()`: the path-based key for a project's own models, the `packages/<package>/` prefix for package nodes, Windows path separators, and a `config.meta.dagster.asset_key` that overrides all of it |
 | `tests/test_dbt_source_freshness.py` | The freshness chain: `diff_freshness()` (first tick, unchanged, advanced, a source dbt could not query), `dbt_selector()`, the `<kind>__<location>__<name>` names of the jobs, schedule and sensor, their default status, and one sensor tick over a `sources.json` in `tmp_path` (run request, observation, cursor, then a skip) |
-| `tests/test_dlt_location.py` | The dlt location exposes `job__dlt__ingest_all` and its daily `schedule__dlt__ingest_all` |
+| `tests/test_dlt_location.py` | The dlt location derives, per source, a `job__dlt__ingest_<source>` selecting only that source's assets and its daily schedule; `job__dlt__ingest_all` has an opt-in schedule, stopped by default |
 
 Conventions for new tests: a `test_<module>.py` next to these, plain functions, `tmp_path` for
 files, no network. Logic worth testing lives in plain functions (a date chunker, a settings

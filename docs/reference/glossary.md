@@ -113,10 +113,9 @@ Hooks (dbt)
     layer and prints the summary, in every project that installs the package.
 
 Job (Dagster)
-:   A named asset selection or op graph you can launch as one run, `job__<location>__<name>`:
-    `job__dlt__ingest_all` (every `dlt/ingest` asset), `job__dbt_example__build_all` (the whole
-    project as assets), `run_all`, `test_all`, `seed_all`, `source_freshness` and
-    `build_fresher` (one dbt command each).
+:   A named asset selection or op graph you can launch as one run, `job__<location>__<name>`.
+    The dlt location derives one per source and one for all; every dbt location gets the same
+    set from the factory. The set: [Orchestration](../architecture/orchestration.md#jobs).
 
 `just`
 :   The task runner. Every command in these docs is a recipe in the `justfile`; run bare `just`
@@ -250,19 +249,19 @@ Role
     in the starter, operator and the platform roles (`roles/global/`) are disabled. See [Role](../concepts/role.md).
 
 Schedule (Dagster)
-:   A cron that launches a job. `schedule__dlt__ingest_all` runs every load daily at 06:00 UTC,
-    `schedule__dbt_example__source_freshness` runs `job__dbt_example__source_freshness` every
-    hour; both stopped by default in `dev`.
+:   A cron that launches a job, `schedule__<location>__<name>`: per dlt source its daily load
+    (plus an opt-in one for every load at once, stopped everywhere) and, per dbt project, the
+    hourly source-freshness check. Stopped by default in `dev`.
 
 Seed (dbt)
 :   A CSV under `seeds/` that dbt loads as a table into the reference layer (`seed_month`,
     `seed_unknown`, ...). Always read through its typed `stg__seed__<name>` model.
 
 Sensor (Dagster)
-:   A function the daemon evaluates on an interval to decide whether to launch a job.
-    `sensor__dbt_example__source_freshness` reads the `sources.json` of the last freshness
-    check every five minutes and launches `job__dbt_example__build_fresher` for the sources
-    whose `max_loaded_at` advanced; stopped by default in `dev`.
+:   A function the daemon evaluates on an interval to decide whether to launch a job,
+    `sensor__<location>__<name>`. Each dbt project's freshness sensor reads the `sources.json`
+    of the last freshness check every five minutes and launches the project's `build_fresher`
+    job for the sources whose `max_loaded_at` advanced; stopped by default in `dev`.
 
 Service user
 :   A Snowflake user of `TYPE = SERVICE`, key pair only, for tooling: `TERRAFORM_USER` for

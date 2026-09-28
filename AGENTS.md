@@ -143,7 +143,7 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 - **dbt model** ([guide](docs/development/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
 - **project** ([guide](docs/development/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
 - **Python asset** ([guide](docs/development/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
-- **Job, schedule, sensor**: named `<kind>__<location>__<name>` (`job__dbt_example__build_all`, `schedule__dlt__ingest_all`). Every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`; do not add one-off jobs in a project's `definitions.py`. See [Orchestration](docs/architecture/orchestration.md#jobs).
+- **Job, schedule, sensor**: named `<kind>__<location>__<name>` and always derived, never written per instance: the dlt location makes `job__dlt__ingest_<source>` and its daily schedule per source folder, every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`. Do not add one-off jobs in a location's `definitions.py`; extend the factory. Docs describe these as patterns (`<source>`, `<project>`), not as lists of instances. See [Orchestration](docs/architecture/orchestration.md#jobs).
 
 ## Critical rules
 

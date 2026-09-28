@@ -243,8 +243,8 @@ resource.
 | Asset key | `dlt/ingest/<source>/<entity>`: `dlt/ingest/knmi/climate_hourly` |
 | Group | `dlt/ingest/<source>` |
 | Kinds | `dlt`, `snowflake` |
-| Job | `job__dlt__ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
-| Schedule | `schedule__dlt__ingest_all` runs that job daily at 06:00 UTC; stopped by default in `dev` |
+| Jobs | `job__dlt__ingest_<source>` selects `dlt/ingest/<source>`, one per source folder; `job__dlt__ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
+| Schedules | `schedule__dlt__ingest_<source>` runs the source's job daily at 06:00 UTC, stopped by default in `dev`; `schedule__dlt__ingest_all` is the opt-in for one run of everything, stopped everywhere |
 | Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_USERNAME_SRC.knmi__climate_hourly` in `dev` |
 | Stage path | `<source-layer schema>.ST_DEFAULT/dlt/ingest/<source>/`, then a folder per load, `<pipeline>__<load id>`: `_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/`, or `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/` in `dev` |
 
@@ -265,8 +265,10 @@ just dlt run knmi      # pipeline.run(source), prints the load info
 ```
 
 The runner imports `<source>.pipelines` and calls `pipeline.run(module.source)`, the same
-objects Dagster uses. Dagster runs and standalone runs share the pipeline state stored in the
-destination, so mixing them is fine.
+objects Dagster uses. The Dagster equivalent is `job__dlt__ingest_<source>`: the dlt location
+creates one per folder the same `discover()` finds, so `just dlt run <source>` and
+`job__dlt__ingest_<source>` run the same load. Dagster runs and standalone runs share the pipeline
+state stored in the destination, so mixing them is fine.
 
 ## Related pages
 

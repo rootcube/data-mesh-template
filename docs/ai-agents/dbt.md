@@ -71,7 +71,7 @@ Copy the one staging model that exists. Source, SQL and YAML together:
 
 === "Source"
 
-    `dbt/dbt_example/sources/src_knmi.yml`, abridged. The `schema` line repeats the `generate_schema_name` rule from the same `target` (source YAML cannot call macros), `identifier` is the dlt table `<source>__<entity>`, `config.meta.dagster.asset_key` is what makes the Dagster lineage run from the dlt asset into this model, and `config.freshness` with `loaded_at_field` is what `dbt source freshness` (`job__dbt_example__source_freshness`, hourly) checks so the freshness sensor can rebuild the downstream of a fresh load ([Dagster](dagster.md#jobs-schedules-sensors)).
+    `dbt/dbt_example/sources/src_knmi.yml`, abridged. The `schema` line repeats the `generate_schema_name` rule from the same `target` (source YAML cannot call macros), `identifier` is the dlt table `<source>__<entity>`, `config.meta.dagster.asset_key` is what makes the Dagster lineage run from the dlt asset into this model, and `config.freshness` with `loaded_at_field` is what `dbt source freshness` (the location's hourly `job__<project>__source_freshness`) checks so the freshness sensor can rebuild the downstream of a fresh load ([Dagster](dagster.md#jobs-schedules-sensors)).
 
     ```yaml
     version: 2
@@ -272,7 +272,7 @@ The `dbt_example` code location re-parses the project on load, so a dbt error su
 just dbt build --select stg__knmi__climate_hourly    # run + test one model
 just dbt build --select +stg__knmi__climate_hourly+  # with upstream and downstream
 just dbt build                                       # seeds, models, tests, everything
-just dbt source freshness                            # what job__dbt_example__source_freshness runs every hour
+just dbt source freshness                            # what job__<project>__source_freshness runs every hour
 ```
 
 In `dev` builds go into your personal schemas (`<SNOWFLAKE_SCHEMA>_STG`, ...) of the shared `DB_EXAMPLE_DEV`, so there is nothing to break for anyone else. Check the result with `just sf query "SELECT COUNT(1) FROM dbt_username_stg.stg__knmi__climate_hourly"`, with your own prefix instead of `dbt_username`. Materializing from the Dagster UI runs the same `dbt build` under the hood.

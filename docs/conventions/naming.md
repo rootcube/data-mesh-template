@@ -110,6 +110,8 @@ in `pipelines.py`:
 | Dataset (Snowflake schema) | `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (`source_dataset()`) | `DBT_USERNAME_SRC` |
 | Dagster asset key | `dlt/ingest/<source>/<entity>` | `dlt/ingest/knmi/climate_hourly` |
 | Dagster group | `dlt/ingest/<source>` | `dlt/ingest/knmi` |
+| Dagster job | `job__dlt__ingest_<source>`, from the folder (`discover()`), selecting `dlt/ingest/<source>` | `job__dlt__ingest_knmi` |
+| Dagster schedule | `schedule__dlt__ingest_<source>`, daily | `schedule__dlt__ingest_knmi` |
 | Kind tags | `dlt`, `snowflake` | same |
 
 Every source of a project shares one `_SRC` schema, which is why the table carries the source
@@ -127,9 +129,9 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Code location (dlt) | `dlt` | `dlt` |
 | Code location (dbt) | `dbt_<project>` | `dbt_example` |
 | Python module of a dbt location | `orchestrator.locations.dbt.dbt_<project>.definitions` | `orchestrator.locations.dbt.dbt_example.definitions` |
-| Job (dlt) | `job__dlt__ingest_all` | same |
+| Job (dlt) | `job__dlt__ingest_<source>` per source folder, `job__dlt__ingest_all` for every load | `job__dlt__ingest_knmi` |
 | Job (dbt) | `job__<location>__<name>`, with `build_all`, `run_all`, `test_all`, `seed_all`, `source_freshness`, `build_fresher` | `job__dbt_example__build_all` |
-| Schedule | `schedule__<location>__<name>` | `schedule__dlt__ingest_all`, `schedule__dbt_example__source_freshness` |
+| Schedule | `schedule__<location>__<name>` | `schedule__dlt__ingest_knmi`, `schedule__dbt_example__source_freshness` |
 | Sensor | `sensor__<location>__<name>` | `sensor__dbt_example__source_freshness` |
 | Op | `op__<location>__<name>`, the name of the job it runs in | `op__dbt_example__build_fresher` |
 | Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/common/dim__common__calendar` |

@@ -123,7 +123,7 @@ Nothing connects at import time, so the location still loads without a `.env` (C
 share a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's
 `resources` dict; until then the inline `connect()` is the pattern.
 
-Because `job__dbt_example__build_all` selects `AssetSelection.all()`, the new asset joins that
+Because `job__<project>__build_all` selects `AssetSelection.all()`, the new asset joins that
 job as well.
 
 ## Validate and run

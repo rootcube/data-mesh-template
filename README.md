@@ -58,7 +58,7 @@ Run bare `just` for the full recipe list, or see the docs page *Reference > Comm
 
 ```
 src/orchestrator/            Dagster package
-├── locations/dlt/           code location: every dlt ingest pipeline, its job and daily schedule
+├── locations/dlt/           code location: every dlt ingest pipeline, per source a job and its daily schedule, one job for all
 ├── locations/dbt/           shared factory (jobs, source-freshness schedule + sensor) + one code location per dbt project (dbt_example/)
 ├── resources/snowflake.py   the one place that reads SNOWFLAKE_* and ENVIRONMENT
 └── utils/

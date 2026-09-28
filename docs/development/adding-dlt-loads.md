@@ -6,7 +6,7 @@ icon: material/database-import
 
 A new source is one folder under `dlt_pipelines/pipelines/ingest/`, shaped exactly like `knmi`.
 Nothing registers it: the standalone runner discovers packages, the Dagster component tree
-discovers `defs.yaml` files, and `job__dlt__ingest_all` (with its daily schedule) selects by key prefix. This page adds a
+discovers `defs.yaml` files, the dlt location gives every source folder its `job__dlt__ingest_<source>` with a daily schedule, and `job__dlt__ingest_all` selects by key prefix. This page adds a
 second REST source end to end, up to the dbt staging model that reads it. Background:
 [Ingestion](../architecture/ingestion.md).
 
@@ -222,8 +222,8 @@ just start
 ```
 
 In the UI, the asset `measurement_hourly` sits in group `dlt/ingest/airquality`; **Materialize**
-runs the same `pipeline.run(source)`. It is also part of `job__dlt__ingest_all`, and so of its
-daily schedule, without any change to the job. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
+runs the same `pipeline.run(source)`. It has its own `job__dlt__ingest_<source>` and daily `schedule__dlt__ingest_<source>`, and is
+part of `job__dlt__ingest_all`, without any change to the code. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
 both keys from the terminal.
 
 ## 8. Expose it to dbt
@@ -232,8 +232,8 @@ Two files in the dbt project that owns the source (`dbt/dbt_example` here). Firs
 with the Dagster asset key so the lineage crosses code locations. The `schema` line is the one
 place the layer rule is spelled out by hand, from the dbt `target`, because source YAML cannot
 call macros; copy it exactly from `src_knmi.yml`. The `freshness` block and `loaded_at_field`
-make `dbt source freshness` check the table, which is what lets
-`sensor__dbt_example__source_freshness` rebuild its downstream when a load lands
+make `dbt source freshness` check the table, which is what lets the project's freshness
+sensor (`sensor__<project>__source_freshness`) rebuild its downstream when a load lands
 ([Orchestration](../architecture/orchestration.md#schedules-and-sensors)).
 
 ```yaml title="dbt/dbt_example/sources/src_airquality.yml"
@@ -397,4 +397,4 @@ test calls the API or Snowflake.
 - [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
 - [ ] `dbt/<project>/sources/src_<source>.yml` with the `target`-based schema line, `identifier`, `meta.dagster.asset_key` matching the dlt key, and `freshness` plus `loaded_at_field` for the freshness check
 - [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes
-- [ ] `just validate` and `just check` pass
+- [ ] `just validate` and `just check` pass; `just dagster job list -m orchestrator.locations.dlt.definitions` lists `job__dlt__ingest_<source>`

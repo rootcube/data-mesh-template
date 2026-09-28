@@ -174,7 +174,7 @@ on-run-end:
 it writes to `_MTD` in the shared environments and to `<PREFIX>_MTD` in `dev`, both provisioned
 by Terraform. It first creates the `pre__dbt__*` tables if they do not exist, then inserts one row
 per model, test, seed, execution and so on for this invocation. On `dbt source freshness`
-runs (`job__dbt_example__source_freshness`, hourly; see
+runs (`job__<project>__source_freshness`, hourly; see
 [Orchestration](orchestration.md#schedules-and-sensors)) it uploads only the freshness results
 and the invocation, not the graph. Nothing else has to run first, and a monitoring project could
 later read those tables as sources.

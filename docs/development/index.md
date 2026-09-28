@@ -92,7 +92,7 @@ Details, including the pre-commit hooks and the CI jobs, are on [Testing](testin
 | dbt model | `dbt/<project>/models/<layer>/<domain>/<name>.sql` + `_conf/<name>.yml` | Reference only the layer below; every model has its YAML |
 | project | `terraform/config/projects/<project>.yaml` + `dbt/dbt_<project>/` + `src/orchestrator/locations/dbt/dbt_<project>/` + `workspace.yaml` | One project per mesh node, one location per project, `dbt_common` built by one project only |
 | Python asset | A module in the owning location, merged into its `definitions.py` | A genuinely separate concern is a new location in `workspace.yaml` |
-| Job, schedule, sensor | dbt: `build_dbt_defs()` and `source_freshness.py` in `src/orchestrator/locations/dbt/`, so every project gets the same set; dlt: `locations/dlt/definitions.py` | Named `<kind>__<location>__<name>`; stopped by default in `dev` and `dummy` ([Orchestration](../architecture/orchestration.md#jobs)) |
+| Job, schedule, sensor | dbt: `build_dbt_defs()` and `source_freshness.py` in `src/orchestrator/locations/dbt/`, so every project gets the same set; dlt: `locations/dlt/definitions.py`, per source folder `job__dlt__ingest_<source>` and its daily schedule, plus `job__dlt__ingest_all` with an opt-in schedule | Named `<kind>__<location>__<name>`; stopped by default in `dev` and `dummy` ([Orchestration](../architecture/orchestration.md#jobs)) |
 
 The naming rules for all of these are on [Naming](../conventions/naming.md); the git side
 (branches, commits, review) on [Git workflow](../conventions/git-workflow.md).

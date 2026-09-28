@@ -97,7 +97,7 @@ workspace.yaml                    # the authoritative list of Dagster code locat
 justfile                          # every command (run bare `just` to list them)
 .env.example                      # ENVIRONMENT, SNOWFLAKE_*, DBT_TARGET, RUNTIME__LOG_LEVEL, TF_VAR_SNOWFLAKE_*
 src/orchestrator/                 # Dagster package
-├── locations/dlt/definitions.py  #   code location "dlt": the dlt_pipelines component tree, job__dlt__ingest_all and its daily schedule
+├── locations/dlt/definitions.py  #   code location "dlt": the dlt_pipelines component tree, per source folder job__dlt__ingest_<source> + daily schedule, job__dlt__ingest_all + opt-in schedule
 ├── locations/dbt/shared.py       #   build_dbt_defs(): one code location per dbt project, with its jobs (job__<location>__<name>) and `dbt` resource
 ├── locations/dbt/source_freshness.py  # the freshness chain of a dbt location: hourly dbt source freshness, sensor, build_fresher job
 ├── locations/dbt/dbt_example/    #   code location "dbt_example": definitions.py + defs/dbt/defs.yaml
