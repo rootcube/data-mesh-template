@@ -78,8 +78,11 @@ flowchart LR
 
 ## Every model needs
 
-1. A **`config()` block** at the top with `materialized` (when it differs from the folder default)
-   and the model's `unique_key`.
+1. A **`config()` block** only where it changes something: a materialization that differs from the
+   folder default, `enabled`, `tags`, `cluster_by`. `unique_key` is read by incremental models and
+   snapshots and by nothing else, so a `table` or `view` model that carries one only looks
+   configured. The grain is stated by the `unique` / `unique_combination_of_columns` test on the
+   model, not by a config key. No `dbt_example` model needs a config block today.
 2. A **YAML file in `_conf/`**, one per model, named identically to the SQL file, starting with
    `version: 2`, with a `description` and a `data_type` for every column.
 3. **Named tests on the key**: `unique` + `not_null`, or `dbt_utils.unique_combination_of_columns`
@@ -94,10 +97,11 @@ The layer tag (`layer=stg` and so on) is added per folder by `dbt_project.yml`; 
 it. Extra `key=value` tags are optional metadata, the way the `dbt_common` models carry `owner=`,
 `system=` and `category=`.
 
-```sql title="dbt/dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly.sql (config block)"
+```sql title="A config() block that earns its place"
 {{
     config(
-        materialized='table',
+        materialized='incremental',
+        incremental_strategy='merge',
         unique_key=['station_code', 'observed_at']
     )
 }}
@@ -157,15 +161,16 @@ FROM
 Organized by business domain (`common/` in `dbt_common` is the example). This is where business
 logic lives: joining staging models, deriving attributes, enriching. CTEs do the work, one logical
 step each. Default materialization in `dbt_example` is `table`; `dbt_common` builds its
-intermediate models as views. `cluster_by` and `unique_key` go in the config when it helps.
+intermediate models as views. `cluster_by` goes in the config when it helps.
+
+An INT model that only selects its staging model through is fine, and two of the shipped ones
+(`int__weather__knmi_station`, `int__weather__knmi_measurement_type`) are exactly that. The layer
+is the interface between the source shape and the mart: when the source later gains a column, a
+rename or a second system to integrate, the change lands in the INT model and the dimensions and
+facts above it keep the columns they already read. Say so in the model's description, so the next
+reader knows it is a deliberate seam and not a model someone forgot to finish.
 
 ```sql title="Intermediate template"
-{{
-    config(
-        unique_key=['<key_column>']
-    )
-}}
-
 WITH cte_<descriptive_name> AS (
   SELECT
     src.<column_1>
@@ -273,12 +278,6 @@ What does *not* belong here is new truth: derivations, window functions and busi
 compute something the layers below cannot express. That logic goes to INT or MRT.
 
 ```sql title="Expose template"
-{{
-    config(
-        unique_key=['<unique_key>']
-    )
-}}
-
 /*
   Data product: <product_name>
   Purpose: <what this model provides and to whom>

@@ -2,7 +2,11 @@ version: 2
 
 models:
   - name: int__weather__knmi_measurement_type
-    description: KNMI measurement types, one row per variable the staging model carries.
+    description: >
+      KNMI measurement types, one row per variable the staging model carries. A pass-through of
+      the staged seed today: it exists as the interface the dimension and
+      int__weather__knmi_measurement read, so a change in the source lands here instead of in
+      both of them.
 
     data_tests:
       - dbt_common.has_data:

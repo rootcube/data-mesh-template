@@ -4,7 +4,8 @@ models:
   - name: int__weather__knmi_measurement
     description: >
       KNMI observations in long form, one row per station per hour per measurement type. The
-      hourly staging row is unpivoted; hours without a value for a measurement have no row.
+      hourly staging row is unpivoted against the measurement types; hours without a value for
+      a measurement have no row.
 
     data_tests:
       - dbt_common.has_data:
@@ -31,16 +32,14 @@ models:
               name: int__weather__knmi_measurement__observed_at__not_null
 
       - name: measurement_type_code
-        description: KNMI variable code (T, FH, RH, Q, U), see seed_knmi_measurement_type.
+        description: >
+          KNMI variable code (T, FH, RH, Q, U). Cross joined in from
+          int__weather__knmi_measurement_type, so the code set is whatever
+          seed_knmi_measurement_type holds.
         data_type: varchar(10)
         data_tests:
           - not_null:
               name: int__weather__knmi_measurement__measurement_type_code__not_null
-
-          - accepted_values:
-              name: int__weather__knmi_measurement__measurement_type_code__accepted_values
-              arguments:
-                values: [T, FH, RH, Q, U]
 
       - name: measurement_value
         description: The measured value, in the unit of its measurement type.

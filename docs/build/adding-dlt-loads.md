@@ -286,13 +286,6 @@ Then the staging model in the [house SQL style](../reference/sql-style.md), plus
 `_conf/`:
 
 ```sql title="dbt/dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly.sql (new file)"
-{{
-    config(
-        materialized='table',
-        unique_key=['station_code', 'measured_at']
-    )
-}}
-
 -- Air-quality measurements, typed. One row per station per hour.
 WITH cte_source AS (
 

@@ -48,12 +48,14 @@ records the attribution and a summary of the changes documented below.
   part of upstream dbt_artifacts. Upstream assumes the `pre__dbt__*` tables already exist
   as models built by some other project; that assumption doesn't hold here, since any project can
   call `dbt_common.upload_results(results)` from its own `on-run-end` hook without depending on
-  a monitoring project having run first. This macro is called at the top of `upload_results`
-  (before the `datasets_to_load` logic) and makes the upload self-sufficient in any database:
+  a monitoring project having run first. This macro is called by `upload_results` with the
+  `datasets_to_load` of that invocation, and makes the upload self-sufficient in any database:
   - Creates no schema: Terraform provisions `_MTD` and, in dev, the personal `<prefix>_MTD`.
-  - Runs a plain `create table if not exists <relation> (...)` (permanent table, not a CTAS) for
-    each of the 11 datasets, with explicit column definitions matching
-    `get_column_name_lists.sql`'s Snowflake column names/order exactly.
+  - Looks the metadata schema up once in `INFORMATION_SCHEMA.TABLES` and runs a plain
+    `create table if not exists <relation> (...)` (permanent table, not a CTAS) only for the
+    datasets that are missing, with explicit column definitions matching
+    `get_column_name_lists.sql`'s Snowflake column names/order exactly. After the first upload
+    that is one query and no DDL.
   - **Schema evolution is manual.** `create table if not exists` never alters an existing table. If
     a future sync from upstream changes a dataset's columns, both this file and
     `get_column_name_lists.sql` must be updated together, and any already-created tables in every
@@ -67,6 +69,12 @@ records the attribution and a summary of the changes documented below.
   freshness invocation into `pre__dbt__source_freshness` (status, max_loaded_at, snapshotted_at,
   age_seconds). Wired through get_dataset_content / get_table_content_values /
   get_column_name_lists / get_relation / create_metadata_tables like every other dataset.
+
+- **Graph datasets only on `run` and `build`** (`upload_results.sql`). Upstream re-uploads
+  `exposures`, `seeds`, `snapshots`, `sources`, `tests` and `models` on every invocation. Those
+  describe the project, not the run, so a `dbt test` or `dbt seed` would write the same node rows
+  again for a project that has not changed. The executions and the `invocations` anchor still go
+  up on every invocation type.
 
 ## Syncing fixes from upstream
 

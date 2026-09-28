@@ -44,17 +44,11 @@ YAML may carry Jinja.
 
 The staged KNMI data is one row per station per hour. A daily summary per station is a natural
 next INT model beside the shipped `int__weather__knmi_measurement`: `int__weather__station_day`,
-domain `weather`. The `unique_key` below documents the grain; a `table` materialization rebuilds
-in full, so dbt only acts on it once the model turns `incremental`.
+domain `weather`. No `config()` block: `03_int` already materializes as `table`, and the grain is
+stated by the `unique_combination_of_columns` test in the YAML below, not by a `unique_key` that
+only an incremental model would read.
 
 ```sql title="dbt/dbt_example/models/03_int/weather/int__weather__station_day.sql (new file)"
-{{
-    config(
-        materialized='table',
-        unique_key=['station_code', 'observation_date']
-    )
-}}
-
 -- One row per station per day, aggregated from the hourly observations. `observed_at` is the
 -- end of the hour, so hour 24 of a day carries the next day's midnight; shifting back one hour
 -- puts every observation on the day it belongs to.
@@ -87,10 +81,9 @@ GROUP BY
 , obs.observation_date
 ```
 
-That is the [SQL style](../reference/sql-style.md) in one screen: config block first, a `cte_` CTE
-per input, every table aliased and every column qualified, leading commas, `CAST()` rather than
-`::`, explicit `GROUP BY` columns. `just fmt` runs `sqlfluff fix` and handles most of the
-alignment for you.
+That is the [SQL style](../reference/sql-style.md) in one screen: a `cte_` CTE per input, every
+table aliased and every column qualified, leading commas, `CAST()` rather than `::`, explicit
+`GROUP BY` columns. `just fmt` runs `sqlfluff fix` and handles most of the alignment for you.
 
 The YAML mirrors the staging model's: a description, `data_type` on every column, and every test
 named `<model>__<test>` or `<model>__<column>__<test>` so failures read well in the terminal and

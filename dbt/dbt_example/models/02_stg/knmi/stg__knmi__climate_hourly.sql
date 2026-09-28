@@ -1,10 +1,3 @@
-{{
-    config(
-        materialized='table',
-        unique_key=['station_code', 'observed_at']
-    )
-}}
-
 -- KNMI hourly observations, typed and converted to SI-ish units. The API's hour 1..24 is the
 -- hour *ending* at that time, so hour 24 of 2024-01-01 becomes 2024-01-02 00:00.
 WITH cte_source AS (
