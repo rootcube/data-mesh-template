@@ -236,6 +236,8 @@ opt-in and starts stopped everywhere.
 ## The local instance
 
 `DAGSTER_HOME` is `.dagster/` inside the repository (exported by the justfile and `.envrc`).
+`.env` is read once when `dagster dev` starts and inherited by every code server and run, so an
+edited `.env` needs `just stop && just start`; reloading a code location does not re-read it.
 Run history and event logs land there, git-ignored; the one versioned file is the instance
 config:
 

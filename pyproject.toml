@@ -65,7 +65,7 @@ directory_type = "project"
 [tool.dg.project]
 root_module = "orchestrator"
 # Code locations are declared in workspace.yaml; this points at an empty package so
-# Dagster's component cache lands in one shared `.local_defs_state/`.
+# The snapshot `dagster dev` writes for components lands in one shared `.local_defs_state/`.
 defs_module = "orchestrator.defs"
 
 [tool.ruff]

@@ -29,7 +29,7 @@ Both locations build their `Definitions` inside a function and assign the result
 Both load the component tree with `ComponentTree.from_module(defs_module=..., project_root=...)` and `Definitions.merge` the result with their jobs: in the dlt location one `define_asset_job` and its daily `ScheduleDefinition` per source folder (from `discover()` in `dlt_pipelines/__main__.py`, the same discovery as `just dlt list`) plus one job for all with an opt-in schedule; in a dbt location the jobs, the schedule and the sensor listed below, plus the `dbt` resource (`DbtCliResource` on the component's `dbt_project`) their ops take as a parameter.
 
 !!! danger "Do not switch to `load_from_defs_folder`"
-    `[tool.dg.project].defs_module` in `pyproject.toml` points at `orchestrator.defs`, an intentionally empty package (it exists so the dg CLI has a defs folder and the component cache lands in one `.local_defs_state/`). `load_from_defs_folder` would load that empty tree. Always use `ComponentTree.from_module` in a location's `definitions.py`, matching the existing locations.
+    `[tool.dg.project].defs_module` in `pyproject.toml` points at `orchestrator.defs`, an intentionally empty package (it exists so the dg CLI has a defs folder and the `dagster dev` snapshot of components lands in one `.local_defs_state/`). `load_from_defs_folder` would load that empty tree. Always use `ComponentTree.from_module` in a location's `definitions.py`, matching the existing locations.
 
 ## The two components
 
@@ -94,7 +94,7 @@ The schedules and the sensor start `STOPPED` when `SnowflakeSettings.from_env().
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | `uv run dagster definitions validate -w workspace.yaml`: loads every location without the UI (and without the dbt re-parse `start` does) |
 
-`DAGSTER_HOME` is `.dagster/` inside the repo (set by the `justfile` and `.envrc`). `.dagster/dagster.yaml` is versioned: telemetry off, `DefaultRunCoordinator` and `DefaultRunLauncher` (runs start immediately in a subprocess, no daemon queue and no limit on concurrent runs; a limit needs the `QueuedRunCoordinator` and the daemon). Everything else in `.dagster/` is run history and safe to delete. The component cache lands in `.local_defs_state/`, also git-ignored.
+`DAGSTER_HOME` is `.dagster/` inside the repo (set by the `justfile` and `.envrc`). `.dagster/dagster.yaml` is versioned: telemetry off, `DefaultRunCoordinator` and `DefaultRunLauncher` (runs start immediately in a subprocess, no daemon queue and no limit on concurrent runs; a limit needs the `QueuedRunCoordinator` and the daemon). Everything else in `.dagster/` is run history and safe to delete. The snapshot `dagster dev` writes for components lands in `.local_defs_state/`, also git-ignored; the dbt locations never read it back. `.env` is read once, by `just` and by the Dagster CLI when `dagster dev` starts, and every code server and run inherits that copy: an edited `.env` needs `just stop && just start`, a *Reload* of the location is not enough (`.dagster/dagster.yaml` says why a secrets loader would not change that).
 
 CI sets `DBT_TARGET=dummy` for the whole job, because it has no `.env` and dbt would otherwise want Snowflake credentials to parse. Do the same locally if your `.env` is not filled in yet. `just validate` itself needs no target; it reads the manifest that step wrote.
 
