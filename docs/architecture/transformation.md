@@ -129,8 +129,9 @@ that installs `dbt_common` builds its own copy; in Dagster they show up under th
     dimension, reads it as a source. See [Adding a project](../development/adding-projects.md).
 
 `int__common__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
-the `holidays` package from the Anaconda channel. The country is the `holiday_country` model
-config (`NL` by default), a literal the consuming project sets in its own `dbt_project.yml`:
+the `holidays` package from the Anaconda channel. The country is the `holiday_country` meta
+config (`NL` by default), a literal the consuming project sets in its own `dbt_project.yml`
+(under `+meta` because dbt v2 rejects custom keys elsewhere):
 
 ```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
 models:
@@ -138,7 +139,8 @@ models:
     03_int:
       common:
         int__common__holiday:
-          +holiday_country: NL
+          +meta:
+            holiday_country: NL
 ```
 
 It is not a var: `var()` in a `dbt_project.yml` is rendered before the project's `vars:` load,

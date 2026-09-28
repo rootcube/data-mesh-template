@@ -234,7 +234,7 @@ flowchart LR
 
 `int__common__date` generates a window of ten calendar years back and ten forward around the
 current year; `int__common__calendar` decorates it with ISO weeks, month and weekday labels
-and the public holidays of the country in the `holiday_country` model config (`NL` by default;
+and the public holidays of the country in the `holiday_country` meta config (`NL` by default;
 a literal the consuming project sets in its `dbt_project.yml` under
 `models: dbt_common: 03_int: common: int__common__holiday:`, not a var); `int__common__time` is
 one row per second of the day.

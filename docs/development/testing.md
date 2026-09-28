@@ -106,6 +106,7 @@ The hooks in `.pre-commit-config.yaml`:
 | `ruff-format`, `ruff-check --fix` | ruff | `*.py` |
 | `ty-check` | `ty check` (whole project) | any `*.py` change |
 | `dbt-parse` | `dbt parse --target dummy` in every project | `dbt/**/*.sql`, `.yml`, `.yaml`, `.csv`, `.py` |
+| `dbt-parse-v2` | the same parse with `--use-v2-parser`, so the projects stay ready for dbt v2 | same files |
 | `sqlfluff-lint` | `just sqlfluff lint models` (inside `dbt/dbt_example`) | `dbt/dbt_example/models/**/*.sql` |
 | `dagster-validate` | `just validate` | `src/**` and `dlt_pipelines/**` `.py`/`.yaml` |
 | `terraform-fmt` | `terraform fmt -recursive terraform` | `*.tf` (needs the `terraform` binary, so in practice administrators) |

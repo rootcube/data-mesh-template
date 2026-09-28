@@ -43,6 +43,20 @@ locals {
   }
 }
 
+# Every login in the account, so a `create: false` file whose login does not exist here fails at
+# plan time with a clear message instead of at apply time with "object does not exist or not
+# authorized" (the schemas of that user would already be created by then). SECURITYADMIN holds
+# MANAGE GRANTS, so SHOW USERS returns every user.
+data "snowflake_users" "existing" {
+  provider        = snowflake.securityadmin
+  with_describe   = false
+  with_parameters = false
+}
+
+locals {
+  existing_logins = toset([for user in data.snowflake_users.existing.users : upper(user.show_output[0].name)])
+}
+
 resource "random_password" "user" {
   for_each = local.users_to_create
 
@@ -72,6 +86,13 @@ resource "snowflake_grant_account_role" "user" {
   user_name = each.value.login
 
   depends_on = [module.project_role, snowflake_user.person]
+
+  lifecycle {
+    precondition {
+      condition     = contains(keys(local.users_to_create), each.value.user_key) || contains(local.existing_logins, upper(each.value.login))
+      error_message = "User ${each.value.login} (config/users/**/${each.value.user_key}.yaml) does not exist in this account. Set `create: true` to create it, or `disabled: true` if the login belongs to another account."
+    }
+  }
 }
 
 output "user_role_grants" {

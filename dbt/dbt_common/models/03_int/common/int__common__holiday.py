@@ -4,10 +4,10 @@ import pandas as pd
 
 def model(dbt, _session):
     dbt.config(enabled=True, materialized="table", packages=["holidays"])
-    # ISO 3166-1 alpha-2 code from the `holiday_country` config (dbt_project.yml of the installing project).
-    # A statement of its own: dbt only passes configs whose dbt.config.get() its parser finds, and it
-    # misses a get() inside an `or` in another call's arguments.
-    country = dbt.config.get("holiday_country", "NL")
+    # ISO 3166-1 alpha-2 code from the `holiday_country` meta config (dbt_project.yml of the installing project).
+    # A statement of its own: dbt only passes meta keys whose dbt.config.meta_get() its parser finds, and it
+    # misses a meta_get() inside an `or` in another call's arguments.
+    country = dbt.config.meta_get("holiday_country", "NL")
     country_holidays = holidays.country_holidays(country)
 
     df_dates = dbt.ref("int__common__date").select("DATE")

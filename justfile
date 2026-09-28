@@ -248,9 +248,10 @@ typecheck:
 test:
     uv run pytest
 
-# everything CI runs: lint, typecheck, tests, dbt parse, Dagster definitions
+# everything CI runs: lint, typecheck, tests, dbt parse (dbt 1.x and the v2 parser), Dagster definitions
 check: lint typecheck test
     uv run python scripts/dbt_all.py parse --target dummy --quiet
+    uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
     just validate
     uv run python terraform/config/_validation/validate_configs.py
 
