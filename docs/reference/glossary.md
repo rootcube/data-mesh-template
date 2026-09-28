@@ -8,6 +8,13 @@ The words these docs use, in alphabetical order. Concept terms come from the pla
 (see [Concepts](../concepts/index.md)); where a term belongs to one tool, the tool is in
 brackets.
 
+Access, access role
+:   A tier of privileges on a layer, `view`, `read`, `edit` or `full`
+    (`terraform/config/accesses/<tier>.yaml`; a layer adds its own extras under `privileges`).
+    A role names one tier per layer and environment; every layer × tier is an account role
+    `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` (four per layer) that holds the privileges and is
+    granted to the project roles that name it. See [Access](../concepts/access.md).
+
 Asset (Dagster)
 :   Dagster's unit of data: the declaration of a table or other artifact plus the function that
     produces it. Every dlt resource, dbt model, seed and Python asset here is one. Identified by
@@ -234,8 +241,9 @@ Resource (dlt)
 
 Role
 :   A set of grants per project and environment: `terraform/config/roles/<key>.yaml` with
-    privileges per compute, database and layer, and roles it inherits. Becomes the account
-    role `RL_<PROJECT>_<ENV>__<PURPOSE>`. Person roles: engineer (required), analyst; system
+    privileges per compute and database, an access tier per layer, and roles it inherits.
+    Becomes the account role `RL_<PROJECT>_<ENV>__<PURPOSE>`, which inherits one access role
+    per layer. Person roles: engineer (required), analyst; system
     roles: ingest (required, dlt), transform (required, dbt). Reporting exists but is unused
     in the starter, operator and the platform roles (`roles/global/`) are disabled. See [Role](../concepts/role.md).
 

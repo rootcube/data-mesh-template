@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../_validation/schemas/access.schema.json
+# Access: Full
+# ============
+# Own a layer's contents: edit plus creating tables, views, materialized views, sequences,
+# functions and procedures, and altering (MODIFY) and monitoring the schema itself. Not
+# CREATE SCHEMA, which no project role holds, and not OWNERSHIP: a role owns what it creates.
+
+code: "full"
+name: "Full"
+desc: "Edit plus creating tables, views, materialized views, sequences, functions and procedures; alter and monitor the schema"
+sort: 400
+
+privileges:
+  - USAGE
+  - MONITOR
+  - MODIFY
+  - CREATE TABLE
+  - CREATE VIEW
+  - CREATE MATERIALIZED VIEW
+  - CREATE SEQUENCE
+  - CREATE FUNCTION
+  - CREATE PROCEDURE
+  - SELECT ON TABLES
+  - INSERT ON TABLES
+  - UPDATE ON TABLES
+  - DELETE ON TABLES
+  - TRUNCATE ON TABLES
+  - REFERENCES ON TABLES
+  - SELECT ON VIEWS
+  - REFERENCES ON VIEWS
+  - SELECT ON MATERIALIZED VIEWS
+  - REFERENCES ON MATERIALIZED VIEWS
+  - USAGE ON FUNCTIONS
+  - USAGE ON PROCEDURES
+  - USAGE ON SEQUENCES

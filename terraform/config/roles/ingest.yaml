@@ -17,34 +17,7 @@ privileges:
     ingest:
       all: [USAGE, OPERATE]
   layers:
-    source:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE STAGE
-        - CREATE FILE FORMAT
-        - CREATE FUNCTION
-        - CREATE PROCEDURE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-        - READ ON STAGES
-        - WRITE ON STAGES
-        - USAGE ON FILE FORMATS
-    # dlt's staging tables for `merge` loads (staging_dataset_name_layout in dlt_pipelines/utils/destination.py)
-    temporary:
-      all:
-        - USAGE
-        - CREATE TABLE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
+    source: {all: full}
+    # dlt's staging tables for `merge` loads (staging_dataset_name_layout in dlt_pipelines/utils/destination.py):
+    # `edit` on the temporary layer includes creating tables (layers/temporary.yaml).
+    temporary: {all: edit}

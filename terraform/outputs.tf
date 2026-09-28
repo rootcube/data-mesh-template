@@ -97,11 +97,26 @@ output "project_roles" {
   }
 }
 
+output "access_roles" {
+  description = "Map of created layer access roles (AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>), one per layer and access tier in every project database"
+  value = {
+    for key, role in module.access_role : key => {
+      name        = role.name
+      id          = role.id
+      project     = role.project
+      environment = role.environment
+      layer       = local.access_role_map[key].layer_key
+      access      = local.access_role_map[key].access_key
+    }
+  }
+}
+
 output "role_names" {
-  description = "List of all created role names (platform + project)"
+  description = "List of all created role names (platform + project + access)"
   value = concat(
     [for role in module.platform_role : role.name],
-    [for role in module.project_role : role.name]
+    [for role in module.project_role : role.name],
+    [for role in module.access_role : role.name]
   )
 }
 
@@ -120,13 +135,18 @@ output "database_grant_count" {
 }
 
 output "schema_grant_count" {
-  description = "Number of schema grants created"
-  value       = length(module.schema_grant)
+  description = "Number of layer schema grant sets created (one per access role)"
+  value       = length(module.access_role_grant)
 }
 
 output "role_grant_count" {
-  description = "Number of role-to-role grants created"
+  description = "Number of role-to-role grants created (project role inheritance)"
   value       = length(module.role_grant)
+}
+
+output "role_access_grant_count" {
+  description = "Number of access role grants to project roles created (role x layer)"
+  value       = length(module.role_access_grant)
 }
 
 # -----------------------------------------------------------------------------
@@ -138,6 +158,7 @@ output "config_summary" {
   value = {
     project_count  = length(local.projects)
     role_count     = length(local.roles)
+    access_count   = length(local.accesses)
     layer_count    = length(local.layers)
     compute_count  = length(local.computes)
     enabled_roles  = [for k, r in local.roles : k if !try(r.disabled, false)]

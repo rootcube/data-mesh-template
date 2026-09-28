@@ -68,6 +68,7 @@ variable "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE" {
 #   config/computes/**/*.yaml      - One file per compute profile
 #   config/environments/**/*.yaml  - One file per environment
 #   config/layers/**/*.yaml        - One file per layer
+#   config/accesses/**/*.yaml      - One file per access tier (view, read, edit, full)
 #   config/users/**/*.yaml         - One file per user (role assignments)
 #
 # config/teams and config/organisations name no Snowflake object; only
@@ -119,6 +120,13 @@ locals {
   users = {
     for f in local.user_files :
     trimsuffix(basename(f), ".yaml") => yamldecode(file("${var.config_path}/users/${f}"))
+  }
+
+  # Load all access tier configurations (view, read, edit, full: the privilege tiers on a layer)
+  access_files = fileset("${var.config_path}/accesses", "**/*.yaml")
+  accesses = {
+    for f in local.access_files :
+    trimsuffix(f, ".yaml") => yamldecode(file("${var.config_path}/accesses/${f}"))
   }
 
   # -------------------------------------------------------------------------
@@ -175,6 +183,26 @@ locals {
 
   role_codes = {
     for key, role in local.roles : key => role.code
+  }
+
+  access_codes = {
+    for key, access in local.accesses : key => access.code
+  }
+
+  # -------------------------------------------------------------------------
+  # Layer access privileges (layer key -> access key -> privileges)
+  # -------------------------------------------------------------------------
+  # What an access tier grants on a layer: the tier's own privileges (config/accesses) plus the
+  # layer's extras for that tier (`privileges` in config/layers, e.g. stages in the source layer).
+  # Used for the layer access roles (main.tf) and the personal schemas (personal.tf).
+
+  layer_access_privileges = {
+    for layer_key, layer in local.layers : layer_key => {
+      for access_key, access in local.accesses : access_key => distinct(concat(
+        access.privileges,
+        try(layer.privileges[access_key], [])
+      ))
+    }
   }
 
   # -------------------------------------------------------------------------

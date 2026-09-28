@@ -17,115 +17,13 @@ privileges:
     transform:
       all: [USAGE, OPERATE]
   layers:
-    source:
-      all:
-        - USAGE
-        - SELECT ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-        - READ ON STAGES
-        - WRITE ON STAGES
-        - USAGE ON FILE FORMATS
-    staging:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE MATERIALIZED VIEW
-        - CREATE FUNCTION
-        - CREATE PROCEDURE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    integration:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE MATERIALIZED VIEW
-        - CREATE FUNCTION
-        - CREATE PROCEDURE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    mart:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE MATERIALIZED VIEW
-        - CREATE FUNCTION
-        - CREATE PROCEDURE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    expose:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE MATERIALIZED VIEW
-        - CREATE FUNCTION
-        - CREATE PROCEDURE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    metadata:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-    reference:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    temporary:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
+    # `read` on the source layer includes READ and WRITE on its stages (layers/source.yaml):
+    # dbt refreshes the load stage's directory table before every run.
+    source: {all: read}
+    reference: {all: full}
+    staging: {all: full}
+    integration: {all: full}
+    mart: {all: full}
+    expose: {all: full}
+    metadata: {all: full}
+    temporary: {all: full}

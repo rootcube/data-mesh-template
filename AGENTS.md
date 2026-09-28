@@ -67,7 +67,8 @@ Sources (KNMI API, ...) -> dlt -> _SRC -> dbt (_STG -> _INT -> _MRT -> _EXP) -> 
 
 Snowflake naming: database `DB_<PROJECT>_<ENV>`, layer schemas `_SRC`, `_REF`, `_STG`, `_INT`,
 `_MRT`, `_EXP`, `_MTD` (run metadata), `_TMP` (test failures), roles `RL_<PROJECT>_<ENV>__<PURPOSE>`
-(`ENG`, `ANL`, `ING`, `TFM`), warehouses `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]`. In `dev` every
+(`ENG`, `ANL`, `ING`, `TFM`) that inherit one access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>`
+(`VIEW`, `READ`, `EDIT`, `FULL`) per layer, warehouses `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]`. In `dev` every
 engineer works in personal schemas prefixed with `SNOWFLAKE_SCHEMA` (`DBT_USERNAME_STG`), which
 Terraform provisions per engineer (dlt and dbt cannot create schemas); the other environments use
 the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
@@ -92,7 +93,7 @@ dbt/                              # profiles.yml (shared profile `default`: dev,
 ├── .sqlfluff                     #   shared lint config (run sqlfluff from inside a project)
 ├── dbt_common/                   #   package: macros (schema naming, query tag, run logging, metadata upload), generic dims/seeds, generic tests
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/, packages.yml (local dbt_common)
-terraform/                        # administrators: YAML config (organisations, teams, projects, environments, layers, roles, computes, users) -> Snowflake
+terraform/                        # administrators: YAML config (organisations, teams, projects, environments, layers, accesses, roles, computes, users) -> Snowflake
 scripts/                          # snowflake.py (key-pair setup/check/query/keygen), info.py, dbt_all.py
 tests/                            # pytest, offline only
 docs/ + mkdocs.yml                # the documentation site

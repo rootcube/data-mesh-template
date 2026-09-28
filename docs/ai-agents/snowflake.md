@@ -14,7 +14,8 @@ Platform administrators provision everything with Terraform from the YAML under 
 |---|---|---|
 | Project × Environment | database `DB_<PROJECT>_<ENV>`; the `PUBLIC` schema is dropped | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
-| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer and per warehouse | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
+| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per warehouse and one access role per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
+| Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding a tier of privileges (`VIEW`, `READ`, `EDIT`, `FULL`; `terraform/config/accesses/`) on the layer schema, four per layer, granted to the project roles that name it | `AR_EXAMPLE_PRD__MRT__READ` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>` for the default compute, `WH_<PROJECT>_<ENV>__<COMPUTE>_<SIZE>` for the others | `WH_EXAMPLE_DEV` |
 | User | role grants to a login (and optionally the user itself), `terraform/config/users/` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
 | User × engineer role in `dev` | personal schemas `<PREFIX>_<LAYER>` in `DB_<PROJECT>_DEV`, one per layer | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... |
@@ -24,14 +25,16 @@ Owners follow Snowflake's recommendation (`terraform/providers.tf`): `SYSADMIN` 
 
 `terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep 30 days of Time Travel in `prd`, 7 in `acc` and one elsewhere (the database module); their schemas inherit it.
 
-The four purposes, from `terraform/config/roles/`:
+The four purposes, from `terraform/config/roles/`. A role names an access tier per layer and environment (`view`, `read`, `edit`, `full`), never a privilege list; the privileges of a tier are in `terraform/config/accesses/<tier>.yaml`, the layer-specific extras under `privileges` in `terraform/config/layers/<layer>.yaml` (stages in `source`, scratch `CREATE TABLE` and `CREATE VIEW` in `temporary`):
 
 | Role | Purpose code | Type | What it may do |
 |---|---|---|---|
-| Engineer | `ENG` | person | Full read and write on every layer in `dev` and on the personal schemas there (the `personal` block; no `CREATE SCHEMA`); read-only on the layers in `prd`; read and write on `_TMP` in `dev` and `tst`, only scratch space there elsewhere (`USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`). Inherits `transform` and `ingest` in `dev` and `tst`, `analyst` everywhere. |
-| Analyst | `ANL` | person | Read on `_MRT` and `_EXP`, scratch space in `_TMP` (`USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`: it owns what it creates, no write on other roles' tables), `USAGE` on the default warehouse. |
-| Ingest | `ING` | system | Write on `_SRC`, plus tables in `_TMP` for the staging tables of `merge` loads: what dlt runs as in deployed environments. |
-| Transform | `TFM` | system | Read on `_SRC` (with `READ` and `WRITE` on its stages, for the stage refresh), write on `_STG` to `_EXP`, `_REF`, `_MTD`, `_TMP`: what dbt runs as in deployed environments. |
+| Engineer | `ENG` | person | `full` on every layer in `dev` and on the personal schemas there (the `personal` block, `access: full`; no `CREATE SCHEMA`); `read` on the layers in `prd`; `full` on `_TMP` in `dev` and `tst`, `read` there elsewhere (scratch: it owns what it creates). Inherits `transform` and `ingest` in `dev` and `tst`, `analyst` everywhere. |
+| Analyst | `ANL` | person | `read` on `_MRT`, `_EXP` and `_TMP` (scratch: it owns what it creates, no write on other roles' tables), `USAGE` on the default warehouse. |
+| Ingest | `ING` | system | `full` on `_SRC`, `edit` on `_TMP` for the staging tables of `merge` loads: what dlt runs as in deployed environments. |
+| Transform | `TFM` | system | `read` on `_SRC` (with `READ` and `WRITE` on its stages, for the stage refresh), `full` on `_REF`, `_STG` to `_EXP`, `_MTD` and `_TMP`: what dbt runs as in deployed environments. |
+
+Every layer × tier is an access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` (four per layer in every project database); the project role inherits the ones it names and itself holds only the database and warehouse grants. Details: [Access](../concepts/access.md).
 
 Behind Terraform sit the bootstrap objects from `terraform/modules/snowflake/init.sql`, created once as `ACCOUNTADMIN`: the service user `TERRAFORM_USER` (key pair only, no password) with the system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The account parameters live apart, in `terraform/modules/snowflake/account_settings.sql`: `TIMEZONE = 'UTC'`, ISO weeks starting on Monday, ISO 8601 output formats, and security and cost defaults; `just sf bootstrap` lists them and asks before applying them (`--account-settings ask|apply|skip`). The provider authenticates as that user with `TF_VAR_SNOWFLAKE_*` from `.env` (the commented block at the bottom of `.env.example`).
 

@@ -282,45 +282,71 @@ locals {
   }
 
   # --------------------------------------------------------------------------
-  # Schema Grants (Role x Layer with privileges)
+  # Access Roles (Project x Environment x Layer x Access tier)
   # --------------------------------------------------------------------------
 
-  # Build a flat list of schema grants: one entry per role x layer combination
-  # Privileges are a flat list including schema and object privileges
-  # Only roles in project.roles are considered (authoritative source)
-  # Note: Role privileges now use layer keys (e.g., 'mart'), matching project.layers
-  schema_grants = flatten([
+  # One access role per layer and access tier (config/accesses: view, read, edit, full) in every
+  # project database: AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>, with the tier's privileges (plus the
+  # layer's extras, variables.tf) on the layer schema. All four exist for every layer, whether a
+  # project role uses them or not, so every layer has the same four doors.
+  project_environment_layer_accesses = flatten([
+    for pel in local.project_environment_layers : [
+      for access_key, access in local.accesses : {
+        key              = "${pel.project_key}_${pel.environment_key}_access_role_${pel.layer_key}_${access_key}"
+        project_key      = pel.project_key
+        environment_key  = pel.environment_key
+        environment_code = pel.environment_code
+        layer_key        = pel.layer_key
+        layer_code       = pel.layer_code
+        access_key       = access_key
+        access_code      = access.code
+
+        # Database and schema names
+        database_name = pel.database_name
+        schema_name   = upper("_${pel.layer_code}")
+
+        privileges = local.layer_access_privileges[pel.layer_key][access_key]
+      }
+    ]
+  ])
+
+  # Convert to map for for_each
+  access_role_map = {
+    for pela in local.project_environment_layer_accesses : pela.key => pela
+  }
+
+  # --------------------------------------------------------------------------
+  # Layer Access (Role x Layer -> access tier, per Environment)
+  # --------------------------------------------------------------------------
+
+  # One entry per project role x layer: the access tier the role holds on that layer in that
+  # environment, from privileges.layers (the environment code first, then 'all'). The role does
+  # not get the privileges itself: it inherits the layer's access role (above). Only roles and
+  # layers the project lists count; a layer without a tier for the role in that environment is
+  # skipped.
+  role_layer_accesses = flatten([
     for project_key, project in local.projects : [
       for environment_key in project.environments : [
         for role_key in project.roles : [
           # layer_key is the key used in role.privileges.layers (e.g., 'mart')
-          for layer_key, env_privileges in try(local.roles[role_key].privileges.layers, {}) : {
-            key              = "${project_key}_${environment_key}_schema_grant_${role_key}_${layer_key}"
+          for layer_key, access_by_environment in try(local.roles[role_key].privileges.layers, {}) : {
+            key              = "${project_key}_${environment_key}_layer_access_${role_key}_${layer_key}"
             project_key      = project_key
             environment_key  = environment_key
             environment_code = local.environment_codes[environment_key]
             role_key         = role_key
-            role_code        = local.role_codes[role_key]
             layer_key        = layer_key
-            layer_code       = local.layer_codes[layer_key]
+            access_key       = try(access_by_environment[local.environment_codes[environment_key]], access_by_environment["all"])
 
             # Role name follows the pattern: RL_<PROJECT>_<ENV>__<PURPOSE>
             role_name = upper("RL_${project_key}_${local.environment_codes[environment_key]}__${local.role_codes[role_key]}")
 
-            # Database and schema names
-            database_name = upper("DB_${project_key}_${local.environment_codes[environment_key]}")
-            schema_name   = upper("_${local.layer_codes[layer_key]}")
-
-            # Resolve privileges: environment-specific (using code) or 'all'
-            privileges = try(
-              env_privileges[local.environment_codes[environment_key]],
-              try(env_privileges["all"], [])
-            )
+            # Key of the access role this role inherits for the layer (access_role_map above)
+            access_role_key = "${project_key}_${environment_key}_access_role_${layer_key}_${try(access_by_environment[local.environment_codes[environment_key]], access_by_environment["all"])}"
           }
-          # Check if layer_key exists in project.layers
           if contains(keys(local.layer_codes), layer_key) &&
           contains(project.layers, layer_key) &&
-          length(try(env_privileges[local.environment_codes[environment_key]], try(env_privileges["all"], []))) > 0
+          (contains(keys(access_by_environment), local.environment_codes[environment_key]) || contains(keys(access_by_environment), "all"))
         ]
         if contains(keys(local.roles), role_key) &&
         local.roles[role_key].level == "project" &&
@@ -330,8 +356,8 @@ locals {
   ])
 
   # Convert to map for for_each
-  schema_grant_map = {
-    for sg in local.schema_grants : sg.key => sg
+  role_access_grant_map = {
+    for rla in local.role_layer_accesses : rla.key => rla
   }
 }
 
@@ -476,23 +502,59 @@ module "role_grant" {
 }
 
 # -----------------------------------------------------------------------------
-# Schema Grants (Schema and object privileges per Role per Layer)
+# Access Roles (Layer x Access tier): hold the privileges on a layer schema
 # -----------------------------------------------------------------------------
 
-module "schema_grant" {
-  source    = "./modules/snowflake/schema_grant"
-  for_each  = local.schema_grant_map
+module "access_role" {
+  source    = "./modules/snowflake/role"
+  for_each  = local.access_role_map
   providers = { snowflake = snowflake.securityadmin }
 
-  role_name     = each.value.role_name
+  prefix      = "AR"
+  project     = upper(each.value.project_key)
+  environment = upper(each.value.environment_code)
+  purpose     = upper("${each.value.layer_code}__${each.value.access_code}")
+  comment     = "Access role: ${each.value.access_key} on layer ${each.value.layer_key} (${each.value.database_name}.${each.value.schema_name})"
+
+  # Not granted to SYSADMIN directly: access roles reach it through the project roles that hold them.
+}
+
+# -----------------------------------------------------------------------------
+# Access Role Grants (Schema and object privileges per Access role per Layer)
+# -----------------------------------------------------------------------------
+
+module "access_role_grant" {
+  source    = "./modules/snowflake/schema_grant"
+  for_each  = local.access_role_map
+  providers = { snowflake = snowflake.securityadmin }
+
+  role_name     = module.access_role[each.key].name
   database_name = each.value.database_name
   schema_name   = each.value.schema_name
   privileges    = each.value.privileges
 
-  # Ensure roles, databases, and schemas exist before creating grants
+  # Ensure databases and schemas exist before creating grants
   depends_on = [
-    module.project_role,
     module.database,
     module.schema
+  ]
+}
+
+# -----------------------------------------------------------------------------
+# Layer Access Grants (Access role -> Project role, per Layer per Environment)
+# -----------------------------------------------------------------------------
+
+module "role_access_grant" {
+  source    = "./modules/snowflake/role_grant"
+  for_each  = local.role_access_grant_map
+  providers = { snowflake = snowflake.securityadmin }
+
+  # The project role inherits the access role of the layer
+  role_name        = each.value.role_name
+  parent_role_name = module.access_role[each.value.access_role_key].name
+
+  # Ensure the project roles exist before granting (the access roles come through the reference above)
+  depends_on = [
+    module.project_role
   ]
 }

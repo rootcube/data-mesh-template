@@ -108,9 +108,10 @@ schema per project layer in `DB_<PROJECT>_DEV` (`terraform/personal.tf`): `DBT_U
 `DBT_USERNAME_REF`, `DBT_USERNAME_STG`, `DBT_USERNAME_INT`, `DBT_USERNAME_MRT`,
 `DBT_USERNAME_EXP`, `DBT_USERNAME_MTD` and `DBT_USERNAME_TMP`, plus the person's own load stage
 `DBT_USERNAME_SRC.ST_DEFAULT` (`terraform/stages.tf`). `SYSADMIN` owns them like every other
-schema; the engineer role gets the block's privileges on them (current and future grants), but
-no `CREATE SCHEMA`: dlt and dbt use the schemas, they never create them. So the apply has to
-come before the person's first dlt load or dbt run.
+schema; the engineer role gets the privileges of the block's access tier (`access: full`, see
+[Access](../concepts/access.md)) on them directly (current and future grants), but no
+`CREATE SCHEMA`: dlt and dbt use the schemas, they never create them. So the apply has to come
+before the person's first dlt load or dbt run.
 
 The prefix is `schema_prefix` from the user file, or `DBT_` plus the login before the `@`, the
 same rule `just sf setup` uses to propose `SNOWFLAKE_SCHEMA`. To change it, set
