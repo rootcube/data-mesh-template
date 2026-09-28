@@ -12,7 +12,8 @@ Terraform) are the implementation, and they may change without touching the mode
 
 The model is a hierarchy. An **Organisation** has **Teams**. A Team owns **Projects**. A Project
 exists in **Environments**. Every Project × Environment has **Layers**, **Roles** and
-**Computes**. **Users**, people and services, are granted Project Roles.
+**Computes**. A Role holds an **Access** tier per Layer. **Users**, people and services, are
+granted Project Roles.
 
 ```mermaid
 graph TD
@@ -44,7 +45,8 @@ The diagram shows the project the starter ships with. Every box is a YAML file u
 | [Project](project.md) | `projects/example.yaml` | One database per environment: `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` | `dbt/dbt_example/`, `src/orchestrator/locations/dbt/dbt_example/`, one entry in `workspace.yaml` |
 | [Environment](environment.md) | `environments/*.yaml` | The `<ENV>` segment of every database, role and warehouse name | `ENVIRONMENT` in `.env`, which picks the dbt target and the schema naming |
 | [Layer](layer.md) | `layers/*.yaml` | A schema `_<LAYER>` in each project database (`_SRC`, `_STG`, `_MRT`, ...) | dbt `+schema` per model folder; the dlt dataset |
-| [Role](role.md) | `roles/*.yaml` | An account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer and compute | `SNOWFLAKE_ROLE` |
+| [Role](role.md) | `roles/*.yaml` | An account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with an access tier per layer and grants per compute | `SNOWFLAKE_ROLE` |
+| [Access](access.md) | `accesses/*.yaml` | An access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` per layer and tier (`VIEW`, `READ`, `EDIT`, `FULL`), holding the privileges, granted to the project roles that name it | Nothing directly; roles reach it through inheritance |
 | [Compute](compute.md) | `computes/*.yaml` | A warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `SNOWFLAKE_WAREHOUSE` |
 | Users (on the [Role](role.md#users) page) | `users/*.yaml` | Role grants to a login, and optionally the user itself | `SNOWFLAKE_USER` |
 
@@ -96,17 +98,17 @@ or relies on, with the place they bite.
 |------|------------------------|
 | A Project has exactly one owning Team | `team:` in `projects/example.yaml`; the validator rejects an unknown team |
 | Environments are lifecycle boundaries: no implicit sharing of data, compute or credentials | A database, a warehouse and a set of roles per environment; a key pair per user |
-| Layers are semantic conventions, not security boundaries | Access comes from role grants per layer, not from the schema itself |
+| Layers are semantic conventions, not security boundaries | Access comes from the access roles a role holds per layer, not from the schema itself |
 | Roles are scoped to Project × Environment | `RL_EXAMPLE_DEV__ENG` is a different role from `RL_EXAMPLE_PRD__ENG` |
 | Compute is isolated per Project × Environment | `WH_EXAMPLE_DEV` and `WH_EXAMPLE_PRD` are separate warehouses |
 | Cross-project consumption happens via the expose layer only | A second project reads another project's `_EXP` as a dbt source; nothing else |
-| Human access to production is read-only by default | `roles/engineer.yaml` grants `SELECT` only in `prd`; writes belong to the transform and ingest system roles |
+| Human access to production is read-only by default | `roles/engineer.yaml` holds the `read` tier in `prd`; `full` belongs to the transform and ingest system roles |
 | Changes are promoted forward, dev to prd | `ENVIRONMENT` selects the target; the same code runs in every environment |
 | A model references only the layer directly below it | The dbt layer rule, checked in review (see [Layers in practice](../architecture/layers.md)) |
 | One dbt project and one Dagster code location per Project | `dbt/dbt_<project>/` plus `src/orchestrator/locations/dbt/dbt_<project>/` |
 | Exactly one project builds the `dbt_common` models | Duplicate asset keys across code locations are an error in Dagster |
 
-## Four additions to the platform model
+## Five additions to the platform model
 
 `terraform/README.md` lists what this starter adds on top of rootcube/platform, kept small so
 they can flow back upstream:
@@ -118,6 +120,9 @@ they can flow back upstream:
 3. `privileges.database` on a role: extra database privileges per environment on top of the
    implicit `USAGE`; none of the shipped roles needs any.
 4. `config/layers/metadata.yaml` (`_MTD`): the layer where dbt writes run metadata.
+5. `config/accesses/` and the access roles: roles name a tier (`view`, `read`, `edit`, `full`)
+   per layer instead of listing privileges, and the privileges live on one access role per
+   layer and tier ([Access](access.md)).
 
 The platform repository's other providers are not part of the starter. The provider is
 Snowflake only.

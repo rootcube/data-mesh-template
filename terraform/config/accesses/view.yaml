@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../_validation/schemas/access.schema.json
+# Access: View
+# ============
+# See which objects a layer holds and how they are defined, without reading their data.
+
+code: "view"
+name: "View"
+desc: "Object structure only: reference tables and views, no data"
+sort: 100
+
+privileges:
+  - USAGE
+  - REFERENCES ON TABLES
+  - REFERENCES ON VIEWS
+  - REFERENCES ON MATERIALIZED VIEWS

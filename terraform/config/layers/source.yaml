@@ -9,3 +9,23 @@ type: "input"
 sort: 110
 disabled: false
 required: true
+
+# Stages and file formats live in this layer (dlt loads through `_SRC.ST_DEFAULT`, stages.tf).
+# `read` includes WRITE ON STAGES: `ALTER STAGE ... REFRESH` of the directory table, which dbt
+# runs before it reads the layer (dbt_common.refresh_stages), requires it. It allows putting and
+# removing load files on the stage, not changing tables.
+privileges:
+  read:
+    - READ ON STAGES
+    - WRITE ON STAGES
+    - USAGE ON FILE FORMATS
+  edit:
+    - READ ON STAGES
+    - WRITE ON STAGES
+    - USAGE ON FILE FORMATS
+  full:
+    - CREATE STAGE
+    - CREATE FILE FORMAT
+    - READ ON STAGES
+    - WRITE ON STAGES
+    - USAGE ON FILE FORMATS

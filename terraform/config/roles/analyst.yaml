@@ -15,26 +15,8 @@ privileges:
     default:
       all: [USAGE]
   layers:
-    mart:
-      all:
-        - USAGE
-        - SELECT ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    expose:
-      all:
-        - USAGE
-        - SELECT ON TABLES
-        - SELECT ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    # Scratch space: the role owns what it creates here, so it needs no write grants on the
-    # tables of other roles (dlt's merge staging tables, dbt's stored test failures)
-    temporary:
-      all:
-        - USAGE
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - SELECT ON VIEWS
+    mart: {all: read}
+    expose: {all: read}
+    # Scratch space: `read` on the temporary layer also allows creating tables and views
+    # (layers/temporary.yaml); the role owns what it creates and cannot write other roles' tables.
+    temporary: {all: read}

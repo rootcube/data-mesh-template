@@ -148,9 +148,14 @@ engineer role's `personal` block (`terraform/personal.tf`). The mapping is in
 `SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; see
 [Environment](environment.md#development-is-special).
 
-Roles get their privileges per layer and per environment (`privileges.layers` in
-`roles/*.yaml`), applied to the `_<LAYER>` schemas and to all current and future tables and
-views in them. A layer with no grant for a role is invisible to that role.
+Roles name an [access tier](access.md) per layer and per environment (`privileges.layers` in
+`roles/*.yaml`: `view`, `read`, `edit` or `full`). Each layer × tier is an access role
+`AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` with the tier's privileges on the `_<LAYER>` schema
+and on all current and future tables and views in it, and the project role inherits the one it
+names.
+A layer can add privileges to a tier under `privileges` in its own file (the source layer's
+stages, the temporary layer's scratch tables). A layer with no tier for a role is invisible to
+that role.
 
 ## In the repo
 
@@ -165,4 +170,4 @@ views in them. A layer with no grant for a role is invisible to that role.
 What belongs in each layer, the materializations and the reference-only-the-layer-below rule
 are on [Layers in practice](../architecture/layers.md).
 
-Next: [Role](role.md).
+Next: [Role](role.md), then [Access](access.md).

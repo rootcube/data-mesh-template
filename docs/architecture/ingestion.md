@@ -166,8 +166,9 @@ The file names stay dlt's: `PUT` keeps the name of the local file.
 
 `LIST @_SRC.ST_DEFAULT/dlt/ingest/knmi/` lists every KNMI load,
 `LIST @DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/` yours in `dev`. The ingest role holds `READ`
-and `WRITE` on the shared stages (`READ ON STAGES`, `WRITE ON STAGES` in
-`terraform/config/roles/ingest.yaml`); the engineer role has the same on the personal ones (the
+and `WRITE` on the shared stages (`full` on the source layer in
+`terraform/config/roles/ingest.yaml`; the stage privileges are the source layer's extras in
+`terraform/config/layers/source.yaml`); the engineer role has the same on the personal ones (the
 `personal` block in `terraform/config/roles/engineer.yaml`). dlt keeps the files after a
 successful `COPY INTO` (`keep_staged_files`, its default); `LIST @_SRC.ST_DEFAULT` shows them,
 `REMOVE` cleans up. The stage has a directory table, so `SELECT * FROM DIRECTORY(@_SRC.ST_DEFAULT)`

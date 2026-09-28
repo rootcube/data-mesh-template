@@ -4,8 +4,10 @@
 # A role with a `personal` block (config/roles/engineer.yaml) gives each user who
 # holds it (config/users) a schema per project layer in the listed environments:
 # <PREFIX>_SRC, <PREFIX>_STG, ... in DB_<PROJECT>_DEV. They are created here, owned by
-# SYSADMIN like every other schema, and the role gets the block's privileges on them;
-# stages.tf adds the user's own load stage <PREFIX>_SRC.ST_DEFAULT.
+# SYSADMIN like every other schema, and the role gets the privileges of the block's
+# access tier on them (layer_access_privileges in variables.tf: the tier plus the layer's
+# extras), granted directly since these schemas are per person, not through an access
+# role; stages.tf adds the user's own load stage <PREFIX>_SRC.ST_DEFAULT.
 #
 # <PREFIX> is the user's `schema_prefix`, or DBT_<login before the @> with every run of
 # non-alphanumerics as `_`, upper case (DBT_USERNAME for username@example.com): the
@@ -30,7 +32,7 @@ locals {
           database_name   = upper("DB_${assignment.project}_${local.environment_codes[environment_key]}")
           role_key        = assignment.role
           role_name       = upper("RL_${assignment.project}_${local.environment_codes[environment_key]}__${local.role_codes[assignment.role]}")
-          privileges      = try(local.roles[assignment.role].personal.privileges, [])
+          access_key      = local.roles[assignment.role].personal.access
         }
         if contains(local.projects[assignment.project].environments, environment_key) &&
         contains(local.projects[assignment.project].roles, assignment.role) &&
@@ -66,7 +68,7 @@ locals {
         role_name     = a.role_name
         database_name = a.database_name
         schema_name   = upper("${a.prefix}_${local.layer_codes[layer_key]}")
-        privileges    = a.privileges
+        privileges    = local.layer_access_privileges[layer_key][a.access_key]
       }
     }
   ]...)

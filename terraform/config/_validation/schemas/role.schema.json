@@ -70,10 +70,10 @@
   "$defs": {
     "personal": {
       "type": "object",
-      "description": "Personal schemas: in these environments every user holding this role gets a copy of each project layer (<PREFIX>_<LAYER>), created by Terraform and owned by SYSADMIN, with these privileges for the role",
+      "description": "Personal schemas: in these environments every user holding this role gets a copy of each project layer (<PREFIX>_<LAYER>), created by Terraform and owned by SYSADMIN, with the privileges of one access tier for the role",
       "required": [
         "environments",
-        "privileges"
+        "access"
       ],
       "additionalProperties": false,
       "properties": {
@@ -87,10 +87,16 @@
           "minItems": 1,
           "uniqueItems": true
         },
-        "privileges": {
-          "$ref": "#/$defs/layerPrivilegesByEnvironment/additionalProperties"
+        "access": {
+          "$ref": "#/$defs/accessKey",
+          "description": "Access tier the role gets on the personal schemas, granted directly (no access role per person)"
         }
       }
+    },
+    "accessKey": {
+      "type": "string",
+      "description": "Access tier key (file name under config/accesses): view, read, edit or full",
+      "pattern": "^[a-z]+$"
     },
     "privileges": {
       "type": "object",
@@ -106,9 +112,9 @@
         },
         "layers": {
           "type": "object",
-          "description": "Schema/layer privileges per layer",
+          "description": "Access tier per layer (key = layer key), resolved per environment; the role inherits the layer's access role",
           "additionalProperties": {
-            "$ref": "#/$defs/layerPrivilegesByEnvironment"
+            "$ref": "#/$defs/layerAccessByEnvironment"
           }
         },
         "roles": {
@@ -141,95 +147,14 @@
         "uniqueItems": true
       }
     },
-    "layerPrivilegesByEnvironment": {
+    "layerAccessByEnvironment": {
       "type": "object",
-      "description": "Layer privileges by environment. Use 'all' for all environments or specific environment codes.",
+      "description": "Access tier by environment. Use 'all' for all environments or specific environment codes (dev, tst, acc, prd); the environment code wins over 'all'.",
+      "propertyNames": {
+        "pattern": "^(all|dev|tst|acc|prd|sbx)$"
+      },
       "additionalProperties": {
-        "type": "array",
-        "items": {
-          "type": "string",
-          "enum": [
-            "USAGE",
-            "MONITOR",
-            "MODIFY",
-            "CREATE TABLE",
-            "CREATE EXTERNAL TABLE",
-            "CREATE VIEW",
-            "CREATE MATERIALIZED VIEW",
-            "CREATE DYNAMIC TABLE",
-            "CREATE ICEBERG TABLE",
-            "CREATE EVENT TABLE",
-            "CREATE STAGE",
-            "CREATE FILE FORMAT",
-            "CREATE SEQUENCE",
-            "CREATE FUNCTION",
-            "CREATE PROCEDURE",
-            "CREATE STREAM",
-            "CREATE TASK",
-            "CREATE PIPE",
-            "CREATE ALERT",
-            "CREATE SNOWFLAKE.ML.ANOMALY_DETECTION",
-            "CREATE SNOWFLAKE.ML.FORECAST",
-            "CREATE SNOWFLAKE.ML.CLASSIFICATION",
-            "CREATE SECRET",
-            "CREATE NETWORK RULE",
-            "CREATE PACKAGES POLICY",
-            "CREATE PASSWORD POLICY",
-            "CREATE SESSION POLICY",
-            "CREATE MASKING POLICY",
-            "CREATE ROW ACCESS POLICY",
-            "CREATE TAG",
-            "ADD SEARCH OPTIMIZATION",
-            "SELECT ON TABLES",
-            "INSERT ON TABLES",
-            "UPDATE ON TABLES",
-            "DELETE ON TABLES",
-            "TRUNCATE ON TABLES",
-            "REFERENCES ON TABLES",
-            "EVOLVE SCHEMA ON TABLES",
-            "SELECT ON EXTERNAL TABLES",
-            "REFERENCES ON EXTERNAL TABLES",
-            "SELECT ON VIEWS",
-            "REFERENCES ON VIEWS",
-            "SELECT ON MATERIALIZED VIEWS",
-            "REFERENCES ON MATERIALIZED VIEWS",
-            "SELECT ON DYNAMIC TABLES",
-            "MONITOR ON DYNAMIC TABLES",
-            "OPERATE ON DYNAMIC TABLES",
-            "SELECT ON ICEBERG TABLES",
-            "INSERT ON ICEBERG TABLES",
-            "UPDATE ON ICEBERG TABLES",
-            "DELETE ON ICEBERG TABLES",
-            "TRUNCATE ON ICEBERG TABLES",
-            "REFERENCES ON ICEBERG TABLES",
-            "SELECT ON EVENT TABLES",
-            "INSERT ON EVENT TABLES",
-            "USAGE ON FUNCTIONS",
-            "USAGE ON PROCEDURES",
-            "USAGE ON SEQUENCES",
-            "USAGE ON STAGES",
-            "READ ON STAGES",
-            "WRITE ON STAGES",
-            "USAGE ON FILE FORMATS",
-            "USAGE ON SECRETS",
-            "READ ON SECRETS",
-            "MONITOR ON STREAMS",
-            "MONITOR ON TASKS",
-            "OPERATE ON TASKS",
-            "MONITOR ON PIPES",
-            "OPERATE ON PIPES",
-            "MONITOR ON ALERTS",
-            "OPERATE ON ALERTS",
-            "APPLY ON MASKING POLICIES",
-            "APPLY ON ROW ACCESS POLICIES",
-            "APPLY ON PASSWORD POLICIES",
-            "APPLY ON SESSION POLICIES",
-            "APPLY ON TAGS",
-            "READ ON TAGS"
-          ]
-        },
-        "minItems": 1,
-        "uniqueItems": true
+        "$ref": "#/$defs/accessKey"
       }
     },
     "roleEnvironments": {

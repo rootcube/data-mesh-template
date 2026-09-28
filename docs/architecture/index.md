@@ -68,8 +68,9 @@ other environments the tools write to the provisioned `_<LAYER>` schemas.
 Terraform
 :   Reads `terraform/config/` and creates, per project and environment, a database
     `DB_<PROJECT>_<ENV>`, a schema `_<LAYER>` per layer, a role
-    `RL_<PROJECT>_<ENV>__<PURPOSE>` per role with grants per layer and compute, and a warehouse
-    `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` per compute and size. Users get role grants, and
+    `RL_<PROJECT>_<ENV>__<PURPOSE>` per role with grants per compute, an access role
+    `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` per layer and tier that the roles inherit,
+    and a warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` per compute and size. Users get role grants, and
     engineers their personal schemas `<PREFIX>_<LAYER>` in `dev`.
 
 dbt

@@ -105,6 +105,7 @@ nav:
       - Environment: concepts/environment.md
       - Layer: concepts/layer.md
       - Role: concepts/role.md
+      - Access: concepts/access.md
       - Compute: concepts/compute.md
   - Architecture:
       - architecture/index.md

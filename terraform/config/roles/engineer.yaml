@@ -13,32 +13,14 @@ required: true
 # Personal schemas: in these environments every user holding this role (config/users) gets
 # their own copy of each project layer, <PREFIX>_SRC, <PREFIX>_STG, ... (see personal.tf).
 # Terraform creates them, owned by SYSADMIN, plus the user's own stage <PREFIX>_SRC.ST_DEFAULT;
-# this role gets the privileges below on them. The role cannot create schemas itself.
+# this role gets the `access` tier's privileges (config/accesses, plus the layer's extras) on
+# them directly. The role cannot create schemas itself.
 personal:
   environments: [dev]
-  privileges:
-    - USAGE
-    - MONITOR
-    - MODIFY
-    - CREATE TABLE
-    - CREATE VIEW
-    - CREATE MATERIALIZED VIEW
-    - CREATE SEQUENCE
-    - CREATE FUNCTION
-    - CREATE PROCEDURE
-    - CREATE FILE FORMAT
-    - SELECT ON TABLES
-    - INSERT ON TABLES
-    - UPDATE ON TABLES
-    - DELETE ON TABLES
-    - TRUNCATE ON TABLES
-    - SELECT ON VIEWS
-    - USAGE ON FUNCTIONS
-    - USAGE ON PROCEDURES
-    - USAGE ON FILE FORMATS
-    - READ ON STAGES
-    - WRITE ON STAGES
+  access: full
 
+# Layers: one access tier (config/accesses: view, read, edit, full) per layer and environment,
+# `all` as the fallback. The role inherits the matching access role AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>.
 privileges:
   computes:
     default:
@@ -48,132 +30,16 @@ privileges:
     transform:
       all: [USAGE, OPERATE, MONITOR]
   layers:
-    source:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      tst:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    staging:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    integration:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    mart:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    expose:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    # Outside dev and tst only scratch space: the role owns what it creates here, so it needs
-    # no write grants on the tables of other roles (dlt's merge staging tables, dbt's test failures)
-    temporary:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      tst:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      all: [USAGE, CREATE TABLE, CREATE VIEW, SELECT ON TABLES, SELECT ON VIEWS]
-    reference:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-      prd: [USAGE, SELECT ON TABLES, SELECT ON VIEWS]
-    metadata:
-      dev:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-      prd: [USAGE, SELECT ON TABLES]
+    source: {dev: full, tst: full, prd: read}
+    reference: {dev: full, prd: read}
+    staging: {dev: full, prd: read}
+    integration: {dev: full, prd: read}
+    mart: {dev: full, prd: read}
+    expose: {dev: full, prd: read}
+    metadata: {dev: full, prd: read}
+    # Outside dev and tst only scratch space: `read` on the temporary layer also allows creating
+    # tables and views (layers/temporary.yaml), and the role owns what it creates.
+    temporary: {dev: full, tst: full, all: read}
   roles:
     transform: [dev, tst]
     ingest: [dev, tst]

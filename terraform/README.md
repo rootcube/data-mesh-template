@@ -13,7 +13,8 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 |---------|------------------|---------|
 | Project × Environment | database `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_REF`, `_MTD`, `_TMP` |
-| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with grants per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
+| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with warehouse grants and one access role per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
+| Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding a tier of privileges on the layer schema (`view`, `read`, `edit`, `full`), four per layer | `AR_EXAMPLE_PRD__MRT__READ`, `AR_EXAMPLE_DEV__SRC__FULL` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
 | dlt load files | the default internal stage `ST_DEFAULT` of every source layer schema, shared and personal (`stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | role grants (and optionally the user itself) | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
@@ -22,7 +23,8 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 Development is shared: engineers work in personal schemas `<PREFIX>_<LAYER>` (for example
 `DBT_USERNAME_STG`) of `DB_<PROJECT>_DEV`. Terraform creates them for every user who holds the
 engineer role in `dev` (its `personal` block in `config/roles/engineer.yaml`) and grants the role
-the block's privileges on them; the engineer role cannot create schemas itself. `<PREFIX>` is the
+the privileges of the block's access tier (`full`) on them directly; the engineer role cannot
+create schemas itself. `<PREFIX>` is the
 user file's `schema_prefix`, or `DBT_` plus the login before the `@` with non-alphanumerics as
 `_`, uppercased (`DBT_USERNAME` for `username@example.com`).
 `just tf output -json personal_schemas` lists them per login. The privileges go to the shared
@@ -125,8 +127,9 @@ One YAML file per object, validated against the JSON schemas in `config/_validat
 | `teams/` | teams that own projects | `organisation` refers to the organisation file name |
 | `projects/` | one file per project | `team`, `environments`, `layers`, `computes`, `roles`; `"*"` means all enabled |
 | `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere |
-| `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names |
-| `roles/` | project roles (engineer, analyst, ingest, transform) and platform roles (`global/`, disabled) | privileges per compute, database, layer and environment |
+| `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names; optional `privileges` adds to an access tier on that layer (stages in `source`) |
+| `accesses/` | the access tiers view, read, edit, full | the privileges of a tier on a layer schema; each layer × tier becomes an access role |
+| `roles/` | project roles (engineer, analyst, ingest, transform) and platform roles (`global/`, disabled) | privileges per compute and database, an access tier per layer and environment, inherited roles |
 | `computes/` | warehouse profiles and sizes | `default` has no suffix |
 | `users/` | who may assume which project roles | see onboarding below; the file name is the key, also in a sub-folder; `users/local/` (git-ignored) holds the files `just sf bootstrap` writes for your own account |
 
@@ -171,7 +174,7 @@ System users for deployed environments (the transform and ingest roles) are crea
 
 ## Differences from rootcube/platform
 
-This folder is a port of the platform repository's Terraform with four additions, kept small
+This folder is a port of the platform repository's Terraform with five additions, kept small
 so they can flow back upstream:
 
 - `config/users/` and `users.tf`: role grants to logins (and optional user creation).
@@ -180,6 +183,10 @@ so they can flow back upstream:
 - `privileges.database` on a role: extra database privileges per environment on top of the
   implicit `USAGE` (none of the shipped roles needs any).
 - `config/layers/metadata.yaml` (`_MTD`): where dbt writes run metadata.
+- `config/accesses/` and the access roles (`main.tf`): a role names a tier (`view`, `read`,
+  `edit`, `full`) per layer and environment instead of listing privileges; the privileges sit
+  on one access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` per layer and tier, four per
+  layer, which the project role inherits. A layer adds its own extras to a tier under `privileges`.
 
 The provider is Snowflake only; the dbt Cloud, GitHub and Kubernetes providers of the platform
 repository are not part of the starter.

@@ -19,78 +19,12 @@ privileges:
     transform:
       all: [USAGE, OPERATE, MONITOR]
   layers:
-    source:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    staging:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    integration:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    mart:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    expose:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
-    temporary:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        - UPDATE ON TABLES
-        - DELETE ON TABLES
-        - TRUNCATE ON TABLES
-        - SELECT ON VIEWS
+    source: {all: full}
+    staging: {all: full}
+    integration: {all: full}
+    mart: {all: full}
+    expose: {all: full}
+    temporary: {all: full}
   roles:
     transform: [all]
     ingest: [all]

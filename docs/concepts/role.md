@@ -59,18 +59,8 @@ privileges:
     ingest:
       all: [USAGE, OPERATE]
   layers:
-    source:
-      all:
-        - USAGE
-        - MODIFY
-        - CREATE TABLE
-        - CREATE VIEW
-        - CREATE STAGE
-        - CREATE FILE FORMAT
-        # ...
-        - SELECT ON TABLES
-        - INSERT ON TABLES
-        # ...
+    source: {all: full}
+    temporary: {all: edit}
 ```
 
 The `privileges` block has four parts, each keyed by environment code or `all`:
@@ -79,45 +69,44 @@ The `privileges` block has four parts, each keyed by environment code or `all`:
 |-----|-----------|------|
 | `database` | The project database | `USAGE` is implicit for every role with layer privileges; this adds more per environment (a starter addition) |
 | `computes` | The warehouse of a compute profile | Only for profiles the project lists |
-| `layers` | The `_<LAYER>` schema and its current and future tables, views, functions, ... | Only for layers the project lists; `X ON TABLES` becomes an all-plus-future grant |
+| `layers` | The `_<LAYER>` schema, through an [access role](access.md) | One tier per layer and environment: `view`, `read`, `edit` or `full`. The role inherits `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>`, which holds the tier's privileges on the schema and its current and future objects. Only for layers the project lists |
 | `roles` | Another project role, in the listed environments | The role **inherits** that role's privileges |
 
 Next to `privileges`, a role can carry a `personal` block (a starter addition): `environments`
-and a list of schema `privileges`. Every user holding the role in one of those environments
-gets their own schema per project layer, `<PREFIX>_<LAYER>`, created by Terraform, and the role
-gets those privileges on them. The engineer role uses it in `dev`.
+and an `access` tier. Every user holding the role in one of those environments gets their own
+schema per project layer, `<PREFIX>_<LAYER>`, created by Terraform, and the role gets that
+tier's privileges on them directly. The engineer role uses it in `dev` with `full`.
 
 ## Privileges per layer and environment
 
-What each of the four roles may do, as defined in the YAML. "write" stands for `USAGE`,
-`MODIFY`, `CREATE TABLE`, `CREATE VIEW`, `SELECT`, `INSERT`, `UPDATE`, `DELETE` and `TRUNCATE ON
-TABLES` and `SELECT ON VIEWS`; "read" for `USAGE`, `SELECT ON TABLES` and `SELECT ON VIEWS`;
-"scratch" for `USAGE`, `CREATE TABLE`, `CREATE VIEW`, `SELECT ON TABLES` and `SELECT ON VIEWS`.
-A role owns the scratch tables it creates, so it needs no write grants on the tables of other
-roles there (dlt's `merge` staging tables, dbt's stored test failures).
+The tier each of the four roles holds per layer, as defined in the YAML. What a tier means is
+on the [Access](access.md) page: `read` queries, `edit` also changes data in existing tables,
+`full` also creates objects. On the temporary layer `read` and `edit` include `CREATE TABLE`
+and `CREATE VIEW` ("scratch": the role owns what it creates there, without write on the tables
+of other roles); on the source layer every tier from `read` up includes `READ` and `WRITE` on
+stages and usage of file formats.
 
 === "engineer (ENG)"
 
     | Layer | `dev` | `tst` | `prd` |
     |-------|-------|-------|-------|
-    | `source` | write | write | read |
-    | `staging`, `integration`, `mart`, `expose`, `reference` | write | none | read |
-    | `metadata` | write (tables only) | none | `USAGE`, `SELECT ON TABLES` |
-    | `temporary` | write | write | scratch |
+    | `source` | `full` | `full` | `read` |
+    | `reference`, `staging`, `integration`, `mart`, `expose`, `metadata` | `full` | none | `read` |
+    | `temporary` | `full` | `full` | `read` (scratch) |
 
-    Personal schemas: the `personal` block (`environments: [dev]`) gives every user with this
-    role their own `<PREFIX>_<LAYER>` schemas, created by Terraform, with write on them and
-    `READ`, `WRITE` on their load stage; the role has no `CREATE SCHEMA`. Computes: `USAGE`,
-    `OPERATE`, `MONITOR` on `default`, `ingest` and `transform`. Inherits `transform` and
-    `ingest` in `dev` and `tst`, and `analyst` everywhere. There is no `acc` block, so an
-    engineer in acceptance would only get scratch space in the temporary layer.
+    Personal schemas: the `personal` block (`environments: [dev]`, `access: full`) gives every
+    user with this role their own `<PREFIX>_<LAYER>` schemas, created by Terraform, with `full`
+    on them, including `READ` and `WRITE` on their load stage; the role has no `CREATE SCHEMA`.
+    Computes: `USAGE`, `OPERATE`, `MONITOR` on `default`, `ingest` and `transform`. Inherits
+    `transform` and `ingest` in `dev` and `tst`, and `analyst` everywhere. There is no `acc`
+    entry, so an engineer in acceptance would only get scratch space in the temporary layer.
 
 === "analyst (ANL)"
 
     | Layer | all environments |
     |-------|------------------|
-    | `mart`, `expose` | read, plus `USAGE ON FUNCTIONS` and `USAGE ON PROCEDURES` |
-    | `temporary` | scratch |
+    | `mart`, `expose` | `read` |
+    | `temporary` | `read` (scratch) |
 
     Computes: `USAGE` on `default`.
 
@@ -125,20 +114,19 @@ roles there (dlt's `merge` staging tables, dbt's stored test failures).
 
     | Layer | all environments |
     |-------|------------------|
-    | `source` | write, plus `CREATE STAGE`, `CREATE FILE FORMAT`, `CREATE FUNCTION`, `CREATE PROCEDURE` and usage of those objects |
+    | `source` | `full`, so with `CREATE STAGE` and `CREATE FILE FORMAT` |
+    | `temporary` | `edit`, with `CREATE TABLE` for the staging tables of `merge` loads |
 
-    Computes: `USAGE`, `OPERATE` on `ingest`.
+    Computes: `USAGE`, `OPERATE` on `default` and `ingest`.
 
 === "transform (TFM)"
 
     | Layer | all environments |
     |-------|------------------|
-    | `source` | read, plus `READ` and `WRITE` on stages (dbt's stage refresh) and usage of functions, procedures and file formats |
-    | `staging`, `integration`, `mart`, `expose` | write, plus `CREATE MATERIALIZED VIEW`, `CREATE FUNCTION`, `CREATE PROCEDURE` |
-    | `reference`, `temporary` | write |
-    | `metadata` | write (tables only) |
+    | `source` | `read`, with `READ` and `WRITE` on stages for dbt's stage refresh |
+    | `reference`, `staging`, `integration`, `mart`, `expose`, `metadata`, `temporary` | `full` |
 
-    Computes: `USAGE`, `OPERATE` on `transform`.
+    Computes: `USAGE`, `OPERATE` on `default` and `transform`.
 
 This is the production-safety rule in concrete form: in `prd` the person role reads, the two
 system roles write.
@@ -205,9 +193,12 @@ Which role a tool runs as is not decided in Terraform but in `.env`:
 ## In Snowflake
 
 Every project role becomes an account role `RL_<PROJECT>_<ENV>__<PURPOSE>` (the `code`
-uppercased) with a database grant, one grant set per listed layer, one per listed compute and
-the inheritance grants above, and is itself granted to `SYSADMIN` (Snowflake's recommended
-hierarchy). `SECURITYADMIN` owns the roles and issues every grant. A platform role would be named `RL_PLATFORM__<PURPOSE>`; none is
-created by the starter.
+uppercased) with a database grant, one access role grant per listed layer, one warehouse grant
+per listed compute and the inheritance grants above, and is itself granted to `SYSADMIN`
+(Snowflake's recommended hierarchy). The privileges on the layer schemas sit on the access
+roles `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` it inherits ([Access](access.md)); the project
+role itself holds only the database and warehouse grants. `SECURITYADMIN` owns all roles and
+issues every grant. A platform role would be named `RL_PLATFORM__<PURPOSE>`; none is created by
+the starter.
 
-Next: [Compute](compute.md).
+Next: [Access](access.md).

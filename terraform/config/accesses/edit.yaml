@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../_validation/schemas/access.schema.json
+# Access: Edit
+# ============
+# Change the data in a layer's existing tables. No new objects: that is `full`.
+
+code: "edit"
+name: "Edit"
+desc: "Read plus insert, update, delete and truncate on tables; no new objects"
+sort: 300
+
+privileges:
+  - USAGE
+  - SELECT ON TABLES
+  - INSERT ON TABLES
+  - UPDATE ON TABLES
+  - DELETE ON TABLES
+  - TRUNCATE ON TABLES
+  - REFERENCES ON TABLES
+  - SELECT ON VIEWS
+  - REFERENCES ON VIEWS
+  - SELECT ON MATERIALIZED VIEWS
+  - REFERENCES ON MATERIALIZED VIEWS
+  - USAGE ON FUNCTIONS
+  - USAGE ON PROCEDURES
+  - USAGE ON SEQUENCES

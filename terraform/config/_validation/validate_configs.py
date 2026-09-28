@@ -18,11 +18,13 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft7Validator
 from jsonschema.exceptions import SchemaError
+from referencing import Registry, Resource
 
 # Configuration mapping: directory -> schema file
 CONFIG_SCHEMA_MAP = {
     "projects": "schemas/project.schema.json",
     "roles": "schemas/role.schema.json",
+    "accesses": "schemas/access.schema.json",
     "computes": "schemas/compute.schema.json",
     "environments": "schemas/environment.schema.json",
     "layers": "schemas/layer.schema.json",
@@ -45,7 +47,16 @@ def load_json_schema(schema_path: Path) -> dict:
         return json.load(f)
 
 
-def validate_yaml_against_schema(yaml_path: Path, schema_path: Path) -> tuple[bool, list[str]]:
+def schema_registry(schemas_dir: Path) -> Registry:
+    """Every schema under schemas/ by its `$id`, so one schema can `$ref` another's `$defs` (layer -> access)."""
+    registry = Registry()
+    for schema_path in sorted(schemas_dir.glob("*.json")):
+        schema = load_json_schema(schema_path)
+        registry = registry.with_resource(schema["$id"], Resource.from_contents(schema))
+    return registry
+
+
+def validate_yaml_against_schema(yaml_path: Path, schema_path: Path, registry: Registry) -> tuple[bool, list[str]]:
     """
     Validate a YAML file against a JSON schema.
 
@@ -67,7 +78,7 @@ def validate_yaml_against_schema(yaml_path: Path, schema_path: Path) -> tuple[bo
         return False, errors
 
     try:
-        validator = Draft7Validator(schema)
+        validator = Draft7Validator(schema, registry=registry)
     except SchemaError as e:
         errors.append(f"Invalid schema: {e}")
         return False, errors
@@ -99,6 +110,7 @@ def load_all_configs(config_dir: Path) -> dict[str, dict[str, dict]]:
     configs = {
         "projects": {},
         "roles": {},
+        "accesses": {},
         "computes": {},
         "environments": {},
         "layers": {},
@@ -163,14 +175,29 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
     # Get valid organisation keys
     valid_org_keys = set(configs["organisations"].keys())
 
+    # Access tiers (view, read, edit, full): referenced by roles per layer and by layers for their extras
+    valid_access_keys = set(configs["accesses"].keys())
+
     # Print available references
     print(f" - Valid organisations : {', '.join(sorted(valid_org_keys)) or '(none)'}")
     print(f" - Valid teams         : {', '.join(sorted(valid_team_keys)) or '(none)'}")
     print(f" - Valid environments  : {', '.join(sorted(enabled_env_keys)) or '(none)'}")
     print(f" - Valid layers        : {', '.join(sorted(enabled_layer_keys)) or '(none)'}")
+    print(f" - Valid accesses      : {', '.join(sorted(valid_access_keys)) or '(none)'}")
     print(f" - Valid computes      : {', '.join(sorted(enabled_compute_keys)) or '(none)'}")
     print(f" - Valid roles         : {', '.join(sorted(enabled_role_keys)) or '(none)'}")
     print()
+
+    # Validate each layer's access tier extras
+    for layer_key, layer in sorted(configs["layers"].items()):
+        nonexistent_accesses = set(layer.get("privileges", {}).keys()) - valid_access_keys
+        if nonexistent_accesses:
+            error_msg = f"Non-existent access keys in privileges: {', '.join(sorted(nonexistent_accesses))}"
+            errors.append(f"  [layers/{layer_key}]: {error_msg}")
+            print(f" ❌ layers/{layer_key}")
+            print(f"    ❌ {error_msg}")
+        else:
+            print(f" ✅ layers/{layer_key}")
 
     # Validate each project
     for project_key, project in sorted(configs["projects"].items()):
@@ -256,6 +283,16 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
             role_errors.append(f"Non-existent layer keys in privileges: {', '.join(sorted(nonexistent_layers))}")
         if disabled_layers:
             role_warnings.append(f"Disabled layer keys in privileges: {', '.join(sorted(disabled_layers))}")
+
+        # Check the access tiers named per layer and environment, and for the personal schemas: non-existent = error
+        role_accesses = {
+            access for by_environment in privileges.get("layers", {}).values() for access in by_environment.values()
+        }
+        if "access" in role.get("personal", {}):
+            role_accesses.add(role["personal"]["access"])
+        nonexistent_accesses = role_accesses - valid_access_keys
+        if nonexistent_accesses:
+            role_errors.append(f"Non-existent access keys in privileges: {', '.join(sorted(nonexistent_accesses))}")
 
         # Check referenced roles in privileges: non-existent = error, disabled = warning
         role_refs = set(privileges.get("roles", {}).keys())
@@ -526,6 +563,8 @@ def validate_schema(config_dir: Path, validation_dir: Path, specific_file: str |
 
     print("\n Schema Validation:")
 
+    registry = schema_registry(validation_dir / "schemas")
+
     for config_type, schema_file in CONFIG_SCHEMA_MAP.items():
         type_dir = config_dir / config_type
         schema_path = validation_dir / schema_file
@@ -550,7 +589,7 @@ def validate_schema(config_dir: Path, validation_dir: Path, specific_file: str |
             if specific_file and file_name != specific_file:
                 continue
 
-            is_valid, errors = validate_yaml_against_schema(yaml_file, schema_path)
+            is_valid, errors = validate_yaml_against_schema(yaml_file, schema_path, registry)
 
             if is_valid:
                 print(f" ✅ {file_name}: Valid")

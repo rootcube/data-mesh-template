@@ -5,7 +5,7 @@ icon: material/snowflake
 # Snowflake
 
 Snowflake holds the data plane of the platform: one database per Project and Environment,
-one schema per Layer, roles with grants per layer, warehouses per compute profile. Terraform
+one schema per Layer, roles with an access role per layer, warehouses per compute profile. Terraform
 creates all of it from `terraform/config/`. Everything in the repo authenticates with a key pair
 and reads its connection settings from one place. This page describes what exists and how the
 tools reach it. The administrator's steps are on
@@ -20,7 +20,8 @@ For every project in `terraform/config/projects/` and each of its environments:
 |---------|------------------|------------------------|
 | Project × Environment | database `DB_<PROJECT>_<ENV>`, `PUBLIC` schema dropped | `DB_EXAMPLE_DEV` |
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
-| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per layer schema (all and future tables, views, ...), grants per warehouse, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ANL`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
+| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per warehouse, one access role per layer, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ANL`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
+| Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding the tier's privileges on the layer schema (all and future tables, views, ...), four per layer | `AR_EXAMPLE_DEV__SRC__FULL`, `AR_EXAMPLE_PRD__MRT__READ` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` (X-Small, auto-suspend 60 s, created suspended) |
 | dlt load stage | internal stage `ST_DEFAULT` with a directory table in every source-layer schema, shared and personal | `_SRC.ST_DEFAULT`, `DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | `GRANT ROLE ... TO USER`, and the user itself when `create: true` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
@@ -36,10 +37,15 @@ recommends: `SYSADMIN` creates and owns the databases, schemas, stages and wareh
 `SECURITYADMIN` the roles and every grant, `USERADMIN` the users (`terraform/providers.tf`).
 Every project role is granted to `SYSADMIN`, the recommended role hierarchy.
 
-The temporary layer is scratch space for the analyst role in every environment and for the
-engineer role in `acc` and `prd`: `USAGE`, `CREATE TABLE`, `CREATE VIEW` and `SELECT` there. They own what they create, but get no write on the tables of
-other roles, such as dlt's `merge` staging tables and dbt's stored test failures. The transform
-role holds `READ` and `WRITE` on the source-layer stages for dbt's stage refresh. Every grant:
+Privileges on the layer schemas are not granted to the project roles themselves but to access
+roles, one per layer and tier: `read` on `_MRT` is `AR_EXAMPLE_PRD__MRT__READ`, and
+`RL_EXAMPLE_PRD__ENG` and `RL_EXAMPLE_PRD__ANL` both inherit it. The tiers are `view`, `read`,
+`edit` and `full` (`terraform/config/accesses/`); a layer can add to them, which is how the
+source layer carries `READ` and `WRITE` on its stages from `read` up (dbt's stage refresh needs
+`WRITE`) and how the temporary layer is scratch space: `read` there includes `CREATE TABLE` and
+`CREATE VIEW`, so the analyst role everywhere and the engineer role in `acc` and `prd` own what
+they create but get no write on the tables of other roles, such as dlt's `merge` staging tables
+and dbt's stored test failures. Every tier and grant: [Access](../concepts/access.md),
 [Role](../concepts/role.md).
 
 ```mermaid
@@ -50,8 +56,11 @@ flowchart LR
     R -. inherits .-> ANL["RL_EXAMPLE_DEV__ANL"]
     R --> WH["WH_EXAMPLE_DEV"]
     R --> DB["DB_EXAMPLE_DEV"]
-    DB --> LAYERS["_SRC · _REF · _STG · _INT · _MRT · _EXP · _MTD · _TMP"]
-    DB --> MINE["DBT_&lt;NAME&gt;_SRC · DBT_&lt;NAME&gt;_STG · ... (yours, provisioned per user)"]
+    R -. inherits .-> AR["AR_EXAMPLE_DEV__SRC__FULL · AR_EXAMPLE_DEV__STG__FULL · ... (one per layer)"]
+    AR --> LAYERS["_SRC · _REF · _STG · _INT · _MRT · _EXP · _MTD · _TMP"]
+    DB --> LAYERS
+    R --> MINE["DBT_&lt;NAME&gt;_SRC · DBT_&lt;NAME&gt;_STG · ... (yours, provisioned per user, granted directly)"]
+    DB --> MINE
 ```
 
 ## Naming
@@ -62,6 +71,7 @@ flowchart LR
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
 | Personal schema (`dev` only) | `<SNOWFLAKE_SCHEMA>_<LAYER>` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` with `ENG`, `ANL`, `ING`, `TFM` | `RL_EXAMPLE_PRD__TFM` |
+| Access role | `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` with `VIEW`, `READ`, `EDIT`, `FULL` | `AR_EXAMPLE_PRD__MRT__READ` |
 | Warehouse, default compute | `WH_<PROJECT>_<ENV>` | `WH_EXAMPLE_DEV` |
 | Warehouse, other computes | `WH_<PROJECT>_<ENV>__<COMPUTE>_<SIZE>` | `WH_EXAMPLE_PRD__TFM_M` |
 | dlt table | `<source>__<entity>` in the source layer | `_SRC.knmi__climate_hourly` |
@@ -69,9 +79,10 @@ flowchart LR
 | Run metadata | `pre__dbt__<dataset>` in `_MTD` | `_MTD.pre__dbt__model_execution` |
 | Provisioning (bootstrap, `init.sql`) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING`, `RM_PLATFORM_PROVISIONING` | same |
 
-`<PROJECT>`, `<ENV>` and `<PURPOSE>` are the `code` fields of the YAML files, uppercased. The
-double underscore separates the scope (`RL_EXAMPLE_DEV`) from the purpose (`ENG`); a single
-underscore separates the scope's own parts. Snowflake folds unquoted identifiers to uppercase,
+`<PROJECT>`, `<ENV>`, `<PURPOSE>`, `<LAYER>` and `<ACCESS>` are the `code` fields of the YAML
+files, uppercased. The double underscore separates the scope (`RL_EXAMPLE_DEV`) from the purpose
+(`ENG`), and in an access role the layer from the tier (`MRT__READ`); a single underscore
+separates the scope's own parts. Snowflake folds unquoted identifiers to uppercase,
 so `_stg` and `_STG` are the same schema.
 
 ## Personal schemas in development

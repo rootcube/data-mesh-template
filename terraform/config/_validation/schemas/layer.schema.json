@@ -47,6 +47,16 @@
       "type": "boolean",
       "description": "Whether this layer must be created for every project",
       "default": false
+    },
+    "privileges": {
+      "type": "object",
+      "description": "Extra privileges of an access tier on this layer, on top of the tier's own list (config/accesses), keyed by access key",
+      "propertyNames": {
+        "pattern": "^[a-z]+$"
+      },
+      "additionalProperties": {
+        "$ref": "access.schema.json#/$defs/privileges"
+      }
     }
   }
 }

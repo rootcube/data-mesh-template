@@ -9,3 +9,14 @@ type: "operational"
 sort: 910
 disabled: false
 required: false
+
+# Scratch space: `read` and `edit` also allow creating tables and views here. A role owns what
+# it creates, so it needs no grants on the tables of other roles (dlt's merge staging tables,
+# dbt's stored test failures); `full` has those anyway.
+privileges:
+  read:
+    - CREATE TABLE
+    - CREATE VIEW
+  edit:
+    - CREATE TABLE
+    - CREATE VIEW

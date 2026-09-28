@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "access.schema.json",
+  "title": "Access Configuration",
+  "description": "A tier of privileges on a layer schema (view, read, edit, full). Every layer x access tier becomes an access role AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS> in every project database, granted to the project roles that name it.",
+  "type": "object",
+  "required": [
+    "code",
+    "name",
+    "privileges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Short lowercase code for the access tier (4 letters), the last segment of the access role name",
+      "pattern": "^[a-z]{4}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the access tier",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "desc": {
+      "type": "string",
+      "description": "What the tier allows",
+      "maxLength": 500
+    },
+    "sort": {
+      "type": "integer",
+      "description": "Sort order for display purposes, from the narrowest tier up",
+      "minimum": 0
+    },
+    "privileges": {
+      "$ref": "#/$defs/privileges",
+      "description": "Schema and object privileges of the tier on any layer; a layer adds its own under `privileges` in config/layers"
+    }
+  },
+  "$defs": {
+    "privilege": {
+      "type": "string",
+      "description": "A schema privilege (USAGE, CREATE TABLE, ...) or an object privilege on all and future objects of a type (SELECT ON TABLES, ...)",
+      "enum": [
+        "USAGE",
+        "MONITOR",
+        "MODIFY",
+        "CREATE TABLE",
+        "CREATE EXTERNAL TABLE",
+        "CREATE VIEW",
+        "CREATE MATERIALIZED VIEW",
+        "CREATE DYNAMIC TABLE",
+        "CREATE ICEBERG TABLE",
+        "CREATE EVENT TABLE",
+        "CREATE STAGE",
+        "CREATE FILE FORMAT",
+        "CREATE SEQUENCE",
+        "CREATE FUNCTION",
+        "CREATE PROCEDURE",
+        "CREATE STREAM",
+        "CREATE TASK",
+        "CREATE PIPE",
+        "CREATE ALERT",
+        "CREATE SNOWFLAKE.ML.ANOMALY_DETECTION",
+        "CREATE SNOWFLAKE.ML.FORECAST",
+        "CREATE SNOWFLAKE.ML.CLASSIFICATION",
+        "CREATE SECRET",
+        "CREATE NETWORK RULE",
+        "CREATE PACKAGES POLICY",
+        "CREATE PASSWORD POLICY",
+        "CREATE SESSION POLICY",
+        "CREATE MASKING POLICY",
+        "CREATE ROW ACCESS POLICY",
+        "CREATE TAG",
+        "ADD SEARCH OPTIMIZATION",
+        "SELECT ON TABLES",
+        "INSERT ON TABLES",
+        "UPDATE ON TABLES",
+        "DELETE ON TABLES",
+        "TRUNCATE ON TABLES",
+        "REFERENCES ON TABLES",
+        "EVOLVE SCHEMA ON TABLES",
+        "SELECT ON EXTERNAL TABLES",
+        "REFERENCES ON EXTERNAL TABLES",
+        "SELECT ON VIEWS",
+        "REFERENCES ON VIEWS",
+        "SELECT ON MATERIALIZED VIEWS",
+        "REFERENCES ON MATERIALIZED VIEWS",
+        "SELECT ON DYNAMIC TABLES",
+        "MONITOR ON DYNAMIC TABLES",
+        "OPERATE ON DYNAMIC TABLES",
+        "SELECT ON ICEBERG TABLES",
+        "INSERT ON ICEBERG TABLES",
+        "UPDATE ON ICEBERG TABLES",
+        "DELETE ON ICEBERG TABLES",
+        "TRUNCATE ON ICEBERG TABLES",
+        "REFERENCES ON ICEBERG TABLES",
+        "SELECT ON EVENT TABLES",
+        "INSERT ON EVENT TABLES",
+        "USAGE ON FUNCTIONS",
+        "USAGE ON PROCEDURES",
+        "USAGE ON SEQUENCES",
+        "USAGE ON STAGES",
+        "READ ON STAGES",
+        "WRITE ON STAGES",
+        "USAGE ON FILE FORMATS",
+        "USAGE ON SECRETS",
+        "READ ON SECRETS",
+        "MONITOR ON STREAMS",
+        "MONITOR ON TASKS",
+        "OPERATE ON TASKS",
+        "MONITOR ON PIPES",
+        "OPERATE ON PIPES",
+        "MONITOR ON ALERTS",
+        "OPERATE ON ALERTS",
+        "APPLY ON MASKING POLICIES",
+        "APPLY ON ROW ACCESS POLICIES",
+        "APPLY ON PASSWORD POLICIES",
+        "APPLY ON SESSION POLICIES",
+        "APPLY ON TAGS",
+        "READ ON TAGS"
+      ]
+    },
+    "privileges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/privilege"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

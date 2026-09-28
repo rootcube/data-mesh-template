@@ -1,3 +1,14 @@
+variable "prefix" {
+  description = "Name prefix: RL for a project or platform role (the roles users assume), AR for a layer access role (holds the privileges, granted to project roles)"
+  type        = string
+  default     = "RL"
+
+  validation {
+    condition     = contains(["RL", "AR"], var.prefix)
+    error_message = "Prefix must be RL (project or platform role) or AR (access role)."
+  }
+}
+
 variable "project" {
   description = "The project this role belongs to (leave empty for platform-level roles)"
   type        = string
@@ -16,7 +27,7 @@ variable "environment" {
 }
 
 variable "purpose" {
-  description = "The purpose/type of the role (e.g., READER, WRITER, ADMIN, DEVELOPER)"
+  description = "The purpose of the role (e.g., ENG, TFM), or <LAYER>__<ACCESS> for an access role (e.g., STG__READ)"
   type        = string
 
   validation {

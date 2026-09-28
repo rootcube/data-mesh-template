@@ -15,21 +15,5 @@ privileges:
     default:
       all: [USAGE]
   layers:
-    mart:
-      all:
-        - USAGE
-        - SELECT ON TABLES
-        - REFERENCES ON TABLES
-        - SELECT ON VIEWS
-        - REFERENCES ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
-    expose:
-      all:
-        - USAGE
-        - SELECT ON TABLES
-        - REFERENCES ON TABLES
-        - SELECT ON VIEWS
-        - REFERENCES ON VIEWS
-        - USAGE ON FUNCTIONS
-        - USAGE ON PROCEDURES
+    mart: {all: read}
+    expose: {all: read}

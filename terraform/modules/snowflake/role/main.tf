@@ -1,9 +1,10 @@
 # Snowflake Role Module
 #
 # Creates a Snowflake role following the platform naming conventions.
-# Naming Convention:
-#   Project role: ROLE_<PROJECT>_<ENV>__<PURPOSE>
-#   Platform role: ROLE__<PURPOSE>
+# Naming Convention (prefix RL for a project or platform role, AR for a layer access role):
+#   Project role:  RL_<PROJECT>_<ENV>__<PURPOSE>
+#   Access role:   AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>  (purpose = "<LAYER>__<ACCESS>")
+#   Platform role: RL_PLATFORM__<PURPOSE>
 
 terraform {
   required_providers {
@@ -16,7 +17,7 @@ terraform {
 
 locals {
   is_project_role = var.project != "" && var.environment != ""
-  role_name       = upper(local.is_project_role ? "RL_${var.project}_${var.environment}__${var.purpose}" : "RL_PLATFORM__${var.purpose}")
+  role_name       = upper(local.is_project_role ? "${var.prefix}_${var.project}_${var.environment}__${var.purpose}" : "${var.prefix}_PLATFORM__${var.purpose}")
 }
 
 resource "snowflake_account_role" "this" {
