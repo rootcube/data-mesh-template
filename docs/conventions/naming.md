@@ -27,7 +27,7 @@ name is built from the same short codes:
 | Project | lowercase, 2 to 20 characters (`terraform/config/projects/<project>.yaml`, `code`) | `example`, `energy` |
 | Environment | `dev`, `tst`, `acc`, `prd` | `.env` `ENVIRONMENT=dev` |
 | Layer | `src`, `ref`, `stg`, `int`, `mrt`, `exp`, `mtd`, `tmp` | `+schema: stg` |
-| Role purpose | `eng` engineer, `anl` analyst, `ing` ingest, `tfm` transform | `RL_EXAMPLE_DEV__ENG` |
+| Role purpose | `eng` engineer, `anl` analyst, `ing` ingest, `tfm` transform, `rpt` reporting, `opr` operator (ships disabled) | `RL_EXAMPLE_DEV__ENG` |
 | Access tier | `view`, `read`, `edit`, `full` | `AR_EXAMPLE_PRD__MRT__READ` |
 
 Uppercased in Snowflake object names, lowercase everywhere in the repo.
@@ -153,6 +153,7 @@ environment:
 | Layer schema | `_<LAYER>` | `_SRC`, `_STG`, `_MRT` |
 | Personal layer schema (dev only) | `<SNOWFLAKE_SCHEMA>_<LAYER>`, prefix `DBT_<USERNAME>` or the user file's `schema_prefix` | `DBT_USERNAME_STG` |
 | Role | `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
+| Platform role | `RL_PLATFORM__<PURPOSE>`, not tied to a project or environment (`terraform/config/roles/global/`, all disabled in the starter) | `RL_PLATFORM__ADM`, `RL_PLATFORM__MON` |
 | Access role | `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>`, the privileges of one tier on one layer schema, inherited by the roles | `AR_EXAMPLE_PRD__MRT__READ`, `AR_EXAMPLE_DEV__SRC__FULL` |
 | Warehouse | `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` (the `default` compute has no suffix) | `WH_EXAMPLE_DEV` |
 | Source layer stage | `ST_DEFAULT`, the default internal stage of each source-layer schema (`_SRC`, and `<SNOWFLAKE_SCHEMA>_SRC` in dev); dlt loads through it | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |

@@ -1,6 +1,11 @@
 # =============================================================================
 # Privilege Bundles Configuration
 # =============================================================================
+# Reference documentation only. Nothing reads this file: Terraform loads no
+# `privileges` folder (variables.tf), and roles name an access tier per layer
+# (config/accesses) instead of a bundle. It is kept as a Snowflake privilege
+# cheat sheet, and validated against privilege.schema.json so it stays readable.
+#
 # These bundles simplify privilege configuration for roles by grouping
 # related grants into logical units.
 #

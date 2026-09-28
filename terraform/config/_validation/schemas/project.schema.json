@@ -47,7 +47,7 @@
           "description": "Environment keys this project is deployed to (e.g., 'development', 'production')",
           "items": {
             "type": "string",
-            "pattern": "^[a-z]+$"
+            "pattern": "^[a-z][a-z0-9_]*$"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -66,7 +66,7 @@
           "description": "Layer keys for schemas in this project (e.g., 'source', 'staging', 'mart')",
           "items": {
             "type": "string",
-            "pattern": "^[a-z]+$"
+            "pattern": "^[a-z][a-z0-9_]*$"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -85,7 +85,7 @@
           "description": "Compute profile keys assigned to this project (e.g., 'default', 'ingest', 'transform')",
           "items": {
             "type": "string",
-            "pattern": "^[a-z_]+$"
+            "pattern": "^[a-z][a-z0-9_]*$"
           },
           "uniqueItems": true
         }
@@ -103,7 +103,7 @@
           "description": "Role keys assigned to this project (e.g., 'analyst', 'engineer'). This is the authoritative source for role creation - only roles listed here (plus mandatory roles) will be created.",
           "items": {
             "type": "string",
-            "pattern": "^[a-z]+$"
+            "pattern": "^[a-z][a-z0-9_]*$"
           },
           "uniqueItems": true
         }
