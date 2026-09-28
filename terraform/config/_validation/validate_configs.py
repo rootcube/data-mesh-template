@@ -150,7 +150,7 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
     Validate cross-references between configuration files.
 
     Checks:
-    - Projects reference valid environments, layers, computes, and teams
+    - Projects reference valid environments, layers, computes, roles, and teams
     - Roles reference valid computes, layers, and other roles
     - Non-existent references are errors
     - Disabled references are warnings
@@ -182,6 +182,10 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
     # Get ALL role keys and enabled role keys
     all_role_keys = set(configs["roles"].keys())
     enabled_role_keys = {key for key, cfg in configs["roles"].items() if not cfg.get("disabled", False)}
+
+    # The roles a project may list: only the project-level ones, since global roles are not per project
+    all_project_role_keys = {key for key, cfg in configs["roles"].items() if cfg.get("level") == "project"}
+    enabled_project_role_keys = all_project_role_keys & enabled_role_keys
 
     # Get valid organisation keys
     valid_org_keys = set(configs["organisations"].keys())
@@ -243,10 +247,12 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
         raw_layers = project.get("layers", [])
         raw_envs = project.get("environments", [])
         raw_computes = project.get("computes", [])
+        raw_roles = project.get("roles", [])
 
         project_layers = enabled_layer_keys if raw_layers == "*" else set(raw_layers)
         project_envs = enabled_env_keys if raw_envs == "*" else set(raw_envs)
         project_computes = enabled_compute_keys if raw_computes == "*" else set(raw_computes)
+        project_role_keys = enabled_project_role_keys if raw_roles == "*" else set(raw_roles)
         project_team = project.get("team")
 
         project_errors = []
@@ -275,6 +281,14 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
             project_errors.append(f"Non-existent compute keys: {', '.join(sorted(nonexistent_computes))}")
         if disabled_computes:
             project_warnings.append(f"Disabled compute keys: {', '.join(sorted(disabled_computes))}")
+
+        # Check referenced roles: non-existent = error, disabled = warning
+        nonexistent_roles = project_role_keys - all_project_role_keys
+        disabled_roles = (project_role_keys & all_project_role_keys) - enabled_project_role_keys
+        if nonexistent_roles:
+            project_errors.append(f"Non-existent project role keys: {', '.join(sorted(nonexistent_roles))}")
+        if disabled_roles:
+            project_warnings.append(f"Disabled role keys: {', '.join(sorted(disabled_roles))}")
 
         # Check team reference exists
         if project_team and project_team not in valid_team_keys:

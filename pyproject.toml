@@ -70,15 +70,16 @@ defs_module = "orchestrator.defs"
 
 [tool.ruff]
 line-length = 120
-# docs/ holds Markdown with illustrative Python fences; ruff would format those too.
-extend-exclude = ["dbt", "terraform", "site", "docs"]
+# docs/ holds Markdown with illustrative Python fences; ruff would format those too. terraform/ is
+# in: its only Python is the config validator, which is linted like everything else.
+extend-exclude = ["dbt", "site", "docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ty.src]
 # Only code that runs in this project's venv; dbt/ holds Snowpark models for Snowflake's runtime.
-include = ["src", "dlt_pipelines", "scripts", "tests"]
+include = ["src", "dlt_pipelines", "scripts", "tests", "terraform/config/_validation"]
 
 [tool.ty.environment]
 python-version = "3.13"

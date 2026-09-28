@@ -72,7 +72,8 @@ repos:
         name: dagster definitions validate
         entry: just validate
         language: system
-        files: ^(src|dlt_pipelines)/.*\.(py|yaml)$
+        # dbt source YAML too: `just validate` also checks the dlt -> dbt asset key contract.
+        files: ^(src|dlt_pipelines)/.*\.(py|yaml)$|^dbt/[^/]+/sources/.*\.ya?ml$
         pass_filenames: false
 
   # Terraform: formatting and the YAML configuration (only fire on those files).

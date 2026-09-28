@@ -200,15 +200,19 @@ dagster *args:
 # PYTHONWARNINGS adds a filter for that one nag to the global one (the pre-commit hook runs this
 # recipe; ci.yml sets the same filter).
 
-# load every code location exactly like `just start` does, without the UI
+# load every code location exactly like `just start` does, without the UI, then check that the dlt
+# and dbt asset keys still line up (definitions validate loads each location on its own and cannot see that)
 [unix]
 validate:
     PYTHONWARNINGS='{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`' uv run dagster definitions validate -w workspace.yaml
+    uv run python scripts/check_asset_keys.py
 
-# load every code location exactly like `just start` does, without the UI
+# load every code location exactly like `just start` does, without the UI, then check that the dlt
+# and dbt asset keys still line up (definitions validate loads each location on its own and cannot see that)
 [windows]
 validate:
     $env:PYTHONWARNINGS = '{{PYTHONWARNINGS}},ignore:Function `definitions_validate_command`'; uv run dagster definitions validate -w workspace.yaml
+    uv run python scripts/check_asset_keys.py
 
 # --- dlt --------------------------------------------------------------------
 
