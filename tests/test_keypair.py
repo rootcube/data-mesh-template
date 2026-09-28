@@ -209,17 +209,29 @@ def test_write_imports_uses_quoted_identifiers(tmp_path: Path, monkeypatch: pyte
     assert 'id = "\\"DB_EXAMPLE_DEV\\".\\"_SRC\\".\\"ST_DEFAULT\\""' in text
 
 
-def test_drop_objects_goes_innermost_first_and_spares_the_current_user() -> None:
+def test_drop_objects_takes_ownership_goes_outermost_first_and_spares_the_current_user() -> None:
     script = load_script()
     conn = FakeConnection()
-    script.drop_objects(conn, list(reversed(PLANNED)), current_user="admin")
+    script.drop_objects(conn, list(reversed(PLANNED)), current_user="admin", take_ownership=True)
     assert conn.executed == [
-        'DROP STAGE IF EXISTS "DB_EXAMPLE_DEV"."_SRC"."ST_DEFAULT"',
-        'DROP SCHEMA IF EXISTS "DB_EXAMPLE_DEV"."_SRC"',
+        'GRANT OWNERSHIP ON DATABASE "DB_EXAMPLE_PRD" TO ROLE SYSADMIN COPY CURRENT GRANTS',
         'DROP DATABASE IF EXISTS "DB_EXAMPLE_PRD"',
+        'GRANT OWNERSHIP ON DATABASE "DB_EXAMPLE_DEV" TO ROLE SYSADMIN COPY CURRENT GRANTS',
         'DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"',
+        'GRANT OWNERSHIP ON WAREHOUSE "WH_EXAMPLE_DEV" TO ROLE SYSADMIN COPY CURRENT GRANTS',
         'DROP WAREHOUSE IF EXISTS "WH_EXAMPLE_DEV"',
+        'GRANT OWNERSHIP ON ROLE "RL_EXAMPLE_DEV__ENG" TO ROLE SECURITYADMIN COPY CURRENT GRANTS',
         'DROP ROLE IF EXISTS "RL_EXAMPLE_DEV__ENG"',
+    ]
+
+
+def test_drop_objects_drops_a_schema_itself_when_its_database_stays() -> None:
+    script = load_script()
+    conn = FakeConnection()
+    script.drop_objects(conn, [PLANNED[3], PLANNED[2]], current_user="admin", take_ownership=True)
+    assert conn.executed == [
+        'GRANT OWNERSHIP ON SCHEMA "DB_EXAMPLE_DEV"."_SRC" TO ROLE SYSADMIN COPY CURRENT GRANTS',
+        'DROP SCHEMA IF EXISTS "DB_EXAMPLE_DEV"."_SRC"',
     ]
 
 
@@ -244,7 +256,7 @@ def test_reconcile_existing_asks_to_sync_wipe_or_abort(
     assert script.reconcile_existing(conn, {}, "ask", "ADMIN", yes=False) is proceeds
     assert (tmp_path / "adopt_imports.tf").exists() is imports
     assert any(sql.startswith("DROP") for sql in conn.executed) is drops
-    assert any(sql.startswith("GRANT OWNERSHIP") for sql in conn.executed) is imports
+    assert any(sql.startswith("GRANT OWNERSHIP") for sql in conn.executed) is proceeds
 
 
 def test_sync_hands_adopted_objects_to_the_system_role_terraform_uses() -> None:
