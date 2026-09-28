@@ -20,14 +20,14 @@ WITH cte_time_range AS (
 
 , cte_times AS (
   SELECT
-    time                                                     AS time
-  , date_time                                                AS date_time
-  , CAST(REPLACE(CAST(time AS VARCHAR), ':', '') AS INTEGER) AS time_simple
+    time                                            AS time
+  , date_time                                       AS date_time
+  , CAST(TO_CHAR(time, 'HH24MISS') AS INTEGER)      AS time_simple
 
   -- Calendar
-  , CAST(DATE_PART('hour', date_time) AS INTEGER)            AS hour
-  , CAST(DATE_PART('minute', date_time) AS INTEGER)          AS minute
-  , CAST(DATE_PART('second', date_time) AS INTEGER)          AS second
+  , CAST(DATE_PART('hour', date_time) AS INTEGER)   AS hour
+  , CAST(DATE_PART('minute', date_time) AS INTEGER) AS minute
+  , CAST(DATE_PART('second', date_time) AS INTEGER) AS second
   FROM
     cte_time_range
 )
@@ -36,8 +36,8 @@ SELECT
   tim.time                                                                                       AS time
 , tim.time_simple                                                                                AS time_simple
 
-, TO_TIME(LPAD(tim.hour, 2, '0') || ':00:00')                                                    AS time_hour
-, TO_TIME(LPAD(tim.hour, 2, '0') || ':' || LPAD(tim.minute, 2, '0') || ':00')                    AS time_minute
+, TIME_FROM_PARTS(tim.hour, 0, 0)                                                                AS time_hour
+, TIME_FROM_PARTS(tim.hour, tim.minute, 0)                                                       AS time_minute
 , tim.time                                                                                       AS time_second
 
 -- Hour

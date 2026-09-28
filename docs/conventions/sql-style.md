@@ -222,8 +222,8 @@ The full per-layer naming rules live on the [naming page](naming.md).
 === "just"
 
     ```bash
-    just fmt                                      # sqlfluff fix on dbt_example/models (+ ruff)
-    just lint                                     # sqlfluff lint on dbt_example/models (+ ruff), no changes
+    just fmt                                      # sqlfluff fix on every project under dbt/ (+ ruff)
+    just lint                                     # sqlfluff lint on every project under dbt/ (+ ruff), no changes
     just sqlfluff lint models/02_stg              # lint a specific path (runs from dbt/dbt_example)
     just sqlfluff fix models/02_stg               # auto-fix a specific path
     just project=dbt_other sqlfluff lint models   # another project under dbt/
@@ -247,9 +247,10 @@ The full per-layer naming rules live on the [naming page](naming.md).
 
 Enforcement happens twice more after your editor:
 
-1. **Pre-commit** runs `sqlfluff lint models` in `dbt/dbt_example` whenever a model under it
-   changes. It lints, it does not fix, so run `just fmt` first.
-2. **CI** runs the same lint in the `dbt-and-dagster` job on every pull request.
+1. **Pre-commit** runs `sqlfluff lint models` in the project whose models changed, one hook per
+   project (`dbt_example`, `dbt_common`). It lints, it does not fix, so run `just fmt` first.
+2. **CI** runs the same lint in the `dbt-and-dagster` job on every pull request, over every project
+   under `dbt/`.
 
 ## Related pages
 

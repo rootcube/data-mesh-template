@@ -319,17 +319,19 @@ docs cmd="serve" *args:
 
 # --- Quality ----------------------------------------------------------------
 
-# format Python (ruff) and SQL (sqlfluff)
+# format Python (ruff) and SQL (sqlfluff, every project under dbt/)
 fmt:
     uv run ruff check --fix .
     uv run ruff format .
-    cd {{dbt_project}}; uv run sqlfluff fix models --config '{{sqlfluff_config}}'
+    just sqlfluff fix models
+    just project=dbt_common sqlfluff fix models
 
-# lint Python and SQL without changing files
+# lint Python and SQL (every project under dbt/) without changing files
 lint:
     uv run ruff check .
     uv run ruff format --check .
-    cd {{dbt_project}}; uv run sqlfluff lint models --config '{{sqlfluff_config}}'
+    just sqlfluff lint models
+    just project=dbt_common sqlfluff lint models
 
 # type check Python with ty
 typecheck:

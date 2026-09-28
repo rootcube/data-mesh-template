@@ -7,18 +7,27 @@
     )
 }}
 
+{#- The window this model covers: a fixed first year plus a horizon of years past the current one.
+    Both are meta configs of the installing project (dbt_project.yml), the same route as the
+    holiday country. The first year is a literal on purpose: a start that slides with the clock
+    drops its oldest year the first time the model rebuilds in a new year, silently. -#}
+{%- set model_meta = config.get('meta') or {} -%}
+{%- set start_year = model_meta.get('calendar_start_year', 2000) | int -%}
+{%- set horizon_years = model_meta.get('calendar_horizon_years', 10) | int -%}
+{%- set epoch = modules.datetime.date(1900, 1, 1) -%}
+{%- set first_date = modules.datetime.date(start_year, 1, 1) -%}
+{%- set last_date = modules.datetime.date(modules.datetime.date.today().year + horizon_years, 12, 31) -%}
+{%- set first_day = (first_date - epoch).days -%}
+{%- set day_count = (last_date - first_date).days + 1 -%}
+
 SELECT
   day
 , CAST(DATEADD('day', DAY, '1900-01-01') AS DATE)     AS date
 , CAST(DATEADD('day', DAY, '1900-01-01') AS DATETIME) AS date_time
-, {{ dbt_common.utc_today() }}                        AS date_current
-, DATE_TRUNC('YEAR', {{ dbt_common.utc_today() }})    AS date_base
-, DATEADD('YEAR', (-10), date_base)                   AS date_start -- 10 years back
-, DATEADD('YEAR', (10 + 1), date_base) - 1            AS date_end   -- 10 years forward
 
+-- One row per day from {{ first_date }} to {{ last_date }}: the generator is sized to the window,
+-- so nothing needs filtering. ROW_NUMBER over SEQ4 because SEQ4 alone may skip values. `day` is
+-- the offset from 1900-01-01 (uppercase DAY because sqlfluff reads the second DATEADD argument
+-- as a date part).
 FROM
-  (SELECT SEQ4() AS day FROM TABLE(GENERATOR(ROWCOUNT => 2958464))) -- days 1900-01-01..9999-12-31, capped by WHERE below
-
-WHERE 1 = 1
-  AND day <= DATEDIFF('day', '1900-01-01', '9999-12-31') --> prevent non-existing dates
-  AND date BETWEEN date_start AND date_end -- Sliding years
+  (SELECT ROW_NUMBER() OVER (ORDER BY SEQ4()) - 1 + {{ first_day }} AS day FROM TABLE(GENERATOR(ROWCOUNT => {{ day_count }})))
