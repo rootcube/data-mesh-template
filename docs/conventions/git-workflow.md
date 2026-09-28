@@ -110,13 +110,12 @@ gh api -X POST repos/rootcube/data-mesh-template/rulesets --input .github/rulese
 Approvals are set to zero for a single maintainer; raise `required_approving_review_count`
 in the ruleset when there are reviewers.
 
-The required CI checks have one wrinkle: release-please opens its pull request with
-`GITHUB_TOKEN`, and GitHub runs no workflows for events that token causes, so on its own the
-release pull request would never get its checks. `workflow_dispatch` is the exception to that
-rule, so the release workflow's last step runs `gh workflow run ci.yml` on the release branch.
-The check runs attach to the pull request's head commit under the same job names and satisfy
-the ruleset. No personal access token or secret is involved; if a release pull request ever
-shows missing checks, `gh workflow run ci.yml --ref <its branch>` is the manual equivalent.
+`allowed_merge_methods` is `squash` only, so the pull request title is the single commit that
+lands on `main`; a merge commit repeating that title would land in `CHANGELOG.md` twice.
+The release pull request needs nothing special: release-please opens it like any other pull
+request, so GitHub queues the normal `pull_request` CI run, under the same job names the ruleset
+requires. Such a run can park as `action_required` instead of starting; a maintainer then
+approves it from the pull request's **Checks** tab.
 
 ## Code owners
 
