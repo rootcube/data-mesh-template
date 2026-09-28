@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/rootcube/data-mesh-template/compare/v0.1.17...v0.1.18) (2026-09-28)
+
+
+### Bug Fixes
+
+* update SQL files and documentation for local DuckDB target support ([#64](https://github.com/rootcube/data-mesh-template/issues/64)) ([a61cd08](https://github.com/rootcube/data-mesh-template/commit/a61cd0829ec6c1a1150462e435db3aa8921817d6))
+
 ## [0.1.17](https://github.com/rootcube/data-mesh-template/compare/v0.1.16...v0.1.17) (2026-09-28)
 
 
