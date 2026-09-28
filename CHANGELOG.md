@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/rootcube/data-mesh-template/compare/v0.1.9...v0.1.10) (2026-09-28)
+
+
+### Features
+
+* **access:** add access roles / privileges per layer (improve RBAC) ([7b478d0](https://github.com/rootcube/data-mesh-template/commit/7b478d0788417a8db9ddade52a1032964189a9be))
+* **access:** add access roles and privileges per layer for better RBAC management. ([33d49f4](https://github.com/rootcube/data-mesh-template/commit/33d49f4eab4ce560353c5dcd13cbdea0249cf700))
+
 ## [0.1.9](https://github.com/rootcube/data-mesh-template/compare/v0.1.8...v0.1.9) (2026-09-28)
 
 
