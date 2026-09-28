@@ -297,6 +297,10 @@ def test_init_sql_provisions_through_the_system_roles_and_leaves_the_account_alo
     for role in ("SYSADMIN", "SECURITYADMIN", "USERADMIN"):
         assert f"GRANT ROLE {role:<13} TO USER TERRAFORM_USER;" in sql
     assert "DROP ROLE IF EXISTS RL_PLATFORM_PROVISIONING;" in sql
+    assert "DROP DATABASE IF EXISTS DB_PLATFORM_PROVISIONING;" in sql
+    assert "DROP RESOURCE MONITOR IF EXISTS RM_PLATFORM_PROVISIONING;" in sql
+    assert "CREATE DATABASE IF NOT EXISTS" not in sql
+    assert "RESOURCE_MONITOR" not in sql
     assert "ALTER ACCOUNT" not in sql
 
 

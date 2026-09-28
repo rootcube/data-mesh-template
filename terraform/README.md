@@ -78,10 +78,12 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
    block of `TERRAFORM_USER` and paste the public key body, then run the whole script as
    `ACCOUNTADMIN` in Snowsight. It creates `TERRAFORM_USER`
    with the system roles `SYSADMIN` (its default role), `SECURITYADMIN` and `USERADMIN`, the
-   warehouse `WH_PLATFORM_PROVISIONING` and the database `DB_PLATFORM_PROVISIONING` (both owned
-   by `SYSADMIN`, usable by `USERADMIN`) and a resource monitor. It drops
-   `RL_PLATFORM_PROVISIONING`, the custom role earlier versions provisioned with; what that role
-   still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it. It also drops
+   warehouse `WH_PLATFORM_PROVISIONING` (owned by `SYSADMIN`, usable by `USERADMIN`). It drops
+   what earlier versions created: `RL_PLATFORM_PROVISIONING`, the custom role they provisioned
+   with, `DB_PLATFORM_PROVISIONING`, a database for a Terraform state that is in fact a local
+   file, and `RM_PLATFORM_PROVISIONING`, a resource monitor that capped only that warehouse; what
+   the role still owned falls to `ACCOUNTADMIN`, and `just sf bootstrap` syncs or wipes it. It
+   also drops
    what a new account comes with: `COMPUTE_WH`, the `SNOWFLAKE_LEARNING_*` role, warehouse and
    database (after `SYSTEM$DISABLE_SNOWFLAKE_LEARNING_ENVIRONMENT()`, so Snowflake does not
    provision them again) and `SNOWFLAKE_SAMPLE_DATA` (`CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM

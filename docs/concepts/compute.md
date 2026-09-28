@@ -81,9 +81,8 @@ Two details of `terraform/main.tf` are worth knowing before you change a project
 - For a profile with several sizes, the grant goes to the **first listed size** only
   (`sizes[0]`). Put the size you want the role to use first, or grant the others by hand.
 
-The account-level `WH_PLATFORM_PROVISIONING` (X-Small, resource monitor
-`RM_PLATFORM_PROVISIONING`) is the warehouse Terraform itself runs on. It comes from
-`init.sql`, not from a compute profile.
+The account-level `WH_PLATFORM_PROVISIONING` (X-Small) is the warehouse Terraform itself runs
+on. It comes from `init.sql`, not from a compute profile.
 
 ## In the repo
 

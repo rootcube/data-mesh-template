@@ -34,32 +34,13 @@ ALTER USER IF EXISTS TERRAFORM_USER UNSET PASSWORD
 
 
 -- -----------------------------------------------------------------------------
--- 2. Create Resource Monitor
--- -----------------------------------------------------------------------------
-CREATE RESOURCE MONITOR IF NOT EXISTS RM_PLATFORM_PROVISIONING
-  WITH CREDIT_QUOTA = 100
-  FREQUENCY = MONTHLY
-  START_TIMESTAMP = IMMEDIATELY
-  TRIGGERS
-    ON 75 PERCENT DO NOTIFY
-    ON 90 PERCENT DO NOTIFY
-    ON 100 PERCENT DO SUSPEND
-;
-
-ALTER RESOURCE MONITOR IF EXISTS RM_PLATFORM_PROVISIONING SET
-    CREDIT_QUOTA = 100
-;
-
-
--- -----------------------------------------------------------------------------
--- 3. Create Warehouse (owned by SYSADMIN)
+-- 2. Create Warehouse (owned by SYSADMIN)
 -- -----------------------------------------------------------------------------
 CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM_PROVISIONING
   WAREHOUSE_SIZE = 'XSMALL'
   AUTO_SUSPEND = 60
   AUTO_RESUME = True
   INITIALLY_SUSPENDED = True
-  RESOURCE_MONITOR = RM_PLATFORM_PROVISIONING
   COMMENT = 'Warehouse for Terraform platform provisioning'
 ;
 
@@ -67,7 +48,6 @@ ALTER WAREHOUSE IF EXISTS WH_PLATFORM_PROVISIONING SET
   WAREHOUSE_SIZE = 'XSMALL'
   AUTO_SUSPEND = 60
   AUTO_RESUME = True
-  RESOURCE_MONITOR = RM_PLATFORM_PROVISIONING
   COMMENT = 'Warehouse for Terraform platform provisioning'
 ;
 
@@ -75,24 +55,7 @@ GRANT OWNERSHIP ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURR
 
 
 -- -----------------------------------------------------------------------------
--- 4. Create Database for Terraform State/Metadata (owned by SYSADMIN)
--- -----------------------------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS DB_PLATFORM_PROVISIONING
-;
-
-ALTER DATABASE IF EXISTS DB_PLATFORM_PROVISIONING SET
-    COMMENT = 'Database for platform provisioning metadata'
-;
-
--- Cleanup Public Schema
-DROP SCHEMA IF EXISTS DB_PLATFORM_PROVISIONING.PUBLIC
-;
-
-GRANT OWNERSHIP ON DATABASE DB_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURRENT GRANTS;
-
-
--- -----------------------------------------------------------------------------
--- 5. System roles for the Terraform user
+-- 3. System roles for the Terraform user
 -- -----------------------------------------------------------------------------
 -- SECURITYADMIN inherits USERADMIN; granting USERADMIN as well lets the provider
 -- alias for users (terraform/providers.tf) use it as its primary role.
@@ -103,30 +66,33 @@ GRANT ROLE USERADMIN     TO USER TERRAFORM_USER;
 -- Every provider connection sets the warehouse; SYSADMIN owns it, USERADMIN (and
 -- through it SECURITYADMIN) may use it.
 GRANT USAGE, OPERATE ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE USERADMIN;
-GRANT USAGE          ON DATABASE  DB_PLATFORM_PROVISIONING TO ROLE USERADMIN;
 
--- Earlier versions provisioned through a custom role. Dropping it hands whatever it
--- still owned to ACCOUNTADMIN; `just sf bootstrap` then adopts or wipes those objects.
+-- Earlier versions provisioned through a custom role, created a database for
+-- Terraform state that never lived there (the state is a local file) and capped the
+-- warehouse above with a resource monitor of its own. Dropping the role hands
+-- whatever it still owned to ACCOUNTADMIN; `just sf bootstrap` then adopts or wipes
+-- those objects. Dropping the monitor unassigns it from the warehouse.
 DROP ROLE IF EXISTS RL_PLATFORM_PROVISIONING;
+DROP DATABASE IF EXISTS DB_PLATFORM_PROVISIONING;
+DROP RESOURCE MONITOR IF EXISTS RM_PLATFORM_PROVISIONING;
 
 
 -- -----------------------------------------------------------------------------
--- 6. Assign Defaults to User
+-- 4. Assign Defaults to User
 -- -----------------------------------------------------------------------------
 
 ALTER USER IF EXISTS TERRAFORM_USER SET
   DEFAULT_ROLE = SYSADMIN
   DEFAULT_WAREHOUSE = WH_PLATFORM_PROVISIONING
-  DEFAULT_NAMESPACE = DB_PLATFORM_PROVISIONING
 ;
 
 -- -----------------------------------------------------------------------------
--- 7. Drop what a fresh account comes with
+-- 5. Drop what a fresh account comes with
 -- -----------------------------------------------------------------------------
 -- A new account ships the COMPUTE_WH warehouse, the SNOWFLAKE_SAMPLE_DATA share and
 -- the Snowsight Templates learning environment (SNOWFLAKE_LEARNING_ROLE, _WH, _DB,
 -- owned by ACCOUNTADMIN). None of them belongs to the platform, and Terraform has its
--- own warehouse (section 3). A user whose default warehouse was COMPUTE_WH simply
+-- own warehouse (section 2). A user whose default warehouse was COMPUTE_WH simply
 -- picks another one. SNOWFLAKE_SAMPLE_DATA comes back any time with
 -- CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM SHARE SFC_SAMPLES.SAMPLE_DATA.
 -- The learning environment is switched off first, or Snowflake provisions it again

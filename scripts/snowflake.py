@@ -1043,7 +1043,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         exact_user = conn.cursor().execute("SELECT CURRENT_USER()").fetchone()[0]
         ok(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
 
-        step("2/5 Account settings, Terraform service user, warehouse and database, trial defaults dropped (init.sql)")
+        step("2/5 Account settings, Terraform service user and warehouse, trial defaults dropped (init.sql)")
         apply_account_settings(conn, args.account_settings, args.yes)
         tf_private, tf_public = key_paths(TERRAFORM_KEY)
         tf_passphrase = terraform_key_passphrase()

@@ -53,8 +53,8 @@ implementation of this boundary: one account, one Organisation. It is identified
 | Administrators, for the Terraform provider | `TF_VAR_SNOWFLAKE_ORGANIZATION` and `TF_VAR_SNOWFLAKE_ACCOUNT` |
 
 The bootstrap objects that let Terraform manage the account (`TERRAFORM_USER`, which holds the
-system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`,
-`DB_PLATFORM_PROVISIONING`) are created once by `terraform/modules/snowflake/init.sql`, run as
+system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, and `WH_PLATFORM_PROVISIONING`) are
+created once by `terraform/modules/snowflake/init.sql`, run as
 `ACCOUNTADMIN`, which also sets the account-wide parameters (UTC, ISO weeks and formats, security
 and timeout defaults). They belong to the Organisation level, not to any Project. See
 [Snowflake provisioning](../administration/snowflake-provisioning.md).

@@ -13,7 +13,7 @@ never need any of this; they get their access from you and then follow
 
 | Concern | Where it lives | Runbook |
 |---------|----------------|---------|
-| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`; the trial defaults `COMPUTE_WH`, `SNOWFLAKE_LEARNING_*` and `SNOWFLAKE_SAMPLE_DATA` dropped | `terraform/modules/snowflake/account_settings.sql` (the account parameters) and `init.sql` (the rest), run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
+| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`; the trial defaults `COMPUTE_WH`, `SNOWFLAKE_LEARNING_*` and `SNOWFLAKE_SAMPLE_DATA` dropped | `terraform/modules/snowflake/account_settings.sql` (the account parameters) and `init.sql` (the rest), run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
 | The mesh: organisation, teams, projects, environments, layers, roles, computes | one YAML file per object under `terraform/config/` | [Snowflake provisioning](snowflake-provisioning.md), [Concepts](../concepts/index.md) |
 | Who may assume which project role, and the personal schemas that come with the engineer role in development | `terraform/config/users/<name>.yaml` | [Onboarding](onboarding.md) |
 | Key registration for people who cannot set their own key, and for service users | `ALTER USER ... SET RSA_PUBLIC_KEY` | [Onboarding](onboarding.md) |

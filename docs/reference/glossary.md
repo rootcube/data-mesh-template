@@ -217,8 +217,7 @@ Project
 Provisioning objects
 :   What `terraform/modules/snowflake/init.sql` creates once as `ACCOUNTADMIN`: the service
     user `TERRAFORM_USER` (key pair only) with the system roles `SYSADMIN`, `SECURITYADMIN` and
-    `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING`, the database
-    `DB_PLATFORM_PROVISIONING` and the resource monitor `RM_PLATFORM_PROVISIONING`. The account
+    `USERADMIN` and the warehouse `WH_PLATFORM_PROVISIONING`. The account
     parameters live apart, in `account_settings.sql` next to it. Terraform runs as that user
     through those three roles.
 

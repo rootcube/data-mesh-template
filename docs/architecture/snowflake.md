@@ -77,7 +77,7 @@ flowchart LR
 | dlt table | `<source>__<entity>` in the source layer | `_SRC.knmi__climate_hourly` |
 | dbt model | the model name in its layer schema | `_STG.stg__knmi__climate_hourly` |
 | Run metadata | `pre__dbt__<dataset>` in `_MTD` | `_MTD.pre__dbt__model_execution` |
-| Provisioning (bootstrap, `init.sql`) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING`, `DB_PLATFORM_PROVISIONING`, `RM_PLATFORM_PROVISIONING` | same |
+| Provisioning (bootstrap, `init.sql`) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING` | same |
 
 `<PROJECT>`, `<ENV>`, `<PURPOSE>`, `<LAYER>` and `<ACCESS>` are the `code` fields of the YAML
 files, uppercased. The double underscore separates the scope (`RL_EXAMPLE_DEV`) from the purpose
