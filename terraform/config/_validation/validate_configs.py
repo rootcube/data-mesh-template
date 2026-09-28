@@ -12,6 +12,7 @@ Usage:
 
 import io
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -33,6 +34,16 @@ CONFIG_SCHEMA_MAP = {
     "privileges": "schemas/privilege.schema.json",
     "users": "schemas/user.schema.json",
 }
+
+# Stages and file formats are load machinery of the input layers (dlt's ST_DEFAULT in the source layer).
+# A tier applies to every layer, so these privileges may only come from the extras of an `input` layer;
+# anywhere else they would let a stage or file format land in, say, the integration layer.
+STAGE_PRIVILEGE = re.compile(r"\b(STAGES?|FILE FORMATS?)\b")
+
+
+def stage_privileges(privileges: list[str]) -> list[str]:
+    """The stage and file format privileges in a list (CREATE STAGE, READ ON STAGES, USAGE ON FILE FORMATS, ...)."""
+    return sorted({p for p in privileges if STAGE_PRIVILEGE.search(p)})
 
 
 def load_yaml(file_path: Path) -> dict:
@@ -188,14 +199,41 @@ def validate_cross_references(config_dir: Path) -> tuple[bool, list[str], list[s
     print(f" - Valid roles         : {', '.join(sorted(enabled_role_keys)) or '(none)'}")
     print()
 
-    # Validate each layer's access tier extras
-    for layer_key, layer in sorted(configs["layers"].items()):
-        nonexistent_accesses = set(layer.get("privileges", {}).keys()) - valid_access_keys
-        if nonexistent_accesses:
-            error_msg = f"Non-existent access keys in privileges: {', '.join(sorted(nonexistent_accesses))}"
-            errors.append(f"  [layers/{layer_key}]: {error_msg}")
-            print(f" ❌ layers/{layer_key}")
+    # Validate each access tier: no stage or file format privileges (those belong to input layer extras)
+    for access_key, access in sorted(configs["accesses"].items()):
+        misplaced = stage_privileges(access.get("privileges", []))
+        if misplaced:
+            error_msg = (
+                "Stage or file format privileges belong to the extras of an input layer, not to a tier "
+                f"(a tier reaches every layer): {', '.join(misplaced)}"
+            )
+            errors.append(f"  [accesses/{access_key}]: {error_msg}")
+            print(f" ❌ accesses/{access_key}")
             print(f"    ❌ {error_msg}")
+        else:
+            print(f" ✅ accesses/{access_key}")
+
+    # Validate each layer's access tier extras: existing tiers, and stages or file formats on input layers only
+    for layer_key, layer in sorted(configs["layers"].items()):
+        extras = layer.get("privileges", {})
+        layer_errors = []
+
+        nonexistent_accesses = set(extras.keys()) - valid_access_keys
+        if nonexistent_accesses:
+            layer_errors.append(f"Non-existent access keys in privileges: {', '.join(sorted(nonexistent_accesses))}")
+
+        misplaced = stage_privileges([p for privileges in extras.values() for p in privileges])
+        if misplaced and layer.get("type") != "input":
+            layer_errors.append(
+                f"Stage or file format privileges on a {layer.get('type')} layer (input layers only): "
+                f"{', '.join(misplaced)}"
+            )
+
+        if layer_errors:
+            print(f" ❌ layers/{layer_key}")
+            for error in layer_errors:
+                errors.append(f"  [layers/{layer_key}]: {error}")
+                print(f"    ❌ {error}")
         else:
             print(f" ✅ layers/{layer_key}")
 

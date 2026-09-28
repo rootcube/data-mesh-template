@@ -1,0 +1,33 @@
+# CODEOWNERS: who reviews what. GitHub requests these reviewers on every pull request that
+# touches a matching path. Their approval is required only once the `main` ruleset says so
+# (`require_code_owner_review` in .github/rulesets/main.json); see docs/conventions/git-workflow.md.
+# Later rules override earlier ones. Teams are @<org>/<team> and need write access to the
+# repository; a copy of this starter renames them to its own.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: the engineers
+*                                               @rootcube/rootcube-engineers
+
+# Platform administrators: provisioning, users, CI and GitHub configuration, project tooling
+/terraform/                                     @rootcube/rootcube-admins
+/terraform/config/projects/                     @rootcube/rootcube-admins @rootcube/rootcube-engineers
+/.github/                                       @rootcube/rootcube-admins
+/justfile                                       @rootcube/rootcube-admins
+/pyproject.toml                                 @rootcube/rootcube-admins
+/.pre-commit-config.yaml                        @rootcube/rootcube-admins
+
+# Shared code: the dbt_common package, the Dagster package, the dlt package, the docs
+/dbt/dbt_common/                                @rootcube/rootcube-engineers
+/src/orchestrator/                              @rootcube/rootcube-engineers
+/dlt_pipelines/                                 @rootcube/rootcube-engineers
+/docs/                                          @rootcube/rootcube-engineers
+
+# One block per project, owned by its team (`team` in terraform/config/projects/<project>.yaml):
+# its dbt project, its Dagster location, its dlt sources and its project file (the file stays
+# with the administrators too: layers, computes and roles are provisioning).
+
+# Project: example (team: platform)
+/dbt/dbt_example/                               @rootcube/rootcube-engineers
+/src/orchestrator/locations/dbt/dbt_example/    @rootcube/rootcube-engineers
+/dlt_pipelines/pipelines/ingest/knmi/           @rootcube/rootcube-engineers
+/terraform/config/projects/example.yaml         @rootcube/rootcube-admins @rootcube/rootcube-engineers

@@ -271,6 +271,7 @@ The dbt parse hook and CI's parse step already cover every project through `dbt_
 Administrator:
 
 - [ ] `terraform/config/projects/<project>.yaml` with `code: "<project>"`, equal to the file name; `just tf-validate-config` passes
+- [ ] `.github/CODEOWNERS` has a block for the project (its dbt project, Dagster location, dlt sources and project file) owned by its team, see [Code owners](../conventions/git-workflow.md#code-owners)
 - [ ] `just tf apply` created `DB_<PROJECT>_<ENV>`, the layer schemas, the roles and the warehouse
 - [ ] Engineers hold `RL_<PROJECT>_DEV__ENG` through `terraform/config/users/`, applied, so their personal schemas exist in `DB_<PROJECT>_DEV`
 

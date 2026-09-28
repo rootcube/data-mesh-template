@@ -51,7 +51,9 @@ privileges:
 
 Object privileges (`X ON TABLES`) apply to all current *and future* objects of that type in
 the layer schema. None of the tiers includes `CREATE SCHEMA` or `OWNERSHIP`: a role owns what
-it creates, and only Terraform creates schemas.
+it creates, and only Terraform creates schemas. None of them may include a stage or file format
+privilege either: a tier reaches every layer, and `just tf-validate-config` rejects a tier that
+would put a stage in the integration layer.
 
 ## Layer extras
 
@@ -73,6 +75,13 @@ privileges:
     - CREATE TABLE
     - CREATE VIEW
 ```
+
+Stages and file formats are load machinery, so the validator ties them to the layers where data
+enters: `CREATE STAGE`, `CREATE FILE FORMAT` and the `... ON STAGES` and `... ON FILE FORMATS`
+privileges are accepted in the extras of a layer of `type: input` (`source`, `import`,
+`reference`) and rejected on any other layer, and in every tier. That is what keeps a stage out
+of `_INT` before Terraform ever plans it; Snowflake then refuses the `CREATE STAGE` itself,
+since no role holds the privilege there.
 
 ## In a role
 
