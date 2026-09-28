@@ -12,13 +12,13 @@ FROM
 UNION ALL
 
 SELECT
-  CAST(unk.unknown_id AS VARCHAR) AS id_dim__weather__knmi_measurement_type
+  CAST(unk.unknown_id AS VARCHAR(40))    AS id_dim__weather__knmi_measurement_type
 
--- Attributes
-, unk.unknown_code                AS measurement_type_code
-, unk.unknown_name                AS measurement_type_name
-, unk.unknown_desc                AS measurement_type_desc
-, ''                              AS unit
-, -1                              AS measurement_type_sort
+-- Attributes. Cast to the widths the _conf YAML declares: stg__seed__unknown is wider.
+, CAST(unk.unknown_code AS VARCHAR(10))  AS measurement_type_code
+, CAST(unk.unknown_name AS VARCHAR(50))  AS measurement_type_name
+, CAST(unk.unknown_desc AS VARCHAR(200)) AS measurement_type_desc
+, CAST('' AS VARCHAR(10))                AS unit
+, CAST(-1 AS INTEGER)                    AS measurement_type_sort
 FROM
   {{ ref('stg__seed__unknown') }} AS unk

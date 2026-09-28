@@ -1,13 +1,7 @@
-{{
-    config(
-        materialized='table',
-        unique_key=['station_code', 'observed_at', 'measurement_type_code']
-    )
-}}
-
 -- One row per station per hour per measurement type: the wide staging row unpivoted into the
--- long shape the fact uses, keyed by the KNMI variable codes of seed_knmi_measurement_type. An hour
--- without a value for a measurement (the API leaves it empty) gets no row.
+-- long shape the fact uses. The code list comes from seed_knmi_measurement_type through the
+-- intermediate model, so staging is scanned once and a new measurement type is a seed row plus
+-- one CASE branch. An hour without a value for a measurement (the API leaves it empty) gets no row.
 WITH cte_observation AS (
 
   SELECT
@@ -28,50 +22,18 @@ WITH cte_observation AS (
   SELECT
     obs.station_code
   , obs.observed_at
-  , 'T'                     AS measurement_type_code
-  , obs.temperature_celsius AS measurement_value
+  , mst.measurement_type_code
+  , CASE mst.measurement_type_code
+      WHEN 'T' THEN obs.temperature_celsius
+      WHEN 'FH' THEN obs.wind_speed_ms
+      WHEN 'RH' THEN obs.precipitation_mm
+      WHEN 'Q' THEN obs.global_radiation_jcm2
+      WHEN 'U' THEN obs.relative_humidity_pct
+    END AS measurement_value
   FROM
     cte_observation AS obs
 
-  UNION ALL
-
-  SELECT
-    obs.station_code
-  , obs.observed_at
-  , 'FH'              AS measurement_type_code
-  , obs.wind_speed_ms AS measurement_value
-  FROM
-    cte_observation AS obs
-
-  UNION ALL
-
-  SELECT
-    obs.station_code
-  , obs.observed_at
-  , 'RH'                 AS measurement_type_code
-  , obs.precipitation_mm AS measurement_value
-  FROM
-    cte_observation AS obs
-
-  UNION ALL
-
-  SELECT
-    obs.station_code
-  , obs.observed_at
-  , 'Q'                       AS measurement_type_code
-  , obs.global_radiation_jcm2 AS measurement_value
-  FROM
-    cte_observation AS obs
-
-  UNION ALL
-
-  SELECT
-    obs.station_code
-  , obs.observed_at
-  , 'U'                       AS measurement_type_code
-  , obs.relative_humidity_pct AS measurement_value
-  FROM
-    cte_observation AS obs
+    CROSS JOIN {{ ref('int__weather__knmi_measurement_type') }} AS mst
 
 )
 

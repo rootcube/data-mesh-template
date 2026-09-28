@@ -4,21 +4,25 @@
 
     {% if execute %}
 
-        {# LOCAL ADDITION: ensure the target tables exist before inserting into them #}
-        {% do dbt_common.create_metadata_tables_if_not_exist() %}
-
         {# LOCAL ADDITION: freshness runs carry SourceFreshnessResults - upload those
            plus the invocation anchor, NOT the graph datasets (freshness runs hourly+;
            re-uploading node metadata every check would flood the metadata tables) #}
         {% if flags.WHICH == 'freshness' %}
             {% set datasets_to_load = ['source_freshness', 'invocations'] %}
         {% else %}
-            {% set datasets_to_load = ['exposures', 'seeds', 'snapshots', 'invocations', 'sources', 'tests', 'models'] %}
+            {# LOCAL ADDITION: the graph datasets describe the project, not the run, so only a
+               run or a build re-uploads them. A test or seed invocation would write the same
+               node rows again for a project that has not changed. #}
+            {% set graph_datasets = ['exposures', 'seeds', 'snapshots', 'sources', 'tests', 'models'] if flags.WHICH in ['run', 'build'] else [] %}
+            {% set datasets_to_load = ['invocations'] + graph_datasets %}
             {% if results != [] %}
                 {# When executing, and results are available, then upload the results #}
                 {% set datasets_to_load = ['model_executions', 'seed_executions', 'test_executions', 'snapshot_executions'] + datasets_to_load %}
             {% endif %}
         {% endif %}
+
+        {# LOCAL ADDITION: ensure the target tables exist before inserting into them #}
+        {% do dbt_common.create_metadata_tables_if_not_exist(datasets_to_load) %}
 
         {# Upload each data set in turn #}
         {% for dataset in datasets_to_load %}

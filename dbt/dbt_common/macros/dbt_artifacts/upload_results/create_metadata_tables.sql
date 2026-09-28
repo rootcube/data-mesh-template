@@ -23,13 +23,18 @@
     Names and order were cross-checked against `get_column_name_list` in
     `get_column_name_lists.sql` for every dataset; there were no mismatches.
 
+    The caller passes the datasets it is about to write (`upload_results` hands over its
+    `datasets_to_load`), so a freshness or test run only considers the tables it needs; omit
+    the argument to cover all twelve. A single INFORMATION_SCHEMA lookup decides what is
+    missing, so the usual case is one query and no DDL.
+
     Schema evolution is MANUAL: `create table if not exists` never alters an existing
     table. If a future upstream sync changes a dataset's columns, both this file and
     `get_column_name_lists.sql` must be updated, and any already-created tables in every
     environment must be ALTERed by hand to match.
 #}
 
-{% macro create_metadata_tables_if_not_exist() %}
+{% macro create_metadata_tables_if_not_exist(datasets=none) %}
 
     {% if execute %}
 
@@ -225,9 +230,22 @@
             ',
         } %}
 
-        {% for dataset, column_ddl in ddl_by_dataset.items() %}
+        {# One catalog lookup for the whole schema, instead of a `create table if not exists`
+           round trip per dataset. After the first upload every table is there, so the check
+           costs one query and no DDL at all. A schema that does not exist yields no rows. #}
+        {% set metadata_schema = dbt_common.generate_schema_name('mtd', none) | trim | upper %}
+        {% set existing_tables_query %}
+            select table_name
+            from {{ target.database }}.information_schema.tables
+            where table_schema = '{{ metadata_schema }}'
+        {% endset %}
+        {% set existing_tables = run_query(existing_tables_query).columns[0].values() | map('upper') | list %}
+
+        {% for dataset in (datasets if datasets is not none else ddl_by_dataset.keys() | list) %}
             {% set relation = dbt_common.get_relation(dataset) %}
-            {% do run_query('create table if not exists ' ~ relation ~ ' (' ~ column_ddl ~ ')') %}
+            {% if relation.identifier | upper not in existing_tables %}
+                {% do run_query('create table if not exists ' ~ relation ~ ' (' ~ ddl_by_dataset[dataset] ~ ')') %}
+            {% endif %}
         {% endfor %}
 
     {% endif %}

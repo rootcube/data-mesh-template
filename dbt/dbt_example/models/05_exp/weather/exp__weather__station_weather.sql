@@ -1,9 +1,3 @@
-{{
-    config(
-        unique_key=['station_code', 'observed_at', 'measurement_type_code']
-    )
-}}
-
 /*
   Data product: Station weather
   Purpose: hourly KNMI measurements per station for the weather dashboard

@@ -2,7 +2,10 @@ version: 2
 
 models:
   - name: int__weather__knmi_station
-    description: KNMI weather stations, one row per station the pipeline ingests.
+    description: >
+      KNMI weather stations, one row per station the pipeline ingests. A pass-through of the
+      staged seed today: it exists as the interface the dimension reads, so a change in the
+      source lands here instead of in the mart.
 
     data_tests:
       - dbt_common.has_data:
