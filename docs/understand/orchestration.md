@@ -189,7 +189,7 @@ builds the whole downstream once; from then on only what changed. The handoff be
 sensor is that file, which works while both run on one filesystem (`dagster dev`, one
 container); a deployment that runs jobs in their own pods puts shared storage in between.
 
-All of them start **stopped** in `dev` and `dummy` (`SnowflakeSettings.is_personal`), so nothing
+All of them start **stopped** in `dev` and `local` (`SnowflakeSettings.is_personal`), so nothing
 fires by itself on a laptop; switch them on under *Automation* in the UI to try the chain. In
 every other environment they start running, except `schedule__dlt__ingest_all`, which is the
 opt-in and starts stopped everywhere.
@@ -207,8 +207,10 @@ config:
 ```
 
 Runs start immediately in a subprocess with no limit on concurrent runs; a limit needs the
-`QueuedRunCoordinator` and the daemon. Deleting `.dagster/` (keep `dagster.yaml`) resets your
-run history and nothing else.
+`QueuedRunCoordinator` and the daemon. In `local` mode that matters more than it sounds: the
+DuckDB file allows one writer at a time, so two runs that touch it together, or `just check`'s
+sqlfluff lint while a run is active, fail with a lock error. Fine for one engineer working alone.
+Deleting `.dagster/` (keep `dagster.yaml`) resets your run history and nothing else.
 
 `pyproject.toml` also carries a `[tool.dg]` block for Dagster's `dg` CLI. Its `defs_module`
 points at the deliberately empty `orchestrator.defs` package so the component cache has one
@@ -227,7 +229,7 @@ just dagster job list -m orchestrator.locations.dlt.definitions    # the jobs of
 `just validate` is the check to run after touching `src/`, `dlt_pipelines/`, `dbt/` or
 `workspace.yaml`: it loads every location exactly like `just start` does and fails on import
 errors, broken `defs.yaml` files and dbt parse errors. CI runs the same command with
-`DBT_TARGET=dummy`, since it has no `.env`; do the same locally while yours is still empty.
+`DBT_TARGET=local`, since it has no `.env`; do the same locally while yours is still empty.
 
 ## Related pages
 

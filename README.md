@@ -50,6 +50,9 @@ just start       # Dagster UI on http://localhost:3000
 2. **Provisioned**, an administrator ran Terraform and granted you a project role: one interactive
    login, your key pair registered on your user, `.env` filled in. Same as `just sf setup`.
 
+No Snowflake account at all? `just sf local` (`just setup`, option 4) needs none: it writes
+`ENVIRONMENT=local` to `.env` and dlt and dbt run against a DuckDB file in the checkout instead.
+
 `just sf check` proves the key-pair login works; `just sf context` re-points `.env` at another
 project later.
 

@@ -41,7 +41,7 @@ SELECT
   msr.station_code
 , msr.observed_at
 , msr.measurement_type_code
-, CAST(msr.measurement_value AS NUMBER(10, 2)) AS measurement_value
+, CAST(msr.measurement_value AS NUMERIC(10, 2)) AS measurement_value
 FROM
   cte_measurement AS msr
 WHERE

@@ -12,8 +12,8 @@ same `dbt_common`. How the models themselves are written is the
 
 ```
 dbt/
-├── profiles.yml              # profile `default`: targets dev, tst, acc, prd + dummy; DBT_PROFILES_DIR points here
-├── .sqlfluff                 # shared lint config: dbt templater with the dummy target
+├── profiles.yml              # profile `default`: targets local, dev, tst, acc, prd; DBT_PROFILES_DIR points here
+├── .sqlfluff                 # shared lint config: dbt templater with the local target
 ├── dbt_common/               # package: macros, generic tests, seeds, generic models. Not runnable on its own
 │   ├── dbt_project.yml       #   layer config for its own models + the on-run-end hooks
 │   ├── macros/               #   generate_schema_name, set_query_tag, log_run_*, dbt_artifacts/, ...
@@ -38,21 +38,32 @@ overrides it:
 ```yaml title="dbt/profiles.yml (excerpt)"
 default:
   target: "{{ env_var('DBT_TARGET', env_var('ENVIRONMENT', 'dev')) }}"
+
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '.duckdb/data/local.duckdb') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT') }}"
+      threads: 4
 ```
 
 | Target | Connects as | Schemas | Threads | Use |
 |--------|-------------|---------|---------|-----|
-| `dev` | Your user with the key pair from `.env` (`SNOWFLAKE_*` through `env_var()`) | Personal, `<SNOWFLAKE_SCHEMA>_<LAYER>` in `DB_<PROJECT>_DEV` | 8 | Every local run |
+| `local` | A DuckDB file (`dbt-duckdb`) at `DUCKDB_PATH`, never Snowflake | Personal, `<SNOWFLAKE_SCHEMA>_<LAYER>` in the file (`DBT_<LAYER>` when the prefix is blank) | 4 | A checkout with no Snowflake account at all; also what `dbt parse` runs against in CI, pre-commit and sqlfluff's dbt templater |
+| `dev` | Your user with the key pair from `.env` (`SNOWFLAKE_*` through `env_var()`) | Personal, `<SNOWFLAKE_SCHEMA>_<LAYER>` in `DB_<PROJECT>_DEV` | 8 | Every local run against Snowflake |
 | `tst`, `acc`, `prd` | The same variables, filled with the transform system user's key pair and `RL_<PROJECT>_<ENV>__TFM` | The provisioned `_<LAYER>` schemas of `DB_<PROJECT>_<ENV>` | 16 | Deployed runs |
-| `dummy` | An in-memory DuckDB (`dbt-duckdb`), never Snowflake. SQL is rendered, not executed | n/a | 1 | `dbt parse` in CI and pre-commit, sqlfluff's dbt templater |
 
 Every Snowflake target reads exactly the same variable names, so switching environment is a
-different `.env`, not a different profile. The `dummy` target is what lets `just check`, the
-pre-commit hooks and a fresh CI runner parse every project without a Snowflake account. It is
-DuckDB rather than fake Snowflake values because sqlfluff's dbt templater needs a working
-adapter connection to populate dbt's relation cache. The metadata upload checks for it and
-skips itself, and `macros/dbt_artifacts/database_specific_helpers/default_fallbacks.sql`
-provides `default__` variants of the Snowflake-only macros so dispatch still resolves on DuckDB.
+different `.env`, not a different profile. The `local` target is one DuckDB file serving two
+purposes: it is what a checkout runs against with `ENVIRONMENT=local` (no Snowflake account,
+no key pair), and it is what `just check`, the pre-commit hooks and a fresh CI runner parse,
+compile and lint every project against, also without a Snowflake account. It replaced an
+in-memory `dummy` target because dbt's v2 (Fusion) parser rejects the in-memory `:memory:`
+spelling as a rendered value; `DUCKDB_PATH` is set by the justfile, `.envrc`,
+`scripts/dbt_all.py` and CI, so the file always lands at `.duckdb/data/local.duckdb`. The
+metadata upload checks `target.type` and skips itself off Snowflake, and
+`macros/dbt_artifacts/database_specific_helpers/default_fallbacks.sql` provides `default__`
+variants of the Snowflake-only macros so dispatch still resolves on DuckDB.
 
 ## dbt_common: the shared package
 
@@ -73,10 +84,10 @@ It contributes four things: macros, generic tests, seeds and the common models.
 
 | Macro | What it does |
 |-------|--------------|
-| `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` and `dummy`; no `+schema` means `target.schema`. Overrides dbt's default |
+| `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` and `local`; no `+schema` means `target.schema`. Overrides dbt's default |
 | `set_query_tag` | Tags every Snowflake query with `dbt_invocation_id:<id>`, so a run is one filter in the query history |
-| `log_run_info`, `log_run_summary` | The banner at the start of a run (invocation id, target, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history) and the summary at the end (counts by status, failed and warned tests, the five slowest models, total runtime) |
-| `refresh_stages` | `ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
+| `log_run_info`, `log_run_summary` | The banner at the start of a run (invocation id, target, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history), skipped off Snowflake, and the summary at the end (counts by status, failed and warned tests, the five slowest models, total runtime), which runs on every target including `local` |
+| `refresh_stages` | `ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped off Snowflake (`local` has no stages) |
 | `upload_results` and `macros/dbt_artifacts/` | The run-metadata upload into the metadata layer (vendored from `dbt_artifacts` v2.10.0, Snowflake only, self-creating tables) |
 | `utc_now`, `utc_today` | `SYSDATE()`-based timestamps that ignore the session timezone |
 | `search_optimization`, `format_duration`, `terminal_colors` | Helpers: a post-hook that adds search optimization to a table (`EQUALITY(*), SUBSTRING(*)` by default, nothing for views), `HH:MM:SS` formatting, ANSI colours for the run banners (off unless the dbt var `terminal_colors` is `true`) |
@@ -128,7 +139,7 @@ without declaring anything:
 
 ```yaml title="dbt/dbt_common/dbt_project.yml (excerpt)"
 on-run-end:
-  - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed', 'freshness'] and target.name | trim | lower != 'dummy' %}{{ dbt_common.upload_results(results) }}{% endif %}"
+  - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed', 'freshness'] and target.type == 'snowflake' %}{{ dbt_common.upload_results(results) }}{% endif %}"
   - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed'] %}{{ dbt_common.log_run_summary(results) }}{% endif %}"
 ```
 
@@ -158,9 +169,9 @@ Run it from the project folder, which is what `just dbt` does:
 ```bash
 just dbt build                                   # seed, run, test, in dependency order
 just dbt build --select stg__knmi__climate_hourly+
-just dbt parse --target dummy                    # no connection
+just dbt parse --target local                    # DuckDB file, no Snowflake needed
 just project=dbt_other dbt build                 # another project under dbt/
-just dbt-all parse --target dummy                # every project
+just dbt-all parse --target local                # every project
 ```
 
 ## One project per mesh node

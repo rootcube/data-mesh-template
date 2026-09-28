@@ -65,11 +65,16 @@ what a blank prefix does.
 
 ## In the repo
 
-`ENVIRONMENT` in `.env` says which environment a checkout runs as (`dev`, `tst`, `acc` or
-`prd`). It picks the dbt target in `dbt/profiles.yml` unless `DBT_TARGET` overrides it, and it
-sets `is_personal` on `SnowflakeSettings`, which is what switches dlt and Dagster to the
-personal schemas. The rest of the connection has to match: `RL_EXAMPLE_DEV__ENG`,
-`DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV` for `dev`. `just sf setup` writes those for an engineer.
+`ENVIRONMENT` in `.env` says which environment a checkout runs as: `dev`, `tst`, `acc`, `prd`, or
+`local`. It picks the dbt target in `dbt/profiles.yml` unless `DBT_TARGET` overrides it, and it
+sets `is_personal` on `SnowflakeSettings` (`local` counts as personal too, next to `dev`), which
+is what switches dlt and Dagster to the personal schemas. `local` is not one of the environments
+above: it has no Terraform config and no Snowflake connection at all. `is_local` on
+`SnowflakeSettings` is what swaps dlt and dbt onto a DuckDB file instead; see
+[Local only, no Snowflake](../start/installation.md#local-only-no-snowflake). The rest of the
+connection has to match for the Snowflake environments: `RL_EXAMPLE_DEV__ENG`, `DB_EXAMPLE_DEV`
+and `WH_EXAMPLE_DEV` for `dev`. `just sf setup` writes those for an engineer; `just sf local`
+writes `ENVIRONMENT=local` instead.
 
 ## In Snowflake
 

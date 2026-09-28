@@ -25,9 +25,9 @@ It is idempotent, so run it again whenever something looks stale. In order:
 3. Runs `uv sync --all-groups`: creates `.venv/` with Python 3.13 and installs the locked dependencies, the docs tooling included (Dagster, dlt, dbt, the Snowflake connector, ruff, ty, pytest, sqlfluff, and dbt-duckdb for offline dbt parsing and linting).
 4. Reinstalls the git pre-commit hook if you have one, for the same reason. It does not install one; `just pre-commit-install` does that.
 5. Copies `.env.example` to `.env` if you have no `.env` yet.
-6. Creates the local state folders `.dagster/` and `.dlt/data/`.
+6. Creates the local state folders `.dagster/`, `.dlt/data/` and `.duckdb/data/`.
 7. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
-8. Runs `dbt parse --target dummy` in every dbt project, so `just validate` has a manifest to read.
+8. Runs `dbt parse --target local` in every dbt project, so `just validate` has a manifest to read.
 9. Runs `direnv allow` when direnv is installed (macOS and Linux only).
 
 It ends with `Done. Next: just setup`. `just setup` runs `init` itself and then asks one question:
@@ -35,6 +35,7 @@ a fresh account you hold `ACCOUNTADMIN` on gets the full bootstrap and provision
 ([Snowflake trial account](../operate/snowflake-trial-account-setup.md)); a platform an
 administrator provisioned gets the key-pair setup of
 [Snowflake authentication](snowflake-auth.md), which you can also run directly as `just sf setup`.
+No Snowflake account at all? [Local only, no Snowflake](#local-only-no-snowflake) below.
 
 ## Check it worked
 
@@ -47,6 +48,37 @@ state folders. Right after `init`, expect
 `.env present (missing: SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PRIVATE_KEY_PATH)`. Filling
 those in is the next step; the role, warehouse and database of the starter project are already in
 `.env.example`.
+
+## Local only, no Snowflake
+
+No Snowflake account, no key pair, no Terraform. `just sf local` (or `just setup`, option
+`4  Local only`) writes `ENVIRONMENT=local` to `.env` and nothing else.
+
+dlt and dbt then build against a DuckDB file instead of Snowflake, at the path `DUCKDB_PATH`
+points at (`.duckdb/data/local.duckdb`, exported by the justfile and `.envrc`; `just init`
+creates `.duckdb/data`). Everything else works the same:
+
+- `just start`: the Dagster UI, the same two code locations.
+- `just dlt run knmi`, or materializing an asset: loads into the DuckDB file.
+- `just dbt build`: builds and tests the models in the same file.
+- Open the file directly: `duckdb .duckdb/data/local.duckdb` (the `duckdb` CLI), or from Python
+  with `duckdb.connect(".duckdb/data/local.duckdb")`.
+
+`just info` shows a local block instead of the Snowflake context: `ENVIRONMENT=local`, the
+DuckDB file path and whether it exists yet, and what to run next.
+
+What is different in local mode:
+
+- No `_MTD` run metadata: the upload is Snowflake-only, so `dbt_common`'s `on-run-end` hook
+  skips it. `log_run_summary` still prints.
+- No stages or stage refresh: DuckDB has none, so `refresh_stages` skips itself too.
+- Schedules and sensors start stopped, same as `dev`.
+- A DuckDB file has one writer at a time: two runs that touch it together, or `just check`'s
+  sqlfluff lint while a run is active, fail with a lock error. Fine for one engineer working
+  alone; see [Orchestration](../understand/orchestration.md#the-local-instance).
+
+`just reset-local` deletes `.duckdb/` along with the rest of the local state and recreates the
+directory. Next: `just start`, or `just dlt run knmi` and then `just dbt build`.
 
 ## Optional tools
 
@@ -79,4 +111,5 @@ Engineers on a provisioned platform need none of them.
 | `.dagster/`, `.dlt/data/` | Local Dagster and dlt state, git-ignored |
 
 Next: `just setup`, or [Snowflake authentication](snowflake-auth.md) for what its
-provisioned-account path does.
+provisioned-account path does, or [Local only, no Snowflake](#local-only-no-snowflake) above for
+no Snowflake at all.

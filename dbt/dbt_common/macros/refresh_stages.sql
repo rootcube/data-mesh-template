@@ -6,7 +6,7 @@
 
 {% macro refresh_stages() %}
 
-  {% if not execute or flags.WHICH not in ['run', 'build'] or target.name | trim | lower == 'dummy' %}
+  {% if not execute or flags.WHICH not in ['run', 'build'] or target.type != 'snowflake' %}
     {{ return('') }}
   {% endif %}
 

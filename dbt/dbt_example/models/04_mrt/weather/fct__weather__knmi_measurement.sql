@@ -6,7 +6,7 @@ WITH cte_observation AS (
   SELECT
     obs.station_code
   , obs.observed_at
-  , DATEADD('hour', -1, obs.observed_at) AS hour_start_at
+  , obs.observed_at - INTERVAL '1 hour' AS hour_start_at
   , obs.measurement_type_code
   , obs.measurement_value
   FROM
@@ -18,8 +18,8 @@ SELECT
   {{ dbt_utils.generate_surrogate_key(['obs.station_code', 'obs.observed_at', 'obs.measurement_type_code']) }} AS id_fct__weather__knmi_measurement
 , COALESCE(stn.id_dim__weather__knmi_station, '-2')                                                            AS id_dim__weather__knmi_station
 , COALESCE(mst.id_dim__weather__knmi_measurement_type, '-2')                                                   AS id_dim__weather__knmi_measurement_type
-, CAST(TO_CHAR(obs.hour_start_at, 'YYYYMMDD') AS INTEGER)                                                      AS id_dim__common__calendar
-, CAST(TO_CHAR(obs.hour_start_at, 'HH24MISS') AS INTEGER)                                                      AS id_dim__common__time
+, {{ dbt_common.date_simple('obs.hour_start_at') }}                                                            AS id_dim__common__calendar
+, {{ dbt_common.time_simple('obs.hour_start_at') }}                                                            AS id_dim__common__time
 , obs.observed_at
 
 -- Measures

@@ -13,7 +13,7 @@ machine-readable truth; this page explains the rules you will actually bump into
 | Setting | Value |
 |---|---|
 | Dialect | `snowflake` |
-| Templater | `dbt`, rendering through the project with the `dummy` target (an in-memory DuckDB from `dbt/profiles.yml`, so no Snowflake credentials are needed; SQL is rendered, never executed) |
+| Templater | `dbt`, rendering through the project with the `local` target (a DuckDB file from `dbt/profiles.yml`, so no Snowflake credentials are needed) |
 | Line length | `max_line_length = 120`, but rule LT05 is not in the enabled rule list, so long lines are a convention, not a lint failure |
 | Indent | 2 spaces, indented `JOIN`s, `ON` contents not indented further |
 | Commas | Leading, aligned with the following clause (`leading:align-following`) |

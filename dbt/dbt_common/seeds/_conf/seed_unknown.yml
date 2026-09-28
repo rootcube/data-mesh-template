@@ -9,7 +9,7 @@ seeds:
       enabled: true
       column_types:
         unknown_id: varchar
-        unknown_date: timestamp_ntz
+        unknown_date: timestamp
 
     columns:
       - name: unknown_id
@@ -32,7 +32,7 @@ seeds:
         data_type: varchar
 
       - name: unknown_date
-        data_type: timestamp_ntz
+        data_type: timestamp
 
       - name: unknown_sort
         data_type: integer

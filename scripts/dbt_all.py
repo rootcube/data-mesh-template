@@ -22,13 +22,16 @@ def projects() -> list[Path]:
 
 def main(argv: list[str]) -> int:
     if not argv:
-        print("usage: python scripts/dbt_all.py <dbt args>, e.g. deps | parse --target dummy")
+        print("usage: python scripts/dbt_all.py <dbt args>, e.g. deps | parse --target local")
         return 2
     dbt = shutil.which("dbt")
     if not dbt:
         print("dbt not found on PATH; run through `uv run` or `just`.")
         return 1
-    env = {**os.environ, "DBT_PROFILES_DIR": str(DBT_DIR)}
+    # The `local` target's DuckDB file (dbt/profiles.yml), for runs outside `just` and .envrc.
+    duckdb_path = os.environ.get("DUCKDB_PATH") or str(ROOT / ".duckdb" / "data" / "local.duckdb")
+    Path(duckdb_path).parent.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "DBT_PROFILES_DIR": str(DBT_DIR), "DUCKDB_PATH": duckdb_path}
     failed: list[str] = []
     for project in projects():
         print(f"== {project.name}: dbt {' '.join(argv)}")

@@ -10,9 +10,9 @@
 
 WITH cte_time_range AS (
   SELECT
-    CAST(DATEADD('second', SECOND, '1900-01-01') AS TIME)     AS time
-  , CAST(DATEADD('second', SECOND, '1900-01-01') AS DATETIME) AS date_time
-  FROM (SELECT SEQ4() AS second FROM TABLE(GENERATOR(rowcount => 86400)))
+    CAST({{ dbt.dateadd('second', 'second', "CAST('1900-01-01' AS TIMESTAMP)") }} AS TIME)     AS time
+  , CAST({{ dbt.dateadd('second', 'second', "CAST('1900-01-01' AS TIMESTAMP)") }} AS DATETIME) AS date_time
+  FROM (SELECT n AS second FROM {{ dbt_common.integer_series(86400) }})
   WHERE 1 = 1
     AND second >= 0
     AND second <= 86399
@@ -22,7 +22,7 @@ WITH cte_time_range AS (
   SELECT
     time                                            AS time
   , date_time                                       AS date_time
-  , CAST(TO_CHAR(time, 'HH24MISS') AS INTEGER)      AS time_simple
+  , {{ dbt_common.time_simple('date_time') }}       AS time_simple
 
   -- Calendar
   , CAST(DATE_PART('hour', date_time) AS INTEGER)   AS hour
@@ -36,26 +36,26 @@ SELECT
   tim.time                                                                                       AS time
 , tim.time_simple                                                                                AS time_simple
 
-, TIME_FROM_PARTS(tim.hour, 0, 0)                                                                AS time_hour
-, TIME_FROM_PARTS(tim.hour, tim.minute, 0)                                                       AS time_minute
+, {{ dbt_common.time_from_parts('tim.hour', '0', '0') }}                                         AS time_hour
+, {{ dbt_common.time_from_parts('tim.hour', 'tim.minute', '0') }}                                AS time_minute
 , tim.time                                                                                       AS time_second
 
 -- Hour
 , tim.hour                                                                                       AS hour_nr
-, CAST(CONCAT('H', LPAD(tim.hour, 2, '0')) AS CHAR(3))                                           AS hour_code
-, CAST(CONCAT('Hour ', LPAD(tim.hour, 2, '0')) AS CHAR(10))                                      AS hour_name
+, CAST(CONCAT('H', LPAD(CAST(tim.hour AS VARCHAR), 2, '0')) AS CHAR(3))                          AS hour_code
+, CAST(CONCAT('Hour ', LPAD(CAST(tim.hour AS VARCHAR), 2, '0')) AS CHAR(10))                     AS hour_name
 , CAST(DENSE_RANK() OVER (PARTITION BY NULL ORDER BY tim.hour ASC) AS INTEGER)                   AS hour_sort
 
 -- Minute
 , tim.minute                                                                                     AS minute_nr
-, CAST(CONCAT('M', LPAD(tim.minute, 2, '0')) AS CHAR(3))                                         AS minute_code
-, CAST(CONCAT('Minute ', LPAD(tim.minute, 2, '0')) AS CHAR(10))                                  AS minute_name
+, CAST(CONCAT('M', LPAD(CAST(tim.minute AS VARCHAR), 2, '0')) AS CHAR(3))                        AS minute_code
+, CAST(CONCAT('Minute ', LPAD(CAST(tim.minute AS VARCHAR), 2, '0')) AS CHAR(10))                 AS minute_name
 , CAST(DENSE_RANK() OVER (PARTITION BY tim.hour ORDER BY tim.minute ASC) AS INTEGER)             AS minute_sort
 
 -- Second
 , tim.second                                                                                     AS second_nr
-, CAST(CONCAT('S', LPAD(tim.second, 2, '0')) AS CHAR(3))                                         AS second_code
-, CAST(CONCAT('Second ', LPAD(tim.second, 2, '0')) AS CHAR(10))                                  AS second_name
+, CAST(CONCAT('S', LPAD(CAST(tim.second AS VARCHAR), 2, '0')) AS CHAR(3))                        AS second_code
+, CAST(CONCAT('Second ', LPAD(CAST(tim.second AS VARCHAR), 2, '0')) AS CHAR(10))                 AS second_name
 , CAST(ROW_NUMBER() OVER (PARTITION BY tim.hour, tim.minute ORDER BY tim.second ASC) AS INTEGER) AS second_sort
 
 -- Other

@@ -16,8 +16,9 @@ rules = AL01, AL02, AL03, AL04, AL08, AM01, AM02, AM03, AM04, AM05, AM06, AM07, 
 ; above the working directory by walking from there to your home directory, so a checkout on a
 ; different drive than your profile never finds it and every run fails on the missing dialect.
 [sqlfluff:templater:dbt]
-; Lint without Snowflake credentials: the dummy target is an in-memory DuckDB (profiles.yml).
-target = dummy
+; Lint without Snowflake credentials: the local target is DuckDB (profiles.yml), the file
+; DUCKDB_PATH points at (the justfile and .envrc set it).
+target = local
 
 [sqlfluff:indentation]
 indent_unit = space

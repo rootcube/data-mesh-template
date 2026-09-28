@@ -246,10 +246,10 @@ sources:
       Hourly air-quality measurements, loaded into the source layer by the dlt pipeline
       `ingest_airquality` (dlt_pipelines/pipelines/ingest/airquality). Field names as the API
       returns them, lowercased by dlt.
-    # The source layer: _SRC, or <target.schema>_SRC in dev and dummy (DBT_SRC when it is blank).
+    # The source layer: _SRC, or <target.schema>_SRC in dev and local (DBT_SRC when it is blank).
     # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
     # source YAML cannot call macros.
-    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
+    schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'local'] else '_SRC' }}"
     config:
       # `dbt source freshness` compares the age of MAX(loaded_at_field) with these.
       freshness:

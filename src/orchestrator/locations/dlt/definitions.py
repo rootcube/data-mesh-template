@@ -29,7 +29,7 @@ INGEST_CRON = "0 6 * * *"
 
 def _build_defs() -> Definitions:
     loaded = ComponentTree.from_module(defs_module=_dlt_pipelines, project_root=PROJECT_ROOT).build_defs()
-    # Stopped in dev and dummy, so nothing loads by itself on a laptop; running everywhere else.
+    # Stopped in dev and local, so nothing loads by itself on a laptop; running everywhere else.
     per_source_status = (
         DefaultScheduleStatus.STOPPED if SnowflakeSettings.from_env().is_personal else DefaultScheduleStatus.RUNNING
     )

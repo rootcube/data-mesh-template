@@ -17,8 +17,8 @@ SELECT
 -- Attributes. Cast to the widths the _conf YAML declares: stg__seed__unknown is wider.
 , CAST(unk.unknown_id AS INTEGER)       AS station_code
 , CAST(unk.unknown_name AS VARCHAR(50)) AS station_name
-, CAST(NULL AS NUMBER(6, 3))            AS longitude
-, CAST(NULL AS NUMBER(6, 3))            AS latitude
-, CAST(NULL AS NUMBER(6, 2))            AS elevation_m
+, CAST(NULL AS NUMERIC(6, 3))           AS longitude
+, CAST(NULL AS NUMERIC(6, 3))           AS latitude
+, CAST(NULL AS NUMERIC(6, 2))           AS elevation_m
 FROM
   {{ ref('stg__seed__unknown') }} AS unk

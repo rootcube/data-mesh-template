@@ -894,7 +894,7 @@ def test_keygen_keeps_the_pair_force_replaces(
     assert "Snowflake still holds its public key" in capsys.readouterr().out
 
 
-def test_wizard_asks_again_until_the_answer_is_one_two_or_three(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wizard_asks_again_until_the_answer_is_one_to_four(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
     calls: list[list[str]] = []
 
@@ -903,10 +903,28 @@ def test_wizard_asks_again_until_the_answer_is_one_two_or_three(monkeypatch: pyt
         return 0
 
     monkeypatch.setattr(script, "main", fake_main)
-    replies = iter(["fresh", "4", "", "2"])  # the empty answer takes the default, 1
+    replies = iter(["fresh", "5", "", "2"])  # the empty answer takes the default, 1
     monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
     assert script.cmd_wizard(None) == 0
     assert calls == [["bootstrap"]]
     replies = iter(["2"])
     assert script.cmd_wizard(None) == 0
     assert calls[-1] == ["setup"]
+    replies = iter(["4"])
+    assert script.cmd_wizard(None) == 0
+    assert calls[-1] == ["local"]
+
+
+def test_local_writes_only_the_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`just setup` option 4: ENVIRONMENT=local, the Snowflake block untouched, no key pair."""
+    script = load_script()
+    env_file = tmp_path / ".env"
+    env_file.write_text(script.ENV_EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(script, "ENV_FILE", env_file)
+    before = dotenv_values(env_file)
+    assert script.cmd_local(None) == 0
+    after = dotenv_values(env_file)
+    assert after["ENVIRONMENT"] == "local"
+    assert {k: v for k, v in after.items() if k != "ENVIRONMENT"} == {
+        k: v for k, v in before.items() if k != "ENVIRONMENT"
+    }

@@ -11,6 +11,10 @@ Python object reads the connection settings. This page is what exists and how th
 it; the administrator's steps are on
 [Snowflake provisioning](../operate/snowflake-provisioning.md).
 
+None of this exists with `ENVIRONMENT=local`: no account, no key pair, no Terraform. dlt and dbt
+build against a DuckDB file instead, see
+[Local only, no Snowflake](../start/installation.md#local-only-no-snowflake).
+
 ## What Terraform creates
 
 For every project in `terraform/config/projects/` and each of its environments:

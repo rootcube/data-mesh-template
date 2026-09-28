@@ -9,7 +9,9 @@ environment except `dev`, where each developer works in personal schemas prefixe
 SNOWFLAKE_SCHEMA (`<PREFIX>_<LAYER>`), so several people share one development database. A blank
 SNOWFLAKE_SCHEMA in dev falls back to the prefix `DBT`, as dbt does (dbt/profiles.yml,
 dbt_common.generate_schema_name): nobody provisions `DBT_<LAYER>`, so a missing prefix fails loudly
-instead of writing into the shared `_<LAYER>` schemas of the development database.
+instead of writing into the shared `_<LAYER>` schemas of the development database. The `local`
+environment (a DuckDB file at DUCKDB_PATH, no Snowflake) follows the dev rule; there `DBT_<LAYER>`
+simply gets created.
 """
 
 from __future__ import annotations
@@ -24,7 +26,8 @@ from cryptography.hazmat.primitives import serialization
 
 ENV_PREFIX = "SNOWFLAKE_"
 APPLICATION = "DATA_MESH_STARTER"
-PERSONAL_ENVIRONMENTS = ("dev", "dummy")
+PERSONAL_ENVIRONMENTS = ("dev", "local")
+LOCAL_ENVIRONMENT = "local"  # a DuckDB file (DUCKDB_PATH) instead of Snowflake; no SNOWFLAKE_* needed
 PLACEHOLDER_PREFIX = "DBT"  # the dev prefix when SNOWFLAKE_SCHEMA is blank; dbt/profiles.yml defaults to the same
 
 
@@ -41,6 +44,7 @@ class SnowflakeSettings:
     database: str = ""
     schema: str = ""
     environment: str = "dev"
+    duckdb_path: str = ""  # DUCKDB_PATH: the file of the `local` environment, set by the justfile and .envrc
 
     REQUIRED: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path", "role", "warehouse", "database")
     CREDENTIALS: ClassVar[tuple[str, ...]] = ("account", "user", "private_key_path")
@@ -51,7 +55,7 @@ class SnowflakeSettings:
         source = os.environ if env is None else env
         values: dict[str, str] = {}
         for field in fields(cls):
-            if field.name == "environment":
+            if field.name in ("environment", "duckdb_path"):
                 continue
             raw = source.get(f"{ENV_PREFIX}{field.name.upper()}", "")
             if raw and raw.strip():
@@ -59,12 +63,20 @@ class SnowflakeSettings:
         environment = source.get("ENVIRONMENT", "").strip().lower()
         if environment:
             values["environment"] = environment
+        duckdb_path = source.get("DUCKDB_PATH", "").strip()
+        if duckdb_path:
+            values["duckdb_path"] = duckdb_path
         return cls(**values)
 
     @property
     def is_personal(self) -> bool:
-        """Development runs in personal schemas; every other environment shares the layer schemas."""
+        """Development and local runs use personal schemas; every other environment shares the layer schemas."""
         return self.environment in PERSONAL_ENVIRONMENTS
+
+    @property
+    def is_local(self) -> bool:
+        """The local environment: the DuckDB file at `duckdb_path` stands in for the project database."""
+        return self.environment == LOCAL_ENVIRONMENT
 
     def schema_for_layer(self, layer_code: str) -> str:
         """The schema a layer lives in: `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` in dev.

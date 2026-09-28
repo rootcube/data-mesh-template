@@ -26,7 +26,7 @@ models:
 
       - name: observed_at
         description: End of the observation hour (timestamp, no timezone).
-        data_type: timestamp_ntz
+        data_type: timestamp
         data_tests:
           - not_null:
               name: int__weather__knmi_measurement__observed_at__not_null
@@ -43,7 +43,7 @@ models:
 
       - name: measurement_value
         description: The measured value, in the unit of its measurement type.
-        data_type: number(10,2)
+        data_type: numeric(10,2)
         data_tests:
           - not_null:
               name: int__weather__knmi_measurement__measurement_value__not_null

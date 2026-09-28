@@ -57,7 +57,7 @@ Each rule has one config file that decides it and at least one check that enforc
 | Python types | `pyproject.toml`, `[tool.ty]` | pre-commit (`ty check`), CI `python` job |
 | Python tests | `pyproject.toml`, `[tool.pytest.ini_options]` | CI `python` job (not a pre-commit hook: run `just test` yourself) |
 | SQL lint | `dbt/.sqlfluff` (shared by every project) | pre-commit (`sqlfluff lint models`, one hook per project), CI `dbt-and-dagster` job |
-| dbt validity | `dbt/*/dbt_project.yml`, `dbt/profiles.yml` | pre-commit (`dbt parse` with the `dummy` target, on both parsers), CI `dbt-and-dagster` job |
+| dbt validity | `dbt/*/dbt_project.yml`, `dbt/profiles.yml` | pre-commit (`dbt parse` with the `local` target, on both parsers), CI `dbt-and-dagster` job |
 | Dagster definitions | `workspace.yaml` | pre-commit (`dagster definitions validate` plus the asset-key check), CI `dbt-and-dagster` job |
 | Terraform formatting | `terraform/` | pre-commit (`terraform fmt`), CI `terraform` job |
 | Terraform YAML | `terraform/config/_validation/schemas/*.json` | pre-commit (`validate-configs`), CI `terraform` job, `just tf-validate-config` |

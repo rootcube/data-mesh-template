@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import os
 import re
 import shutil
 import subprocess
@@ -58,18 +59,39 @@ def main() -> int:
     print(f"  direnv      {tool('direnv', '--version')}  (optional)")
     print()
     print("Python packages (.venv):")
-    for name in ("dagster", "dagster-dbt", "dagster-dlt", "dlt", "dbt-core", "dbt-snowflake", "ruff", "ty", "sqlfluff"):
+    for name in (
+        "dagster",
+        "dagster-dbt",
+        "dagster-dlt",
+        "dlt",
+        "dbt-core",
+        "dbt-snowflake",
+        "dbt-duckdb",
+        "ruff",
+        "ty",
+        "sqlfluff",
+    ):
         print(f"  {name:<14} {package(name)}")
     print()
     print("Local setup:")
     # One line per dbt project `just dbt-all deps` installs into, so a rename or a second project shows up here.
-    checks = [(".dagster", ROOT / ".dagster"), (".dlt/data", ROOT / ".dlt" / "data")]
+    checks = [
+        (".dagster", ROOT / ".dagster"),
+        (".dlt/data", ROOT / ".dlt" / "data"),
+        (".duckdb/data", ROOT / ".duckdb" / "data"),
+    ]
     checks += [(f"{project.name} packages", project / "packages") for project in dbt_projects()]
-    labels = [".env", ".env drift", "private key", "context", "next", *(label for label, _ in checks)]
+    labels = [".env", ".env drift", "private key", "context", "duckdb", "next", *(label for label, _ in checks)]
     width = max(len(label) for label in labels)
     env_file = ROOT / ".env"
     if env_file.exists():
-        settings = SnowflakeSettings.from_env({k: (v or "") for k, v in dotenv_values(env_file).items()})
+        # DUCKDB_PATH is not in .env: the justfile and .envrc set it, so read it from the process.
+        values = {k: (v or "") for k, v in dotenv_values(env_file).items()}
+        settings = SnowflakeSettings.from_env({**values, "DUCKDB_PATH": os.environ.get("DUCKDB_PATH", "")})
+        if settings.is_local:
+            print_local_setup(settings, width)
+            print_env_drift(env_file, ROOT / ".env.example", width)
+            return print_checks(checks, width)
         missing = settings.missing()
         print(f"  {'.env':<{width}} present{' (missing: ' + ', '.join(missing) + ')' if missing else ''}")
         if settings.private_key_path:
@@ -90,7 +112,22 @@ def main() -> int:
         print(f"  {'next':<{width}} {hint}")
         print_env_drift(env_file, ROOT / ".env.example", width)
     else:
-        print(f"  {'.env':<{width}} missing (run `just init`, then `just sf setup`)")
+        print(f"  {'.env':<{width}} missing (run `just init`, then `just setup`)")
+    return print_checks(checks, width)
+
+
+def print_local_setup(settings: SnowflakeSettings, width: int) -> None:
+    """The local environment: the DuckDB file takes the place of the Snowflake context."""
+    print(f"  {'.env':<{width}} present (ENVIRONMENT=local: no Snowflake, dlt and dbt use the DuckDB file)")
+    if settings.duckdb_path:
+        path = Path(settings.duckdb_path)
+        print(f"  {'duckdb':<{width}} {path} ({'present' if path.exists() else 'not created yet'})")
+    else:
+        print(f"  {'duckdb':<{width}} DUCKDB_PATH not set (run through `just` or direnv)")
+    print(f"  {'next':<{width}} just start, or just dlt run knmi and then just dbt build")
+
+
+def print_checks(checks: list[tuple[str, Path]], width: int) -> int:
     for label, path in checks:
         print(f"  {label:<{width}} {'present' if path.exists() else 'missing'}")
     return 0

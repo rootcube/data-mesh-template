@@ -6,7 +6,8 @@
     every engineer works in personal schemas: `<target.schema>_<LAYER>`, created on demand,
     so several people share one development database without stepping on each other. A blank
     target.schema (SNOWFLAKE_SCHEMA set but empty) falls back to DBT in development and to _TMP
-    elsewhere, so it never lands in the shared `_<LAYER>` schemas by accident.
+    elsewhere, so it never lands in the shared `_<LAYER>` schemas by accident. The local target
+    (DuckDB) follows the development rule.
 
     | target  | target.schema | +schema | Result           |
     |---------|---------------|---------|------------------|
@@ -27,7 +28,7 @@
 
 {% macro generate_schema_name(custom_schema_name, node) -%}
 
-    {%- set personal = target.name | trim | lower in ['dev', 'dummy'] -%}
+    {%- set personal = target.name | trim | lower in ['dev', 'local'] -%}
     {%- set base_schema = (target.schema | trim | upper) or ('DBT' if personal else '_TMP') -%}
 
     {%- if custom_schema_name is none -%}

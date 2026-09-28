@@ -57,6 +57,15 @@ def test_layer_schemas_are_personal_in_dev_and_shared_elsewhere() -> None:
     assert SnowflakeSettings.from_env({"ENVIRONMENT": "prd"}).schema_for_layer("src") == "_SRC"
 
 
+def test_local_is_personal_and_carries_the_duckdb_file() -> None:
+    local = SnowflakeSettings.from_env({"ENVIRONMENT": "local", "DUCKDB_PATH": " /repo/.duckdb/data/local.duckdb "})
+    assert local.is_local and local.is_personal
+    assert local.duckdb_path == "/repo/.duckdb/data/local.duckdb"
+    assert local.schema_for_layer("src") == "DBT_SRC"
+    dev = SnowflakeSettings.from_env({"ENVIRONMENT": "dev"})
+    assert not dev.is_local and dev.duckdb_path == ""
+
+
 def test_dev_without_a_prefix_never_resolves_to_the_shared_layer_schemas() -> None:
     dev = SnowflakeSettings.from_env({"SNOWFLAKE_SCHEMA": "  ", "ENVIRONMENT": "dev"})
     assert dev.schema_for_layer("src") == "DBT_SRC"

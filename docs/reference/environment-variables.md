@@ -20,7 +20,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 
 | Variable | Example | Meaning |
 |----------|---------|---------|
-| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `tst`, `acc` or `prd` (the shared `_<LAYER>` schemas, for deployed service users). Also decides whether Dagster's schedules and sensors start running: stopped in `dev`, running elsewhere |
+| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), `local` (no Snowflake account at all: dlt and dbt build against the `local` DuckDB file instead), or `tst`, `acc` or `prd` (the shared `_<LAYER>` schemas, for deployed service users). Also decides whether Dagster's schedules and sensors start running: stopped in `dev` and `local`, running elsewhere |
 | `SNOWFLAKE_ACCOUNT` | `MYORG-MYACCOUNT` | Account identifier as `<organization>-<account>` |
 | `SNOWFLAKE_USER` | `USERNAME@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
 | `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/username/.snowflake/keys/....p8` | Absolute path of the private key `just sf setup` wrote |
@@ -58,7 +58,7 @@ for dbt, and the `schema` expression in every `sources/src_<source>.yml` for dbt
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DBT_TARGET` | unset, so the target follows `ENVIRONMENT` | Target in `dbt/profiles.yml`: `dev`, `tst`, `acc`, `prd` (Snowflake, key pair) or `dummy` (an in-memory DuckDB that parses, compiles and lints without Snowflake; never connects) |
+| `DBT_TARGET` | unset, so the target follows `ENVIRONMENT` | Target in `dbt/profiles.yml`: `dev`, `tst`, `acc`, `prd` (Snowflake, key pair) or `local` (the DuckDB file at `DUCKDB_PATH`: what `ENVIRONMENT=local` builds against, and what CI, pre-commit and sqlfluff parse, compile and lint with, no Snowflake credentials needed) |
 | `RUNTIME__LOG_LEVEL` | `INFO` in `.env.example`; `WARNING` from `.dlt/config.toml` when unset | dlt log level for local runs; `DEBUG` shows everything |
 
 ## Set by the justfile and .envrc
@@ -71,9 +71,10 @@ You never set these; both the `justfile` and `.envrc` export them with the same 
 | `DLT_PROJECT_DIR` | `<repo>` | Where dlt finds `.dlt/config.toml` |
 | `DLT_DATA_DIR` | `<repo>/.dlt/data` | dlt working directory |
 | `DBT_PROFILES_DIR` | `<repo>/dbt` | The shared `profiles.yml` |
+| `DUCKDB_PATH` | `<repo>/.duckdb/data/local.duckdb` | The file behind the `local` dbt target and the local dlt destination; not in `.env`. `scripts/dbt_all.py` sets it too when unset |
 | `PYTHONWARNINGS` | `ignore:::snowflake.connector.vendored.requests` | Silences a urllib3 warning from the Snowflake connector |
 
-CI sets `DBT_TARGET=dummy`, `DBT_PROFILES_DIR` and `DAGSTER_HOME` itself
+CI sets `DBT_TARGET=local`, `DUCKDB_PATH`, `DBT_PROFILES_DIR` and `DAGSTER_HOME` itself
 (`.github/workflows/ci.yml`); no Snowflake credentials exist there.
 
 ## Platform administrators (Terraform)

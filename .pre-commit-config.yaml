@@ -33,20 +33,20 @@ repos:
         types: [python]
         pass_filenames: false
 
-  # dbt: every project must parse without credentials (dummy target); SQL follows the sqlfluff rules.
+  # dbt: every project must parse without credentials (local target); SQL follows the sqlfluff rules.
   # sqlfluff runs through its just recipe, which sets the working directory and DBT_PROFILES_DIR
   # on every OS (a Windows PATH has no bash or env).
   - repo: local
     hooks:
       - id: dbt-parse
-        name: dbt parse (all projects, dummy target)
-        entry: uv run python scripts/dbt_all.py parse --target dummy --quiet
+        name: dbt parse (all projects, local target)
+        entry: uv run python scripts/dbt_all.py parse --target local --quiet
         language: system
         files: ^dbt/.*\.(sql|yml|yaml|csv|py)$
         pass_filenames: false
       - id: dbt-parse-v2
-        name: dbt parse with the v2 parser (all projects, dummy target)
-        entry: uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
+        name: dbt parse with the v2 parser (all projects, local target)
+        entry: uv run python scripts/dbt_all.py parse --target local --quiet --use-v2-parser
         language: system
         files: ^dbt/.*\.(sql|yml|yaml|csv|py)$
         pass_filenames: false

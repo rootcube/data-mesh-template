@@ -20,3 +20,8 @@ platform, example and all: [Making it yours](adopting.md).
     account and onboarding people is [Operate](../operate/index.md). On a fresh account where you
     hold `ACCOUNTADMIN`, `just setup` replaces steps 2 and 3 and provisions the project as well:
     [Snowflake trial account](../operate/snowflake-trial-account-setup.md).
+
+!!! tip "No Snowflake at all"
+    `just sf local` skips step 3 entirely: no account, no key pair, just `ENVIRONMENT=local` in
+    `.env`. dlt and dbt then build against a DuckDB file in the checkout. See
+    [Local only, no Snowflake](installation.md#local-only-no-snowflake).

@@ -16,6 +16,9 @@ Trying it costs a free [Snowflake trial](https://signup.snowflake.com/) (30 days
 afternoon. Everything else runs on your laptop. The example loads Dutch weather observations,
 which have the twin virtues of being free and never quite the same twice.
 
+No Snowflake account at all? `just sf local` runs the whole stack against a DuckDB file instead:
+[Local only, no Snowflake](start/installation.md#local-only-no-snowflake).
+
 ## From clone to a running UI
 
 ```bash
