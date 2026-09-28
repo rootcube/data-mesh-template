@@ -37,17 +37,30 @@ def env_value(key: str, value: str) -> str:
 def update_env_file(path: Path, updates: Mapping[str, str]) -> Path:
     """Set `KEY=value` lines in a dotenv file: replace every line of a key in place, append new keys.
 
-    Existing comments and unrelated lines are left untouched.
+    A key the file only carries commented out (`# KEY=placeholder`, as .env.example ships the TF_VAR
+    block) is uncommented in its place instead of appended, so it is not there twice. Other comments
+    and unrelated lines are left untouched.
     """
     lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
     rendered = {key: f"{key}={env_value(key, value)}" for key, value in updates.items()}
     replaced: set[str] = set()
+    commented: dict[str, int] = {}
     for index, line in enumerate(lines):
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
+        comment = stripped.startswith("#")
+        stripped = stripped.lstrip("#").strip() if comment else stripped
+        if not stripped or "=" not in stripped:
             continue
         key = stripped.split("=", 1)[0].strip()
-        if key in rendered:
+        if key not in rendered:
+            continue
+        if comment:
+            commented.setdefault(key, index)
+        else:
+            lines[index] = rendered[key]
+            replaced.add(key)
+    for key, index in commented.items():
+        if key not in replaced:
             lines[index] = rendered[key]
             replaced.add(key)
     appended = [line for key, line in rendered.items() if key not in replaced]

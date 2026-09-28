@@ -11,8 +11,12 @@ Everything else is dlt's Snowflake destination unchanged, and it reports dlt's d
 pipeline state and `[destination.snowflake]` config sections are the same as with
 `dlt.destinations.snowflake`.
 
-`NamedFolderLoadJob.run` is a copy of dlt's `SnowflakeLoadJob.run` with only the folder changed;
-compare it with dlt's when upgrading (tests/test_dlt_pipelines.py pins the statements it runs).
+`NamedFolderLoadJob.run` is a copy of dlt's `SnowflakeLoadJob.run` with only the folder changed,
+taken verbatim from dlt 1.30.0 (`dlt/destinations/impl/snowflake/snowflake.py`). pyproject.toml caps
+dlt below the next minor for that reason: diff the two methods before raising the cap
+(tests/test_dlt_pipelines.py pins the statements the copy runs). Its `REMOVE` branch is dlt's own and
+stays dormant unless `keep_staged_files` is turned off: the platform keeps the load files in the
+stage as a landing archive, see docs/architecture/ingestion.md.
 """
 
 from typing import Any, cast
@@ -109,7 +113,10 @@ class NamedFolderClient(SnowflakeClient):
         self, table: PreparedTableSchema, file_path: str, load_id: str, restore: bool = False
     ) -> LoadJob:
         job = super().create_load_job(table, file_path, load_id, restore)
-        if type(job) is SnowflakeLoadJob and self.pipeline_name:
+        # isinstance, not an exact type check: dlt returning a subclass of its own load job (a
+        # rename, a wrapper) would silently put every load back in dlt's quoted "<load id>" folder.
+        # Jobs for .sql and model files are not SnowflakeLoadJobs and pass through untouched.
+        if isinstance(job, SnowflakeLoadJob) and self.pipeline_name:
             job = NamedFolderLoadJob(
                 file_path,
                 self.config,

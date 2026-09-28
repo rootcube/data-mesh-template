@@ -58,11 +58,7 @@ for it and skips itself.
 `dbt_common` is installed by every project as a local package:
 
 ```yaml title="dbt/dbt_example/packages.yml"
-packages:
-  - local: ../dbt_common
-
-  - package: dbt-labs/dbt_utils
-    version: [">=1.3.0", "<2.0.0"]
+--8<-- "dbt/dbt_example/packages.yml"
 ```
 
 `dbt_common` itself declares no packages (`packages: []`); a consuming project lists `dbt_utils`

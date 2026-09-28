@@ -37,3 +37,16 @@ LICENSES/.
                   icon: front-matter SVG (from .icons/) before the title on index pages,
                   so navigation tabs show an icon the way Material for MkDocs does. The
                   rest of the file is upstream verbatim.
+
+
+3. dlt (Snowflake load job)
+
+   Path here:     dlt_pipelines/utils/snowflake_stage.py (NamedFolderLoadJob.run)
+   Upstream:      https://github.com/dlt-hub/dlt
+   Version:       1.30.0, file dlt/destinations/impl/snowflake/snowflake.py
+   License:       Apache License 2.0, text in LICENSES/Apache-2.0.txt
+   Copyright:     dltHub Inc. and the dlt contributors
+   Modified:      Yes. SnowflakeLoadJob.run is copied verbatim with one change: the load files
+                  are PUT into a folder named after the pipeline and load id instead of dlt's
+                  quoted "<load id>" folder. pyproject.toml caps dlt below the next minor so
+                  the copy is diffed against upstream before the cap is raised.

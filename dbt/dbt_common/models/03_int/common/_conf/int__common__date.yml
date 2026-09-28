@@ -3,7 +3,11 @@ version: 2
 
 models:
   - name: int__common__date
-    description: Collection of Dates
+    description: >
+      Collection of dates, one row per day. The window is a fixed first year plus a horizon of years past
+      the current one, both meta configs of the installing project (dbt_project.yml):
+      `calendar_start_year` (2000 by default) and `calendar_horizon_years` (10 by default). The first year
+      is fixed on purpose, so a rebuild never drops the oldest year.
 
     data_tests:
       - has_data:
@@ -11,7 +15,7 @@ models:
 
     columns:
       - name: day
-        description: 'Sequence number for the Day within the Date range'
+        description: 'Sequence number for the Day, counted from 1900-01-01'
         data_type: integer
 
         data_tests:

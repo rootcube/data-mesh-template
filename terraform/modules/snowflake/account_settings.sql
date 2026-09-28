@@ -49,12 +49,6 @@ ALTER ACCOUNT SET
     STATEMENT_TIMEOUT_IN_SECONDS = 14400
 ;
 
--- Convenience: cache the MFA token between client connections, full syntax errors.
-ALTER ACCOUNT SET
-    ALLOW_CLIENT_MFA_CACHING             = TRUE
-    ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR = TRUE
-;
-
 -- Re-encrypt data older than a year with fresh keys. Needs Enterprise Edition or higher,
 -- so the block skips it (and says so) on Standard Edition instead of failing the script.
 EXECUTE IMMEDIATE $$
@@ -67,6 +61,25 @@ EXCEPTION
 END;
 $$
 ;
+
+-- -----------------------------------------------------------------------------
+-- Opt in: convenience that weakens a security default (commented out on purpose)
+-- -----------------------------------------------------------------------------
+-- Both apply to the whole account, so the bootstrap does not set them. Uncomment only
+-- deliberately, and prefer the narrower route named with each.
+--
+-- ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR: Snowflake stops redacting the failing SQL, so literals
+-- from a WHERE or INSERT show up in error messages and in the query history. While debugging:
+-- ALTER SESSION SET ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR = TRUE;
+--
+-- ALLOW_CLIENT_MFA_CACHING: clients reuse an MFA token instead of prompting per connection, so a
+-- stolen token logs in until it expires. Account level only, no session equivalent; the service
+-- users here authenticate with a key pair and need neither.
+--
+-- ALTER ACCOUNT SET
+--     ALLOW_CLIENT_MFA_CACHING             = TRUE
+--     ENABLE_UNREDACTED_QUERY_SYNTAX_ERROR = TRUE
+-- ;
 
 -- -----------------------------------------------------------------------------
 -- Verification Queries

@@ -67,7 +67,6 @@ locals {
         schema_key    = "${a.user_key}_${a.project_key}_${a.environment_key}_${layer_key}"
         role_name     = a.role_name
         database_name = a.database_name
-        schema_name   = upper("${a.prefix}_${local.layer_codes[layer_key]}")
         privileges    = local.layer_access_privileges[layer_key][a.access_key]
       }
     }

@@ -12,6 +12,9 @@ locals {
 
   users_to_create = { for key, user in local.enabled_users : key => user if try(user.create, false) }
 
+  # The logins Terraform does not create itself, so the only ones worth checking against the account.
+  logins_to_check = { for key, user in local.enabled_users : key => user if !try(user.create, false) }
+
   user_role_grants = flatten([
     for user_key, user in local.enabled_users : [
       for assignment in user.roles : [
@@ -46,15 +49,20 @@ locals {
 # Every login in the account, so a `create: false` file whose login does not exist here fails at
 # plan time with a clear message instead of at apply time with "object does not exist or not
 # authorized" (the schemas of that user would already be created by then). SECURITYADMIN holds
-# MANAGE GRANTS, so SHOW USERS returns every user.
+# MANAGE GRANTS, so SHOW USERS returns every user. The whole SHOW USERS output lands in the state
+# (README.md, State and teardown), so the read is skipped when there is nothing to check; the data
+# source takes only a single `like` or `starts_with`, which a list of logins does not fit.
 data "snowflake_users" "existing" {
+  count           = length(local.logins_to_check) > 0 ? 1 : 0
   provider        = snowflake.securityadmin
   with_describe   = false
   with_parameters = false
 }
 
 locals {
-  existing_logins = toset([for user in data.snowflake_users.existing.users : upper(user.show_output[0].name)])
+  existing_logins = toset(flatten([
+    for users in data.snowflake_users.existing : [for user in users.users : upper(user.show_output[0].name)]
+  ]))
 }
 
 resource "random_password" "user" {

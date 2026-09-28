@@ -64,7 +64,8 @@ PROJECT_ROLE = re.compile(r"^RL_(?P<project>[A-Z0-9_]+)_(?P<env>DEV|TST|ACC|PRD)
 # `schema_prefix` in terraform/config/_validation/schemas/user.schema.json.
 SCHEMA_PREFIX = re.compile(r"^[A-Z][A-Z0-9_]*$")
 ENVIRONMENT_ORDER = ("DEV", "TST", "ACC", "PRD")
-PURPOSE_ORDER = ("ENG", "ANL", "TFM", "ING")
+# Every `code` in terraform/config/roles, the person roles first: they are what a role picker offers.
+PURPOSE_ORDER = ("ENG", "ANL", "RPT", "OPR", "TFM", "ING")
 ENV_FILE = ROOT / ".env"
 ENV_EXAMPLE = ROOT / ".env.example"
 KEY_DIR = Path.home() / ".snowflake" / "keys"
@@ -307,7 +308,9 @@ def choose_role(roles: list[str], wanted: str | None, interactive: bool) -> str 
         return ordered[0]
     print("Project roles granted to you:")
     for index, role in enumerate(ordered, 1):
-        print(f"  {index}. {role}")
+        environment = context_for_role(role)["environment"]
+        mark = "" if environment == "dev" else style(YELLOW, f"  ({environment}: shared schemas, not a laptop)")
+        print(f"  {index}. {role}{mark}")
     while True:
         answer = ask(f"Pick one [1-{len(ordered)}]", "1")
         if answer.isdecimal() and 1 <= int(answer) <= len(ordered):
@@ -360,17 +363,22 @@ def registered_fingerprints(conn: Any, user: str) -> dict[str, str]:
     }
 
 
-def slot_needs_key(conn: Any, user: str, slot: str, public_path: Path) -> bool:
+def slot_needs_key(conn: Any, user: str, slot: str, public_path: Path, generated: bool = False) -> bool:
     """Whether `slot` of `user` still has to be set to the key in `public_path`.
 
-    False when it holds that key already. When it holds another one (registered from another machine?),
-    this asks before replacing it and exits when the answer is no.
+    False when it holds that key already. When it holds another one, this asks before replacing it and
+    exits when the answer is no: a rotation (`generated`, the key in `public_path` was just made here)
+    replaces by default, an unexpected key (registered from another machine?) does not.
     """
     registered = registered_fingerprints(conn, user).get(f"{slot}_FP")
     if registered == public_key_fingerprint(public_path):
         ok(f"{slot} of {user} already holds this key")
         return False
-    if registered:
+    if registered and generated:
+        warn(f"{slot} of {user} holds the key registered before ({registered}); this run replaces it.")
+        if not confirm(f"Replace the key registered in {slot}?", default=True):
+            sys.exit(f"Aborted; {slot} of {user} was left as it is.")
+    elif registered:
         warn(
             f"{slot} of {user} holds another key ({registered}), registered from another machine? To keep "
             f"it, copy that machine's key files to {public_path.parent} and rerun, or use the other key slot: "
@@ -504,6 +512,21 @@ def prompt_context(settings: SnowflakeSettings) -> SnowflakeSettings:
     return dataclasses.replace(confirmed, schema=ask_prefix(personal_schema(confirmed)))
 
 
+def confirm_environment(settings: SnowflakeSettings, interactive: bool) -> None:
+    """Warn about a role outside dev and, interactively, ask before .env points this checkout at it."""
+    match = PROJECT_ROLE.match(settings.role)
+    if match is None or match["env"] == "DEV":
+        return
+    environment = match["env"].lower()
+    warn(
+        f"{settings.role} is a {environment} role, not a development one: `just dbt build` and `just dlt run` "
+        f"from this checkout then write to the shared _<LAYER> schemas of {settings.database}, which deployed "
+        "service users own."
+    )
+    if interactive and not confirm(f"Point .env at {environment}?", default=False):
+        sys.exit("Aborted; .env was left as it is.")
+
+
 def write_env(updates: dict[str, str]) -> None:
     """Write `updates` to .env (created from .env.example), owner-only, and check that every value reads back."""
     if not ENV_FILE.exists():
@@ -539,9 +562,9 @@ def write_settings(settings: SnowflakeSettings) -> None:
 # --- setup steps --------------------------------------------------------------
 
 
-def set_public_key(conn: Any, user: str, slot: str, public_path: Path) -> bool:
+def set_public_key(conn: Any, user: str, slot: str, public_path: Path, generated: bool = False) -> bool:
     """ALTER USER ... SET <slot> to the key in `public_path` unless it holds it; False when Snowflake refuses."""
-    if not slot_needs_key(conn, user, slot, public_path):
+    if not slot_needs_key(conn, user, slot, public_path, generated):
         return True
     try:
         conn.cursor().execute(f"ALTER USER {quote_ident(user)} SET {slot} = '{public_key_body(public_path)}'")
@@ -566,7 +589,7 @@ def register_key_pair(conn: Any, user: str, key_name: str, slot: str, ask_passph
     passphrase = new_passphrase("Passphrase for the new key") if ask_passphrase else ""
     new_private, new_public = generate_key_pair(f"{key_name}.new", passphrase, private_path.parent)
     try:
-        registered = set_public_key(conn, user, slot, new_public)
+        registered = set_public_key(conn, user, slot, new_public, generated=True)
         if registered or not private_path.exists():
             install_key_pair((new_private, new_public), (private_path, public_path))
             ok(f"Wrote {private_path} and {public_path}")
@@ -582,6 +605,7 @@ def finish_settings(settings: SnowflakeSettings, args: argparse.Namespace) -> in
         settings = discover_context(conn, settings, args.role, interactive=not args.yes)
     if not args.yes:
         settings = prompt_context(settings)
+    confirm_environment(settings, interactive=not args.yes)
     if not verify(settings):
         return 1
     write_settings(settings)
@@ -947,6 +971,20 @@ def destroy_targets(addresses: list[str]) -> list[str]:
     return sorted(targets - {PROTECTED_MODULE})
 
 
+def print_leftovers() -> None:
+    """Name what `just tf clean` leaves in the account: the init.sql objects and the account parameters."""
+    init_sql = INIT_SQL.read_text(encoding="utf-8")
+    warn("These stay in the account; as ACCOUNTADMIN, drop or reset them by hand when you are done with it:")
+    for kind, name in re.findall(r"^CREATE (USER|WAREHOUSE) IF NOT EXISTS (\w+)", init_sql, flags=re.M):
+        print(f"    DROP {kind} {name};")
+    roles = re.findall(r"^GRANT ROLE (\w+)\s+TO USER (\w+);", init_sql, flags=re.M)
+    if roles:
+        print(f"    {roles[0][1]} holds {', '.join(role for role, _ in roles)} and a registered RSA key")
+    names = [parameter.split(" = ", 1)[0] for parameter in account_parameters(ACCOUNT_SQL.read_text(encoding="utf-8"))]
+    print(f"    the account parameters {ACCOUNT_SQL.relative_to(ROOT).as_posix()} set, if you applied them:")
+    print(f"      ALTER ACCOUNT UNSET {', '.join(names)};")
+
+
 def confirm_clean(account: str, addresses: list[str], databases: list[dict[str, Any]]) -> bool:
     """Show what `just tf clean` removes and ask for the account name back."""
     warn(f"This removes all {len(addresses)} resources this checkout's Terraform state tracks in {account}:")
@@ -1117,7 +1155,8 @@ def cmd_wizard(_args: argparse.Namespace) -> int:
     print(style(DIM, "     Like 1, but first asks to sync the existing objects into Terraform or wipe them,"))
     print(style(DIM, "     and leaves the account settings as they are."))
     print()
-    choice = ask("Which one is this? (1/2/3)", "1").strip()
+    while (choice := ask("Which one is this? (1/2/3)", "1").strip()) not in ("1", "2", "3"):
+        warn("Type 1, 2 or 3.")
     if choice == "3":
         return main(["bootstrap", "--existing", "ask", "--account-settings", "skip"])
     return main(["bootstrap"] if choice == "1" else ["setup"])
@@ -1130,6 +1169,7 @@ def cmd_context(args: argparse.Namespace) -> int:
         settings = discover_context(conn, settings, args.role, interactive=not args.yes)
     if not args.yes:
         settings = prompt_context(settings)
+    confirm_environment(settings, interactive=not args.yes)
     if not verify(settings):
         return 1
     write_settings(settings)
@@ -1190,8 +1230,13 @@ def cmd_clean(_args: argparse.Namespace) -> int:
     terraform(env, "init", "-input=false")
     addresses = terraform_output(env, "state", "list").split()
     if not addresses:
-        ok("Nothing to remove: this checkout's Terraform state tracks no objects.")
-        return 0
+        warn(
+            "This checkout's Terraform state tracks no objects, so there is nothing to remove. That says "
+            "nothing about the account, which may still be fully provisioned. Adopt it into this state first "
+            "(`just setup` and answer 3, or `just sf bootstrap --existing sync --account-settings skip`), or "
+            "point Terraform at the remote backend that holds the real state (terraform/README.md)."
+        )
+        return 1
     settings = terraform_settings(env)
     databases = [r for r in managed_objects(env) if r["type"] == "snowflake_database"]
     if not confirm_clean(settings.account, addresses, databases):
@@ -1204,6 +1249,7 @@ def cmd_clean(_args: argparse.Namespace) -> int:
         with settings.connect() as conn:
             drop_objects(conn, databases, current_user="")
         terraform(env, "state", "rm", PROTECTED_MODULE)
+    print_leftovers()
     done("The Terraform state is empty; `just tf apply` provisions everything again.")
     return 0
 
@@ -1211,13 +1257,21 @@ def cmd_clean(_args: argparse.Namespace) -> int:
 def cmd_keygen(args: argparse.Namespace) -> int:
     private_path, public_path = key_paths(args.name)
     if private_path.exists() and not args.force:
-        print(f"{private_path} exists; pass --force to overwrite it.")
+        print(f"{private_path} exists; pass --force to replace it, keeping the current pair as .bak.")
         return 1
     passphrase = new_passphrase("Passphrase") if args.passphrase else ""
-    generate_key_pair(args.name, passphrase)
-    print(f"Wrote {private_path} and {public_path}\n")
+    replaced = private_path.exists()
+    # Through install_key_pair, so --force keeps the pair it replaces: Snowflake still holds its public half.
+    new = generate_key_pair(f"{args.name}.new", passphrase, private_path.parent)
+    install_key_pair(new, (private_path, public_path))
+    print(f"Wrote {private_path} and {public_path}")
+    if replaced:
+        warn(
+            f"The pair it replaced stays as {private_path.name}.bak and {public_path.name}.bak. Snowflake still "
+            "holds its public key, so that one signs in until the new one below is registered."
+        )
     init_sql = INIT_SQL.relative_to(ROOT).as_posix()
-    print(f"Public key body, for ALTER USER ... SET RSA_PUBLIC_KEY = '...' (see {init_sql}):\n")
+    print(f"\nPublic key body, for ALTER USER ... SET RSA_PUBLIC_KEY = '...' (see {init_sql}):\n")
     print(public_key_body(public_path))
     return 0
 
@@ -1286,7 +1340,7 @@ def main(argv: list[str] | None = None) -> int:
     keygen = sub.add_parser("keygen", help="generate a key pair without logging in (service users)")
     keygen.add_argument("name", help="file name under ~/.snowflake/keys, e.g. terraform")
     keygen.add_argument("--passphrase", action="store_true", help="encrypt the private key with a passphrase")
-    keygen.add_argument("--force", action="store_true", help="overwrite an existing key pair")
+    keygen.add_argument("--force", action="store_true", help="replace an existing key pair, keeping it as .bak")
     keygen.set_defaults(func=cmd_keygen)
 
     clean = sub.add_parser("clean", help="`just tf clean`: remove every object the Terraform state tracks")

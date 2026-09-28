@@ -6,6 +6,22 @@
   "type": "object",
   "required": ["code", "name", "sizes"],
   "additionalProperties": false,
+  "if": {
+    "required": ["code"],
+    "properties": {
+      "code": {
+        "const": ""
+      }
+    }
+  },
+  "then": {
+    "$comment": "A compute without a code is the default one, whose warehouse name drops the size (WH_<PROJECT>_<ENV>, modules/snowflake/warehouse/main.tf), so a second size would be a second warehouse with the same name.",
+    "properties": {
+      "sizes": {
+        "maxItems": 1
+      }
+    }
+  },
   "properties": {
     "code": {
       "type": "string",
