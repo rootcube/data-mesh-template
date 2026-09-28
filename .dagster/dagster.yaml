@@ -14,3 +14,10 @@ run_coordinator:
 run_launcher:
   module: dagster.core.launcher
   class: DefaultRunLauncher
+
+# No `secrets:` block on purpose. .env reaches Dagster through `just` (set dotenv-load), which
+# exports it into the `dagster dev` process; code servers and run subprocesses inherit that copy,
+# so an edited .env needs `just stop && just start`. A secrets loader would not change this:
+# DefaultRunLauncher starts runs inside the code server (core_execute_run with
+# inject_env_vars=False), so the loader is never consulted per run, and dagster 1.13.24's
+# EnvFileLoader looks for <base_dir>/.env/.env and finds nothing anyway.

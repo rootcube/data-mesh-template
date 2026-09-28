@@ -55,7 +55,8 @@ STG_SCHEMA = SnowflakeSettings.from_env().schema_for_layer("stg")
 
 
 @asset(
-    group_name="weather",
+    key_prefix=["dbt_example", "python"],
+    group_name="dbt_example/python",
     kinds={"python", "snowflake"},
     deps=[AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])],
 )
@@ -92,10 +93,12 @@ Points worth copying:
 :   Metadata shows up in the UI on every materialization. Return `None` when there is nothing
     to record.
 
-`group_name` and `kinds`
-:   The group is how the asset catalog is organized (dbt models use their key without its last
-    segment, such as `dbt_example/models/02_stg/knmi`; dlt loads `dlt/ingest/<source>`); `kinds`
-    become the little tool icons.
+`key_prefix`, `group_name` and `kinds`
+:   The repo keys every asset by where it belongs: `<location>/python/<name>` for a Python asset,
+    so this one is `dbt_example/python/knmi_freshness_report`. The group is the key without its last
+    segment, the same rule dbt models and dlt loads follow (`dbt_example/models/02_stg/knmi`,
+    `dlt/ingest/knmi`), which is what nests the asset under its location in the catalog. `kinds`
+    become the little tool icons. See [Naming](../conventions/naming.md).
 
 ## Merging it into the location
 
@@ -122,8 +125,11 @@ Nothing connects at import time, so the location still loads without a `.env` (C
 share a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's
 `resources` dict; until then the inline `connect()` is the pattern.
 
-Because `job_dbt_example_build_all` selects `AssetSelection.all()`, the new asset joins that
-job as well.
+`job_dbt_example_build_all` does **not** pick the asset up. It selects the keys the dbt component
+produced, so it stays a `dbt build` of the project and the Python asset never joins it silently.
+Give the asset its own job if you want one from the Launchpad, or materialize it from the graph. It
+does get pulled in by a *Materialize downstream* on the model it depends on, which is what the
+`deps` edge is for.
 
 ## Validate and run
 

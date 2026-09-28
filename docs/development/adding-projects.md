@@ -285,6 +285,9 @@ The `project=` override works for every recipe that runs in the project folder:
 
 Everything `just start` runs uses the database in your `.env`, so work on one project at a time
 and switch `.env` to move. The locations of other projects still load (parsing never connects).
+Switching means restarting: `just` loads `.env` into the `dagster dev` process, and code servers
+and runs inherit that one copy, so a running instance keeps using the old database even after a
+*Reload* on the code location. Run `just stop && just start`.
 
 ## Sharing data between projects
 

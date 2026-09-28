@@ -66,8 +66,16 @@ def _build_defs() -> Definitions:
         name="job_dlt_ingest_all",
         selection=AssetSelection.key_prefixes(["dlt", "ingest"]),
         description="Run every dlt ingest pipeline.",
+        op_retry_policy=RetryPolicy(max_retries=2, delay=30, backoff=Backoff.EXPONENTIAL),
     )
-    return Definitions.merge(loaded, Definitions(jobs=[job_all]))
+    schedule_daily = ScheduleDefinition(
+        name="schedule_dlt_ingest_daily",
+        job=job_all,
+        cron_schedule=_INGEST_CRON,
+        default_status=DefaultScheduleStatus.STOPPED,
+        description="Daily run of job_dlt_ingest_all.",
+    )
+    return Definitions.merge(loaded, Definitions(jobs=[job_all], schedules=[schedule_daily]))
 
 
 defs = _build_defs()
@@ -92,7 +100,9 @@ defs = build_dbt_defs("dbt_example", _defs_module)
 ```
 
 `build_dbt_defs()` in `src/orchestrator/locations/dbt/shared.py` loads the component tree under
-`defs/` and adds `job_<project>_build_all` (an `AssetSelection.all()` job). The tree contains
+`defs/` and adds `job_<project>_build_all`, selecting the keys that tree produced. The project name
+it takes only names the job; if it matches no asset key prefix, the factory raises, because
+`definitions.py` and `defs/dbt/defs.yaml` then point at different dbt projects. The tree contains
 one component:
 
 ```yaml title="src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
@@ -163,15 +173,41 @@ Two convenience jobs exist for the Launchpad; the rest is asset selection in the
 | Job | Location | Selection |
 |-----|----------|-----------|
 | `job_dlt_ingest_all` | `dlt` | Every asset with key prefix `dlt/ingest` |
-| `job_dbt_example_build_all` | `dbt_example` | Every asset in the location (`AssetSelection.all()`), which runs `dbt build` for the whole project |
+| `job_dbt_example_build_all` | `dbt_example` | The dbt component's own assets, which runs `dbt build` for the whole project |
 
-A second dbt project gets `job_<project>_build_all` from the same factory.
+A second dbt project gets `job_<project>_build_all` from the same factory. The dbt job selects the
+keys the component produced, not `AssetSelection.all()`, so a Python asset merged into the same
+location keeps its own place in the graph instead of joining the dbt build unannounced.
 
-## No schedules yet
+## Automation: one schedule, one condition, one retry policy
 
-Nothing fires on its own. There are no schedules and no sensors; you materialize from the UI,
-or run `just dlt run knmi` and `just dbt build` from the terminal. Scheduling is the first thing
-a deployed environment adds, and it belongs in the location that owns the assets.
+Nothing fires on its own after `just start`. Both automation definitions ship **stopped**, so the
+starter shows the pattern without ever launching a run you did not ask for. Turn them on under
+*Automation* in the UI; the instance remembers the switch in `.dagster/`.
+
+| Definition | Location | What it does | Ships |
+|---|---|---|---|
+| `schedule_dlt_ingest_daily` | `dlt` | `job_dlt_ingest_all` on `_INGEST_CRON` (`0 5 * * *`, UTC) | `DefaultScheduleStatus.STOPPED` |
+| `default_automation_condition_sensor` | every dbt location | Runs the `AutomationCondition.eager()` every dbt asset carries: a model rebuilds once the asset feeding its source has been loaded | `DefaultSensorStatus.STOPPED` (Dagster's default) |
+
+That pair is the whole chain: the schedule ingests, the condition pulls the dbt models through
+behind it. No schedule per layer, and no cron to keep in step with the model graph.
+
+- **The cron** lives in `_INGEST_CRON` in `src/orchestrator/locations/dlt/definitions.py`. One cron
+  covers every source; a source that needs its own cadence gets its own `ScheduleDefinition` on a
+  narrower `AssetSelection`. Add `execution_timezone="Europe/Amsterdam"` for a local wall clock.
+- **The condition** is set once, in `DataMeshDbtTranslator.get_asset_spec()`
+  (`src/orchestrator/locations/dbt/shared.py`), so every model of every dbt project has it.
+- **Retries**: `job_dlt_ingest_all` carries
+  `op_retry_policy=RetryPolicy(max_retries=2, delay=30, backoff=Backoff.EXPONENTIAL)`. A source API
+  that rate-limits or times out is the usual failure, and every pipeline merges on a primary key, so
+  re-running an overlapping window is safe. It applies to runs of the job (the schedule's runs
+  included); materializing an asset ad hoc from the graph does not go through the job, so it does not
+  retry. dbt failures are handled the other way around, with *Re-execute, from failure*.
+
+In a deployed environment, flip `default_status` to `RUNNING` so the schedule arrives switched on,
+and pass `AutomationConditionSensorDefinition(..., default_status=DefaultSensorStatus.RUNNING)` if
+you want the same for the condition.
 
 ## The local instance
 
@@ -195,6 +231,13 @@ run_launcher:
 Runs start immediately in a subprocess (no daemon queue), with no limit on concurrent runs; a
 limit needs the `QueuedRunCoordinator` and the daemon. Deleting
 `.dagster/` (keep `dagster.yaml`) resets your run history and nothing else.
+
+!!! warning "An edited `.env` needs a restart"
+    `.env` is read once, at startup, by `just` (`set dotenv-load`) and by the Dagster CLI itself;
+    code servers and run subprocesses inherit that one copy. Nothing re-reads the file afterwards,
+    so editing `.env` while the UI is up changes nothing, not even after *Reload* on a code
+    location: run `just stop && just start`. A `secrets:` block in `dagster.yaml` does not help,
+    because `DefaultRunLauncher` starts runs inside the code server, which skips the secrets loader.
 
 `pyproject.toml` also carries a `[tool.dg]` block for Dagster's `dg` CLI. Its `defs_module`
 points at the empty `orchestrator.defs` package so the component cache has one home; the real

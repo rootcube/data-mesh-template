@@ -23,6 +23,7 @@ from dagster import (
     AssetKey,
     AssetSelection,
     AssetSpec,
+    AutomationCondition,
     ComponentLoadContext,
     ComponentTree,
     Definitions,
@@ -56,10 +57,11 @@ def compute_asset_key(node: Mapping[str, Any], project_name: str) -> AssetKey:
     if node.get("resource_type") == "source":
         return AssetKey([*prefix, "sources", node.get("source_name") or "", node.get("name") or ""])
 
-    # dbt writes the path with the OS separator, so a manifest parsed on Windows has backslashes.
+    # `original_file_path` is relative to the node's own package, so a package node carries its own
+    # path and nothing else. dbt writes it with the OS separator, so a manifest parsed on Windows
+    # has backslashes.
     segments = (node.get("original_file_path") or "").replace("\\", "/").split("/")
-    dirs = segments[2:-1] if segments[0] == "packages" else segments[:-1]
-    return AssetKey([*prefix, *dirs, node.get("name") or ""])
+    return AssetKey([*prefix, *segments[:-1], node.get("name") or ""])
 
 
 def compute_group_name(key: AssetKey) -> str:
@@ -72,7 +74,13 @@ def compute_group_name(key: AssetKey) -> str:
 
 
 class DataMeshDbtTranslator(DbtProjectComponentTranslator):
-    """Keys from the file path, groups from the key, `kinds` from the materialization."""
+    """Keys from the file path, groups from the key, `kinds` from the materialization.
+
+    Every dbt asset also carries `AutomationCondition.eager()`: a model rebuilds as soon as the
+    asset feeding its source has been loaded, without a schedule per layer. Dagster puts the
+    condition to work through the `default_automation_condition_sensor` of the code location, which
+    ships stopped, so nothing runs on its own in dev; turn it on under Automation in the UI.
+    """
 
     def get_asset_spec(self, manifest: Mapping[str, Any], unique_id: str, project: Any) -> AssetSpec:
         spec = super().get_asset_spec(manifest, unique_id, project)
@@ -81,7 +89,12 @@ class DataMeshDbtTranslator(DbtProjectComponentTranslator):
         key = compute_asset_key(node, project_name)
         materialized = (node.get("config") or {}).get("materialized")
         kinds = {"dbt", materialized} if materialized else {"dbt"}
-        return spec.replace_attributes(key=key, group_name=compute_group_name(key), kinds=kinds)
+        return spec.replace_attributes(
+            key=key,
+            group_name=compute_group_name(key),
+            kinds=kinds,
+            automation_condition=AutomationCondition.eager(),
+        )
 
 
 class DataMeshDbtProjectComponent(DbtProjectComponent):
@@ -104,11 +117,26 @@ class DataMeshDbtProjectComponent(DbtProjectComponent):
 
 
 def build_dbt_defs(project_name: str, defs_module: ModuleType) -> Definitions:
-    """Load the component tree of one dbt project and add a build-everything job."""
+    """Load the component tree of one dbt project and add a build-everything job.
+
+    `project_name` only names the job; the asset keys carry the project name the manifest reports.
+    A mismatch would ship a job whose name lies about what it builds, so it fails here instead.
+    """
     loaded = ComponentTree.from_module(defs_module=defs_module, project_root=PROJECT_ROOT).build_defs()
+    keys = loaded.resolve_all_asset_keys()
+    if not any(key.path[0] == project_name for key in keys):
+        raise ValueError(
+            f"build_dbt_defs({project_name!r}) in this location's definitions.py builds no asset under "
+            f"{project_name!r}; the dbt project named in defs/dbt/defs.yaml produces "
+            f"{sorted({key.path[0] for key in keys})}."
+        )
     job_all = define_asset_job(
         name=f"job_{project_name}_build_all",
-        selection=AssetSelection.all(),
+        # This component's assets, not AssetSelection.all(): a Python asset merged into the same
+        # location (docs: Development > Adding Python assets) must not silently join the dbt build.
+        # Intersecting with all() drops the stub assets dagster-dbt adds for dbt sources, which are
+        # not materializable here and would make the job fail to resolve.
+        selection=AssetSelection.assets(*keys) & AssetSelection.all(),
         description=f"dbt build for the whole {project_name} project.",
     )
     return Definitions.merge(loaded, Definitions(jobs=[job_all]))
