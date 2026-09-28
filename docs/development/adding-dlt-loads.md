@@ -361,7 +361,7 @@ just sqlfluff lint models
 ```
 
 The model lands as `DBT_<USERNAME>_STG.STG__AIRQUALITY__MEASUREMENT_HOURLY` in your dev database.
-After `just validate` (or a reload of the `dbt_example` location in the UI), the graph shows
+After `just start` (or a reload of the `dbt_example` location in the running UI), the graph shows
 `dlt/ingest/airquality/measurement_hourly` feeding
 `dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly`.
 From here on it is [Adding a dbt model](adding-dbt-models.md).
