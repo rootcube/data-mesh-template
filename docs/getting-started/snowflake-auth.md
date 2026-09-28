@@ -27,9 +27,9 @@ walks through four steps:
 3. **Registration.** The public key is set on your own user with
    `ALTER USER ... SET RSA_PUBLIC_KEY`. Snowflake lets every user do this for themselves unless
    an account policy says otherwise. When the slot already holds this key, the script says so
-   and skips it; when it holds another one (registered from another machine?), it warns and
-   asks before replacing it (default No: copy that machine's key files to
-   `~/.snowflake/keys` instead, or use `--slot 2`).
+   and skips it. When it holds another one it asks before replacing it: yes by default for a key
+   this run generated (a rotation), no by default for an unexpected one (registered from another
+   machine? then copy that machine's key files to `~/.snowflake/keys` instead, or use `--slot 2`).
 4. **Context, verification and `.env`.** You confirm role, warehouse, database and the prefix
    of your personal schemas. Role, warehouse and database come from the project roles granted
    to you (see [Pointing `.env` at a project](#pointing-env-at-a-project)), never from the
@@ -113,6 +113,14 @@ just sf query "SELECT CURRENT_USER(), CURRENT_ROLE()"
 generate a new one. A new key replaces the old files only once Snowflake has accepted it; the
 old ones stay as `.p8.bak` and `.pub.bak`. Snowflake holds two key slots per user; `--slot 2`
 registers into `RSA_PUBLIC_KEY_2`, so you can rotate without a gap.
+
+Replacing the key in the slot it already uses is the normal rotation, so step 3 says which key it
+is about to overwrite and defaults to yes. The warning about another machine (default no) is only
+for a key this run did not generate.
+
+`just sf keygen <name> --force` rotates a service user's key the same way: the pair it replaces
+stays as `.p8.bak` and `.pub.bak`, and Snowflake keeps signing that user in with the old public key
+until you register the new one.
 
 ## When registration is not allowed
 

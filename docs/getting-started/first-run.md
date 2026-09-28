@@ -93,12 +93,18 @@ see [Layer](../concepts/layer.md) and [Environment](../concepts/environment.md).
 | `.dagster/` | `DAGSTER_HOME`: run history, event logs, and the versioned `dagster.yaml` (telemetry off, runs start immediately with no concurrency limit) |
 | `.dlt/data/` | dlt working directory (pipeline state restores from Snowflake anyway) |
 | `.dlt/config.toml` | dlt runtime settings, versioned |
+| `src/orchestrator/defs/.local_defs_state/` | Dagster's component cache, written when `dagster dev` loads a location |
 | `dbt/<project>/target/` | Compiled SQL and `manifest.json` |
 | `dbt/<project>/logs/` | dbt's own log |
+| `dbt/<project>/packages/` | The `dbt_common` package `dbt deps` installs |
+| `logs/` | `dbt.log` from a dbt run started outside a project directory |
+| `.cache/` | The docs build cache (`just docs`) |
 
 Everything except `.dagster/dagster.yaml` and `.dlt/config.toml` is git-ignored state and safe
 to delete; git brings the two config files back, and deleting the rest only resets your local
-run history.
+run history. `just reset-local` does it in one go: it removes every path above except the two
+versioned config files and `packages/` (which `dbt deps` refreshes anyway), recreates `.dagster/`
+and `.dlt/data/`, and reruns `dbt deps` and `dbt parse`. Stop `just start` first.
 
 ## Stopping
 
