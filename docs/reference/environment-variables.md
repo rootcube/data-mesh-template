@@ -20,7 +20,7 @@ All local configuration lives in `.env` (git-ignored, copied from `.env.example`
 
 | Variable | Example | Meaning |
 |----------|---------|---------|
-| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `tst`, `acc` or `prd` (the shared `_<LAYER>` schemas, for deployed service users) |
+| `ENVIRONMENT` | `dev` | The environment this checkout runs as: `dev` (personal schemas, the default), or `tst`, `acc` or `prd` (the shared `_<LAYER>` schemas, for deployed service users). Also decides whether Dagster's schedules and sensors start running: stopped in `dev`, running elsewhere |
 | `SNOWFLAKE_ACCOUNT` | `MYORG-MYACCOUNT` | Account identifier as `<organization>-<account>` |
 | `SNOWFLAKE_USER` | `USERNAME@EXAMPLE.COM` | Your login, exactly as `CURRENT_USER()` returns it |
 | `SNOWFLAKE_PRIVATE_KEY_PATH` | `/Users/username/.snowflake/keys/....p8` | Absolute path of the private key `just sf setup` wrote |

@@ -29,8 +29,8 @@ load_from:
 
 | Location | Module | Owns |
 |----------|--------|------|
-| `dlt` | `orchestrator.locations.dlt.definitions` | Every dlt load under `dlt_pipelines/pipelines/ingest/`, plus `job_dlt_ingest_all` |
-| `dbt_example` | `orchestrator.locations.dbt.dbt_example.definitions` | The `dbt_example` project as assets, including the `dbt_common` models it builds, plus `job_dbt_example_build_all` |
+| `dlt` | `orchestrator.locations.dlt.definitions` | Every dlt load under `dlt_pipelines/pipelines/ingest/`, plus, per source, a job and its daily schedule, and a job for all with an opt-in schedule ([Jobs](#jobs)) |
+| `dbt_example` | `orchestrator.locations.dbt.dbt_example.definitions` | The `dbt_example` project as assets, including the `dbt_common` models it builds, plus the jobs, schedule and sensor every dbt location gets ([Jobs](#jobs)) |
 
 One location per concern: the ingestion package, and one per dbt project, which is one per
 Project of the mesh. The file ends with a commented block for the next dbt project. A genuinely
@@ -60,14 +60,46 @@ Python package, finds every `defs.yaml`, and builds the definitions those compon
 ### The dlt location
 
 ```python title="src/orchestrator/locations/dlt/definitions.py"
+# Daily at 06:00 UTC, when yesterday's KNMI hours are complete.
+INGEST_CRON = "0 6 * * *"
+
+
 def _build_defs() -> Definitions:
     loaded = ComponentTree.from_module(defs_module=_dlt_pipelines, project_root=_PROJECT_ROOT).build_defs()
+    # Stopped in dev and dummy, so nothing loads by itself on a laptop; running everywhere else.
+    per_source_status = (
+        DefaultScheduleStatus.STOPPED if SnowflakeSettings.from_env().is_personal else DefaultScheduleStatus.RUNNING
+    )
+    jobs = [
+        define_asset_job(
+            name=f"job__dlt__ingest_{source}",
+            selection=AssetSelection.key_prefixes(["dlt", "ingest", source]),
+            description=f"Run the dlt ingest pipeline of {source}.",
+        )
+        for source in sorted(discover())
+    ]
+    schedules = [
+        ScheduleDefinition(
+            name=job.name.replace("job__", "schedule__", 1),
+            job=job,
+            cron_schedule=INGEST_CRON,
+            default_status=per_source_status,
+        )
+        for job in jobs
+    ]
     job_all = define_asset_job(
-        name="job_dlt_ingest_all",
+        name="job__dlt__ingest_all",
         selection=AssetSelection.key_prefixes(["dlt", "ingest"]),
         description="Run every dlt ingest pipeline.",
     )
-    return Definitions.merge(loaded, Definitions(jobs=[job_all]))
+    schedule_all = ScheduleDefinition(
+        name="schedule__dlt__ingest_all",
+        job=job_all,
+        cron_schedule=INGEST_CRON,
+        default_status=DefaultScheduleStatus.STOPPED,
+        description="Opt-in: every load in one run. Start it and stop the per-source schedules, or a load runs twice.",
+    )
+    return Definitions.merge(loaded, Definitions(jobs=[*jobs, job_all], schedules=[*schedules, schedule_all]))
 
 
 defs = _build_defs()
@@ -75,8 +107,10 @@ defs = _build_defs()
 
 The module it walks is the whole `dlt_pipelines` package, so
 `dlt_pipelines/pipelines/ingest/knmi/defs.yaml` (a `dagster_dlt.DltLoadCollectionComponent`)
-is found without registration. Adding a source is adding a folder with a `defs.yaml`. Its
-assets join `job_dlt_ingest_all` automatically because the job selects by key prefix. See
+is found without registration. Adding a source is adding a folder with a `defs.yaml`. It gets
+its own `job__dlt__ingest_<source>` and daily `schedule__dlt__ingest_<source>` (the folders come
+from the same `discover()` that backs `just dlt list`), and its assets join `job__dlt__ingest_all`
+automatically because that job selects by key prefix. See
 [Ingestion](ingestion.md#the-dagster-component).
 
 ### The dbt locations
@@ -92,8 +126,8 @@ defs = build_dbt_defs("dbt_example", _defs_module)
 ```
 
 `build_dbt_defs()` in `src/orchestrator/locations/dbt/shared.py` loads the component tree under
-`defs/` and adds `job_<project>_build_all` (an `AssetSelection.all()` job). The tree contains
-one component:
+`defs/` and adds the location's jobs, schedule and sensor ([below](#jobs)), plus the `dbt`
+resource their ops run through. The tree contains one component:
 
 ```yaml title="src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
 --8<-- "src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml"
@@ -151,20 +185,53 @@ models is the tables, which would otherwise be built twice in the same database.
 
 ## Jobs
 
-Two convenience jobs exist for the Launchpad; the rest is asset selection in the UI.
+Every job is named `job__<location>__<name>`, and nothing is written per instance: the dlt
+location derives one job per source folder plus one for all, and every dbt location gets the
+same set from `build_dbt_defs()`. Below, `<source>` is a folder under
+`dlt_pipelines/pipelines/ingest/` and `<project>` a dbt location (`dbt_<project>` in
+`workspace.yaml`). Adding a source or a project adds its jobs; nothing here changes.
 
-| Job | Location | Selection |
-|-----|----------|-----------|
-| `job_dlt_ingest_all` | `dlt` | Every asset with key prefix `dlt/ingest` |
-| `job_dbt_example_build_all` | `dbt_example` | Every asset in the location (`AssetSelection.all()`), which runs `dbt build` for the whole project |
+| Job | Location | What it runs |
+|-----|----------|--------------|
+| `job__dlt__ingest_<source>` | `dlt` | Every asset with key prefix `dlt/ingest/<source>`: one source's load |
+| `job__dlt__ingest_all` | `dlt` | Every asset with key prefix `dlt/ingest` |
+| `job__<project>__build_all` | `<project>` | Every asset in the location (`AssetSelection.all()`): `dbt build` for the whole project, asset by asset, so a retry re-runs only what failed |
+| `job__<project>__run_all` | `<project>` | `dbt run`: the models, no tests |
+| `job__<project>__test_all` | `<project>` | `dbt test` |
+| `job__<project>__seed_all` | `<project>` | `dbt seed` |
+| `job__<project>__source_freshness` | `<project>` | `dbt source freshness`, into `dbt/<project>/target/freshness/sources.json` |
+| `job__<project>__build_fresher` | `<project>` | `dbt build --select <sources_selector>`: the sensor below launches it with the downstream of the sources that got fresher; from the Launchpad, any dbt selector goes in `sources_selector` |
 
-A second dbt project gets `job_<project>_build_all` from the same factory.
+`build_all` is an asset job: the UI shows one materialization per model. The other five are one
+op each around the plain dbt command (`dbt_command_job()` in `shared.py` for `run_all`,
+`test_all` and `seed_all`): they log the dbt output but materialize nothing, which is what a
+plain test pass or a seed reload wants. All ops take the `dbt` resource, a `DbtCliResource`
+pointed at the component's project, so every job runs the same project with the same profiles.
 
-## No schedules yet
+## Schedules and sensors
 
-Nothing fires on its own. There are no schedules and no sensors; you materialize from the UI,
-or run `just dlt run knmi` and `just dbt build` from the terminal. Scheduling is the first thing
-a deployed environment adds, and it belongs in the location that owns the assets.
+The dlt location derives a daily schedule per source, plus an opt-in one for every load at once;
+each dbt location carries one chain, built by `src/orchestrator/locations/dbt/source_freshness.py`. Together they run the platform on their own:
+the load lands, the next freshness check sees it, the sensor rebuilds its downstream.
+
+| Definition | Interval | Does |
+|---|---|---|
+| `schedule__dlt__ingest_<source>` | daily at 06:00 UTC (`0 6 * * *`) | Launches `job__dlt__ingest_<source>`; these carry the daily load, one run per source |
+| `schedule__dlt__ingest_all` | same cron, stopped everywhere | Opt-in: launches `job__dlt__ingest_all`, every load in one run. Start it and stop the per-source schedules, or every load runs twice |
+| `schedule__<project>__source_freshness` | every hour (`0 * * * *`) | Launches `job__<project>__source_freshness` |
+| `sensor__<project>__source_freshness` | every 5 minutes | Reads `sources.json`, compares each source's `max_loaded_at` with its cursor and, when any advanced, launches `job__<project>__build_fresher` with `source:<source>.<table>+ ...` for exactly those sources. It also records an observation with the new `max_loaded_at` on the source's asset (the dlt asset, through the shared key) |
+
+A source takes part when its YAML has a `freshness` block and a `loaded_at_field`
+(`src_knmi.yml` derives it from dlt's `_dlt_load_id`); dbt skips the others. The first tick after
+the sensor starts sees every source as new and builds the whole downstream once; from then on
+only what changed. The handoff between job and sensor is the file, which works while both run on
+one filesystem (`dagster dev`, one container); a deployment that runs jobs in their own pods puts
+shared storage in between.
+
+All of them start **stopped** in `dev` and `dummy` (`SnowflakeSettings.is_personal`), so nothing
+fires by itself on a laptop; switch them on under *Automation* in the UI to try the chain. In
+every other environment they start running, except `schedule__dlt__ingest_all`, which is the
+opt-in and starts stopped everywhere.
 
 ## The local instance
 
@@ -191,6 +258,7 @@ just start                                                         # UI on :3000
 just stop                                                          # stop dagster dev on port 3000; another program there is reported, not killed
 just validate                                                      # load every location, no UI
 just dagster asset list -m orchestrator.locations.dlt.definitions  # any Dagster CLI command
+just dagster job list -m orchestrator.locations.dlt.definitions    # the jobs of one location
 ```
 
 `just validate` is the check to run after touching `src/`, `dlt_pipelines/`, `dbt/` or

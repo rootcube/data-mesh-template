@@ -21,7 +21,7 @@ One top-level package, `dlt_pipelines/`, backs the single `dlt` code location. O
 | `dlt_pipelines/pipelines/ingest/<source>/defs.yaml` | `dagster_dlt.DltLoadCollectionComponent`: turns `source` and `pipeline` into Dagster assets |
 | `dlt_pipelines/utils/destination.py` | `pipeline_name(source)`, `snowflake_destination(source)`, `load_stage(settings, source)` and `source_dataset()`: the pipeline name (`ingest_<source>`), the one Snowflake destination, the stage path its load files go through (`<source-layer schema>.ST_DEFAULT/dlt/ingest/<source>`) and the source-layer schema every pipeline loads into |
 | `dlt_pipelines/__main__.py` | The standalone runner behind `just dlt list` / `just dlt run <source>` |
-| `src/orchestrator/locations/dlt/definitions.py` | The code location: loads the component tree and adds `job_dlt_ingest_all` |
+| `src/orchestrator/locations/dlt/definitions.py` | The code location: loads the component tree and adds, per source folder (via `discover()`), `job__dlt__ingest_<source>` with its daily `schedule__dlt__ingest_<source>` (06:00 UTC, stopped in `dev`), and `job__dlt__ingest_all` with an opt-in `schedule__dlt__ingest_all` (stopped everywhere) |
 | `.dlt/config.toml` | Runtime tuning (see below) |
 
 The only source today is `knmi`: hourly weather observations from the public KNMI `uurgegevens` endpoint, no authentication, seven stations, the last 30 days and never anything before `START_DATE` (2026-01-01), fetched in 10-day chunks (`constants.py`).
@@ -148,7 +148,7 @@ Copy it and change the source name in two places (`key_prefix` and `group_name`)
 
 === "Through Dagster"
 
-    `just start`, then materialize `dlt/ingest/knmi/climate_hourly` in the UI, or launch `job_dlt_ingest_all`. Same `source` and `pipeline` objects, so the two paths cannot drift.
+    `just start`, then materialize `dlt/ingest/knmi/climate_hourly` in the UI, or launch the source's `job__dlt__ingest_<source>` (or `job__dlt__ingest_all`). Same `source` and `pipeline` objects, so the two paths cannot drift.
 
 Check the result either way with `just sf query "SELECT COUNT(1) FROM dbt_username_src.knmi__climate_hourly"`, with your own `SNOWFLAKE_SCHEMA` prefix instead of `dbt_username` (`just sf check` prints the layer schemas it resolved).
 
@@ -204,7 +204,7 @@ just dbt parse
 just dlt run <source>
 ```
 
-Needs your `.env`. Prefer this over ad-hoc Python: it uses the same objects Dagster does.
+Needs your `.env`. Prefer this over ad-hoc Python: it uses the same objects Dagster does. In Dagster the same load is `job__dlt__ingest_<source>`, which the location creates for every source folder (`just start`, then *Jobs*).
 
 ### 6. Full validation
 

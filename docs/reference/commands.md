@@ -40,7 +40,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground; runs `just stop` first so a forgotten instance never doubles the daemon |
 | `just port=3001 start` | Same on another port |
 | `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers), then anything else still listening on the port |
-| `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
+| `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` or `just dagster job list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | Load every code location like `start` does, without the UI |
 
 ## dlt
@@ -55,7 +55,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just dbt <args>` | dbt in `dbt/dbt_example`, e.g. `just dbt build`, `just dbt parse` |
+| `just dbt <args>` | dbt in `dbt/dbt_example`, e.g. `just dbt build`, `just dbt parse`, `just dbt source freshness` |
 | `just project=dbt_x dbt <args>` | Same, in another project under `dbt/` |
 | `just dbt-all <args>` | One dbt command in every project, e.g. `just dbt-all deps`, `just dbt-all parse --target dummy` |
 | `just sqlfluff <args>` | sqlfluff from the project directory, e.g. `just sqlfluff lint models` |

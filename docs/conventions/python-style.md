@@ -201,7 +201,8 @@ dlt destination and dataset
 
 Dagster code locations
 :   `build_dbt_defs(project_name, defs_module)` in `src/orchestrator/locations/dbt/shared.py` turns
-    a dbt project into a code location with a `job_<project>_build_all` job. dlt loads are
+    a dbt project into a code location with its jobs (`job__<project>__build_all`, `run_all`,
+    `test_all`, `seed_all`) and the source-freshness chain of `source_freshness.py`. dlt loads are
     declared in a `defs.yaml` next to the pipeline (`dagster_dlt.DltLoadCollectionComponent`),
     dbt projects in `defs/dbt/defs.yaml` (`DataMeshDbtProjectComponent` in `shared.py`, a
     `dagster_dbt.DbtProjectComponent` with path-based keys). Extend those instead

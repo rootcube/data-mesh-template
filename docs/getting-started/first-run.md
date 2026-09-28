@@ -16,8 +16,8 @@ code locations, both loaded:
 
 | Location | Owns |
 |----------|------|
-| `dlt` | Every dlt ingest pipeline under `dlt_pipelines/pipelines/ingest/`, plus the job `job_dlt_ingest_all` |
-| `dbt_example` | The `dbt_example` dbt project, including the shared `dbt_common` models it builds, plus the job `job_dbt_example_build_all` |
+| `dlt` | Every dlt ingest pipeline under `dlt_pipelines/pipelines/ingest/`, plus, per source, a job and its daily schedule (stopped in `dev`), and a job for all with an opt-in schedule |
+| `dbt_example` | The `dbt_example` dbt project, including the shared `dbt_common` models it builds, plus the jobs, freshness schedule and freshness sensor every dbt location gets, stopped in `dev` |
 
 A location that failed to load shows the error right there; the terminal has the full trace.
 `just validate` loads the same locations without the UI.
@@ -28,7 +28,8 @@ The starter source is the KNMI weather API: public, no credentials, small (seven
 last 30 days, hourly).
 
 1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt/ingest/knmi`).
-2. **Materialize**. The run fetches the observations and merges them into the table
+2. **Materialize** (or, under *Jobs*, launch the source's `job__dlt__ingest_<source>`, which
+   materializes every asset of the source). The run fetches the observations and merges them into the table
    `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, which Terraform
    provisioned for you, through your own load stage `DBT_<USERNAME>_SRC.ST_DEFAULT`.
 3. Check:
@@ -66,6 +67,17 @@ to the query history in Snowsight) and ends with a summary; run metadata lands i
     Snowflake's Anaconda channel. If it fails with a package error, an `ORGADMIN` has not
     accepted the Anaconda terms yet. Ask your administrator, or disable the model; see
     [Troubleshooting](troubleshooting.md).
+
+## Let it run by itself
+
+Everything you just did by hand is also automated, but switched off in `dev` so a laptop never
+loads or builds on its own. Under *Automation* you find a daily schedule per dlt source and, per dbt
+project, an hourly freshness schedule and a freshness sensor, all stopped. To see the chain
+once: launch the project's `job__<project>__source_freshness` from *Jobs*, then start its
+sensor; the next tick sees every source as fresher than anything in its cursor and launches
+`job__<project>__build_fresher` for their downstream. Stop the sensor again when you are done.
+The definitions and their names are described in
+[Orchestration](../architecture/orchestration.md#jobs).
 
 ## What you now have in Snowflake
 

@@ -63,8 +63,8 @@ Run bare `just` for the full recipe list, or see the docs page *Reference > Comm
 
 ```
 src/orchestrator/            Dagster package
-├── locations/dlt/           code location: every dlt ingest pipeline
-├── locations/dbt/           shared factory + one code location per dbt project (dbt_example/)
+├── locations/dlt/           code location: every dlt ingest pipeline, per source a job and its daily schedule, one job for all
+├── locations/dbt/           shared factory (jobs, source-freshness schedule + sensor) + one code location per dbt project (dbt_example/)
 ├── resources/snowflake.py   the one place that reads SNOWFLAKE_* and ENVIRONMENT
 └── utils/
 dlt_pipelines/               dlt package: pipelines/ingest/<source>/ (knmi to start with)
@@ -77,7 +77,8 @@ overrides/                   Zensical template overrides (page icons in the tabs
 ```
 
 Data flows KNMI API -> dlt -> `_SRC` (through the internal stage `_SRC.ST_DEFAULT`) -> dbt (`_STG`,
-`_INT`, `_MRT`, `_EXP`) inside the project database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both. In development every engineer
+`_INT`, `_MRT`, `_EXP`) inside the project database `DB_EXAMPLE_<ENV>`, with Dagster orchestrating both: a daily dlt schedule, an hourly `dbt source freshness`
+check and a sensor that rebuilds the downstream of whatever got fresher (all stopped in `dev`). In development every engineer
 works in personal schemas (`DBT_<USERNAME>_SRC` with its own stage, `DBT_<USERNAME>_STG`, ...) of the shared
 `DB_EXAMPLE_DEV`, provisioned by Terraform.
 

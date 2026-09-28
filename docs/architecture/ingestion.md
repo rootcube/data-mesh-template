@@ -42,7 +42,9 @@ SOURCE = "knmi"
 ENTITY = "climate_hourly"
 
 
-@dlt.source(name=f"{SOURCE}__{ENTITY}", max_table_nesting=0)
+# The source (and so the dlt schema) is named after the source, not after one of its entities: a
+# second resource joins it without renaming anything. The table name carries `<source>__<entity>`.
+@dlt.source(name=SOURCE, max_table_nesting=0)
 def knmi_source() -> Iterator[dlt.sources.DltResource]:
     """KNMI hourly observations for a handful of stations, last 30 days."""
 
@@ -51,6 +53,9 @@ def knmi_source() -> Iterator[dlt.sources.DltResource]:
         table_name=f"{SOURCE}__{ENTITY}",
         write_disposition="merge",
         primary_key=["station_code", "date", "hour"],
+        # WW (weather code) and IX (how it was observed) are null in every row of a recent window,
+        # so dlt cannot infer a type and drops the columns with a warning. Declare them instead.
+        columns={"ww": {"data_type": "bigint"}, "ix": {"data_type": "bigint"}},
     )
     def climate_hourly() -> Iterator[dict]:
         yield from fetch_hourly_observations()
@@ -240,7 +245,8 @@ resource.
 | Asset key | `dlt/ingest/<source>/<entity>`: `dlt/ingest/knmi/climate_hourly` |
 | Group | `dlt/ingest/<source>` |
 | Kinds | `dlt`, `snowflake` |
-| Job | `job_dlt_ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
+| Jobs | `job__dlt__ingest_<source>` selects `dlt/ingest/<source>`, one per source folder; `job__dlt__ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
+| Schedules | `schedule__dlt__ingest_<source>` runs the source's job daily at 06:00 UTC, stopped by default in `dev`; `schedule__dlt__ingest_all` is the opt-in for one run of everything, stopped everywhere |
 | Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_USERNAME_SRC.knmi__climate_hourly` in `dev` |
 | Stage path | `<source-layer schema>.ST_DEFAULT/dlt/ingest/<source>/`, then a folder per load, `<pipeline>__<load id>`: `_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/`, or `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/` in `dev` |
 
@@ -261,8 +267,10 @@ just dlt run knmi      # pipeline.run(source), prints the load info
 ```
 
 The runner imports `<source>.pipelines` and calls `pipeline.run(module.source)`, the same
-objects Dagster uses. Dagster runs and standalone runs share the pipeline state stored in the
-destination, so mixing them is fine.
+objects Dagster uses. The Dagster equivalent is `job__dlt__ingest_<source>`: the dlt location
+creates one per folder the same `discover()` finds, so `just dlt run <source>` and
+`job__dlt__ingest_<source>` run the same load. Dagster runs and standalone runs share the pipeline
+state stored in the destination, so mixing them is fine.
 
 ## Related pages
 

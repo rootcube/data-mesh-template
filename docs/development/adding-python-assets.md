@@ -100,7 +100,8 @@ Points worth copying:
 ## Merging it into the location
 
 `definitions.py` currently returns `build_dbt_defs(...)` directly. Merge your assets into it
-with `Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs:
+with `Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs,
+schedules and sensors:
 
 ```python title="src/orchestrator/locations/dbt/dbt_example/definitions.py (with the asset merged)"
 """Dagster code location for the dbt_example project (see locations/dbt/shared.py)."""
@@ -122,7 +123,7 @@ Nothing connects at import time, so the location still loads without a `.env` (C
 share a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's
 `resources` dict; until then the inline `connect()` is the pattern.
 
-Because `job_dbt_example_build_all` selects `AssetSelection.all()`, the new asset joins that
+Because `job__<project>__build_all` selects `AssetSelection.all()`, the new asset joins that
 job as well.
 
 ## Validate and run
