@@ -55,7 +55,8 @@ STG_SCHEMA = SnowflakeSettings.from_env().schema_for_layer("stg")
 
 
 @asset(
-    group_name="weather",
+    key_prefix=["dbt_example", "python"],
+    group_name="dbt_example/python",
     kinds={"python", "snowflake"},
     deps=[AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])],
 )
@@ -92,10 +93,12 @@ Points worth copying:
 :   Metadata shows up in the UI on every materialization. Return `None` when there is nothing
     to record.
 
-`group_name` and `kinds`
-:   The group is how the asset catalog is organized (dbt models use their key without its last
-    segment, such as `dbt_example/models/02_stg/knmi`; dlt loads `dlt/ingest/<source>`); `kinds`
-    become the little tool icons.
+`key_prefix`, `group_name` and `kinds`
+:   Keys follow the location: `key_prefix=["<location>", "python"]` makes this asset
+    `dbt_example/python/knmi_freshness_report`, next to the dbt keys of the same location, and the
+    group is the key without its last segment, `dbt_example/python`, the same rule dbt models use
+    (`dbt_example/models/02_stg/knmi`) and dlt loads use (`dlt/ingest/<source>`). That is what nests
+    it in the asset catalog. `kinds` become the little tool icons.
 
 ## Merging it into the location
 
