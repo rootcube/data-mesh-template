@@ -4,7 +4,7 @@ config-version: 2
 
 profile: "default"
 
-require-dbt-version: [">=1.11.0", "<2.0.0"]
+require-dbt-version: [">=1.11.0", "<3.0.0"]
 
 flags:
   send_anonymous_usage_stats: false
@@ -66,7 +66,9 @@ models:
         int__common__holiday:
           # ISO 3166-1 alpha-2 code of the country whose public holidays the calendar carries
           # (NL by default). A literal, not a var: var() in dbt_project.yml only sees --vars.
-          +holiday_country: NL
+          # Under +meta: dbt v2 rejects custom keys anywhere else in a config block.
+          +meta:
+            holiday_country: NL
 
 seeds:
   dbt_example:

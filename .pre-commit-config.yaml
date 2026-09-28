@@ -44,6 +44,12 @@ repos:
         language: system
         files: ^dbt/.*\.(sql|yml|yaml|csv|py)$
         pass_filenames: false
+      - id: dbt-parse-v2
+        name: dbt parse with the v2 parser (all projects, dummy target)
+        entry: uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
+        language: system
+        files: ^dbt/.*\.(sql|yml|yaml|csv|py)$
+        pass_filenames: false
 
       - id: sqlfluff-lint
         name: sqlfluff lint (dbt models)

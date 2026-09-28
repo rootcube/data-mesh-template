@@ -33,7 +33,7 @@ The fields, from `terraform/config/_validation/schemas/user.schema.json`:
 
 | Field | Required | Meaning |
 |-------|----------|---------|
-| `login` | yes | Snowflake login name. For SSO accounts this is the existing login. |
+| `login` | yes | Snowflake login name. For SSO accounts this is the existing login. Unless `create` is `true`, the login must exist in the account: `just tf plan` checks and stops with a message naming the file otherwise. |
 | `name` | no | Display name, stored as the user comment. |
 | `email` | no | Only used when creating the user. |
 | `create` | no | `false` (default): the login exists already, only the grants are made. `true`: create the user as a person, with a one-time password they must change at first login. Service users are created by hand ([below](#a-service-user)). |

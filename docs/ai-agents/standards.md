@@ -40,6 +40,7 @@ Installed once with `just pre-commit-install`, they fire on every `git commit` (
 | `ruff format`, `ruff check --fix` | Python formatting and lint | `*.py` |
 | `ty check` | Whole-project type check | Any `*.py` change |
 | `dbt parse` | `scripts/dbt_all.py parse --target dummy --quiet`: every project must parse without credentials | `dbt/**/*.{sql,yml,yaml,csv,py}` |
+| `dbt parse` with the v2 parser | the same command with `--use-v2-parser`: every project must also parse on the dbt v2 engine, so the switch to v2 stays a version bump | `dbt/**/*.{sql,yml,yaml,csv,py}` |
 | `sqlfluff lint` | `just sqlfluff lint models`: the recipe runs inside `dbt/dbt_example` with `DBT_PROFILES_DIR` set, on every OS | `dbt/dbt_example/models/**/*.sql` |
 | `dagster definitions validate` | `just validate`: every code location must load | `src/**` and `dlt_pipelines/**` (`*.py`, `*.yaml`) |
 | `terraform fmt` | `terraform fmt -recursive terraform` | `*.tf` |
@@ -60,7 +61,7 @@ Details agents trip over:
 | Job | Steps |
 |---|---|
 | `python` | `uv sync --locked`, `ruff format --check .`, `ruff check .`, `ty check`, `pytest` |
-| `dbt-and-dagster` | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` (with `DBT_TARGET=dummy`) |
+| `dbt-and-dagster` | `dbt_all.py deps`, `dbt_all.py parse --target dummy` (as is, and with `--use-v2-parser` so the projects stay ready for dbt v2), `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` (with `DBT_TARGET=dummy`) |
 | `terraform` | `terraform fmt -check -recursive terraform`, `init -backend=false`, `validate`, then `validate_configs.py` through `uv` |
 | `docs` | `uv sync --locked --group docs`, `zensical build --strict` (a broken link fails the build) |
 | `setup` | On Linux, macOS and Windows: `just init`, `just info`, `just check`, `just sf keygen`, then `just start` until the UI answers with every code location loaded, and `just stop` until the port is free |

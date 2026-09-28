@@ -151,9 +151,9 @@ The `name`
     `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
     write the same table into the one database `.env` points at. The macros, the dispatch
     overrides and the `on-run-start` / `on-run-end` hooks keep working with the models disabled.
-    The copied `+holiday_country: NL` under
+    The copied `+meta: {holiday_country: NL}` under
     `dbt_common: 03_int: common: int__common__holiday:` only matters in the project that builds
-    the models; there it is a literal model config, not a var, so `--vars` does not change it.
+    the models; there it is a literal meta config, not a var, so `--vars` does not change it.
 
 The dispatch block stays
 :   Without `search_order: ["dbt_common", "dbt"]` the project falls back to dbt's own

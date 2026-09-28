@@ -614,7 +614,7 @@ Macros, hooks and generic tests keep working either way.
 own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
 
 !!! note "One Python model"
-    `int__common__holiday.py` is a Snowpark model (the public holidays of the country in the `holiday_country` model config, `NL` by default, via the `holidays` package). The consuming project sets that config as a literal in its `dbt_project.yml` (`models: dbt_common: 03_int: common: int__common__holiday: +holiday_country: NL`), not as a var. It
+    `int__common__holiday.py` is a Snowpark model (the public holidays of the country in the `holiday_country` meta config, `NL` by default, via the `holidays` package). The consuming project sets that config as a literal in its `dbt_project.yml` (`models: dbt_common: 03_int: common: int__common__holiday: +meta: {holiday_country: NL}`), not as a var. It
     runs inside Snowflake and needs the Anaconda channel enabled on the account; see
     [Troubleshooting](../getting-started/troubleshooting.md). ruff and ty skip `dbt/` for this
     reason. In a Python model, read a config with `dbt.config.get()` as a statement of its own:

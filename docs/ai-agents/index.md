@@ -100,7 +100,7 @@ Depending on what you touched, add:
 | `terraform/config/*.yaml` | `just tf-validate-config` |
 | `docs/` or `mkdocs.yml` | `just docs build --strict` |
 
-`just check` runs what CI runs in one go: lint, typecheck, tests, `dbt parse` in every project with the `dummy` target, the Dagster validation and the Terraform YAML validation.
+`just check` runs what CI runs in one go: lint, typecheck, tests, `dbt parse` in every project with the `dummy` target (once as is, once with `--use-v2-parser`), the Dagster validation and the Terraform YAML validation.
 
 See the [command reference](../reference/commands.md) for every recipe and [testing](../development/testing.md) for what the test suite covers.
 
