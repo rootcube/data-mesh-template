@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.14](https://github.com/rootcube/data-mesh-template/compare/v0.1.13...v0.1.14) (2026-09-28)
+
+
+### Features
+
+* snowflake init purge ([32f4e4c](https://github.com/rootcube/data-mesh-template/commit/32f4e4cf874803ec62cd3e62c8972cae1ae6e5e7))
+
+
+### Bug Fixes
+
+* remove unused database and resource monitor from provisioning setup ([5f00606](https://github.com/rootcube/data-mesh-template/commit/5f00606e801c9298f2d45c594bb00f1142cb6125))
+
 ## [0.1.13](https://github.com/rootcube/data-mesh-template/compare/v0.1.12...v0.1.13) (2026-09-28)
 
 
