@@ -403,6 +403,10 @@ Sources are the tables dlt writes into the source layer: the entry point of the 
    across the two code locations.
 5. Document the source columns as they arrive (the KNMI field codes, lowercased by dlt); typing
    and renaming happen in the staging model.
+6. The source declares `config.freshness` (`warn_after`, `error_after`) and every table its
+   `loaded_at_field`, for a dlt load the timestamp of `_dlt_load_id` as in `src_knmi.yml`.
+   `dbt source freshness` skips a table without one, and so does the Dagster sensor that
+   rebuilds the downstream of fresh sources ([Orchestration](../architecture/orchestration.md#schedules-and-sensors)).
 
 ```yaml title="dbt/dbt_example/sources/src_knmi.yml (condensed)"
 version: 2
@@ -417,11 +421,18 @@ sources:
     # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
     # source YAML cannot call macros.
     schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
+    config:
+      # `dbt source freshness` compares the age of MAX(loaded_at_field) with these.
+      freshness:
+        warn_after: {count: 48, period: hour}
+        error_after: {count: 7, period: day}
     tables:
       - name: climate_hourly
         identifier: knmi__climate_hourly
         description: One row per station per hour (hour 1..24 = the hour ending at that time).
         config:
+          # dlt stamps every row with its load id, the epoch seconds of the load, as text.
+          loaded_at_field: "TO_TIMESTAMP_NTZ(CAST(_dlt_load_id AS DECIMAL(20, 6)))"
           meta:
             dagster:
               # Same key as the dlt asset, so the Dagster lineage runs dlt -> dbt.

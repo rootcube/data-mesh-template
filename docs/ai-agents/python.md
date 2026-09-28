@@ -112,6 +112,9 @@ Tests are plain pytest functions in `tests/`, one file per module under test, an
 | `tests/test_dotenv.py` | `update_env_file()`: in-place replace of every line of a key, append, file creation (`tmp_path`), bare versus single-quoted values, refusing values `.env` cannot hold |
 | `tests/test_keypair.py` | `scripts/snowflake.py`: `generate_key_pair()`, `public_key_body()`, `key_is_encrypted()`, key fingerprints and the replace prompt, key rotation with `.bak` files, schema prefix rules, context discovery, `init.sql` and `account_settings.sql`, the bootstrap's sync and wipe |
 | `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` pipeline module; the load stage, merge staging in the temporary layer, `truncate_staging_dataset` |
+| `tests/test_dlt_location.py` | The dlt location exposes `job__dlt__ingest_all` and its daily `schedule__dlt__ingest_all` |
+| `tests/test_dbt_asset_keys.py` | `compute_asset_key()` and `compute_group_name()`: path-based keys, the `packages/<package>/` prefix, Windows separators, `meta.dagster.asset_key` overrides |
+| `tests/test_dbt_source_freshness.py` | `diff_freshness()`, `dbt_selector()`, the names and default status of the freshness jobs, schedule and sensor, and one sensor tick over a `sources.json` in `tmp_path` (`build_sensor_context`, no instance) |
 
 Two patterns to copy:
 

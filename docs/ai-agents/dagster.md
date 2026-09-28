@@ -10,12 +10,12 @@ Agent guide for the Dagster layer: where definitions live, the loading pattern t
 
 - `workspace.yaml` at the repo root is the authoritative list of code locations. Each entry maps a `location_name` to a Python module exposing a top-level `defs`. Read a location's `definitions.py` docstring first: it states what that location owns.
 - One code location per concern: the dlt ingestion package, and one per dbt project (one project per mesh node). Locations load in their own subprocess and never import each other. Cross-location lineage resolves through shared asset keys: dbt sources declare `config.meta.dagster.asset_key` in `sources/src_<source>.yml`, matching the dlt asset key `dlt/ingest/<source>/<entity>`.
-- The same code runs in every environment. `ENVIRONMENT` in `.env` (default `dev`) decides where things land: personal schemas `<SNOWFLAKE_SCHEMA>_<LAYER>` in `dev`, the `_<LAYER>` schemas elsewhere. Asset keys do not change between environments.
+- The same code runs in every environment. `ENVIRONMENT` in `.env` (default `dev`) decides where things land: personal schemas `<SNOWFLAKE_SCHEMA>_<LAYER>` in `dev`, the `_<LAYER>` schemas elsewhere. It also decides whether schedules and sensors start running (stopped in `dev` and `dummy`). Asset keys do not change between environments.
 
 | Location | Module | Owns |
 |---|---|---|
-| `dlt` | `orchestrator.locations.dlt.definitions` | Every dlt load under `dlt_pipelines/pipelines/ingest/`, one asset per dlt resource, plus `job_dlt_ingest_all` |
-| `dbt_example` | `orchestrator.locations.dbt.dbt_example.definitions` | The `dbt_example` project, including the `dbt_common` models it builds, plus `job_dbt_example_build_all` |
+| `dlt` | `orchestrator.locations.dlt.definitions` | Every dlt load under `dlt_pipelines/pipelines/ingest/`, one asset per dlt resource, plus `job__dlt__ingest_all` and its daily schedule |
+| `dbt_example` | `orchestrator.locations.dbt.dbt_example.definitions` | The `dbt_example` project, including the `dbt_common` models it builds, plus its jobs (`job__dbt_example__build_all`, ...), the freshness schedule and the freshness sensor |
 
 A second dbt project is one more block in `workspace.yaml` (there is a commented template at the bottom of the file) and one more folder under `src/orchestrator/locations/dbt/`; see [adding a project](../development/adding-projects.md).
 
@@ -26,7 +26,7 @@ Both locations build their `Definitions` inside a function and assign the result
 - `src/orchestrator/locations/dlt/definitions.py` has a private `_build_defs()`.
 - `src/orchestrator/locations/dbt/shared.py` has `build_dbt_defs(project_name, defs_module)`, called by every dbt location's `definitions.py` with its project name and its `defs` package. `src/orchestrator/locations/dbt/dbt_example/definitions.py` does nothing else: import the `defs` package, import the factory, call `build_dbt_defs("dbt_example", _defs_module)`.
 
-Both do the same two things: load the component tree with `ComponentTree.from_module(defs_module=..., project_root=...)` and `Definitions.merge` the result with one `define_asset_job` for the Launchpad.
+Both load the component tree with `ComponentTree.from_module(defs_module=..., project_root=...)` and `Definitions.merge` the result with their jobs: one `define_asset_job` and its daily `ScheduleDefinition` in the dlt location; in a dbt location the jobs, the schedule and the sensor listed below, plus the `dbt` resource (`DbtCliResource` on the component's `dbt_project`) their ops take as a parameter.
 
 !!! danger "Do not switch to `load_from_defs_folder`"
     `[tool.dg.project].defs_module` in `pyproject.toml` points at `orchestrator.defs`, an intentionally empty package (it exists so the dg CLI has a defs folder and the component cache lands in one `.local_defs_state/`). `load_from_defs_folder` would load that empty tree. Always use `ComponentTree.from_module` in a location's `definitions.py`, matching the existing locations.
@@ -68,12 +68,20 @@ Everything that is an asset today comes from a component `defs.yaml`; there is n
 
 ## Jobs, schedules, sensors
 
-| Definition | Location | Selection |
-|---|---|---|
-| `job_dlt_ingest_all` | `dlt` | `AssetSelection.key_prefixes(["dlt", "ingest"])`: every dlt ingest asset |
-| `job_dbt_example_build_all` | `dbt_example` | `AssetSelection.all()`: `dbt build` for the whole project |
+Names follow `<kind>__<location>__<name>`. Every dbt location gets the same set from `build_dbt_defs()` in `shared.py`; the freshness chain comes from `source_freshness.py` next to it.
 
-There are no schedules or sensors yet. Job names carry the `job_` prefix; the naming page covers Dagster definition names: [Naming](../conventions/naming.md).
+| Definition | Location | Selection or command |
+|---|---|---|
+| `job__dlt__ingest_all` | `dlt` | `AssetSelection.key_prefixes(["dlt", "ingest"])`: every dlt ingest asset |
+| `schedule__dlt__ingest_all` | `dlt` | `0 6 * * *` (UTC): launches the ingest job daily |
+| `job__dbt_example__build_all` | `dbt_example` | `AssetSelection.all()`: `dbt build` for the whole project, as assets |
+| `job__dbt_example__run_all`, `__test_all`, `__seed_all` | `dbt_example` | One op each (`dbt_command_job()`): `dbt run`, `dbt test`, `dbt seed`; logs, no materializations |
+| `job__dbt_example__source_freshness` | `dbt_example` | `dbt source freshness` into `dbt/dbt_example/target/freshness/sources.json`; a stale source is a warning, a missing `sources.json` fails the run |
+| `job__dbt_example__build_fresher` | `dbt_example` | `dbt build --select <sources_selector>` (op config: the sensor fills it, the Launchpad asks for it) |
+| `schedule__dbt_example__source_freshness` | `dbt_example` | `0 * * * *`: launches the freshness job every hour |
+| `sensor__dbt_example__source_freshness` | `dbt_example` | Every 300 s: diffs `sources.json` against its cursor (`max_loaded_at` per source) and launches `build_fresher` with `source:<source>.<table>+` for the sources that advanced, plus an `AssetObservation` per source |
+
+The schedules and the sensor start `STOPPED` when `SnowflakeSettings.from_env().is_personal` (`dev`, `dummy`) and `RUNNING` elsewhere. dbt checks a source only when its YAML has `freshness` and `loaded_at_field` (or `loaded_at_query`); the source excerpt in [dbt](dbt.md#the-staging-pattern) shows both. The naming page covers Dagster definition names: [Naming](../conventions/naming.md).
 
 ## Entry points and local state
 
@@ -103,9 +111,10 @@ Where new asset code goes and how to wire a resource into it: [Adding Python ass
 
 Dagster's built-in **Re-execute, from failure** on a finished run is the retry path; there is no separate retry job.
 
-- **`job_dbt_example_build_all`** is an asset job, so re-execute-from-failure re-runs only the failed and never-attempted assets. The dbt integration translates that asset subset into a `dbt build --select` of just those models, the asset-aware equivalent of `dbt retry`. Failed dbt tests show up as failed asset checks on a succeeded model and are re-run the same way.
-- **`job_dlt_ingest_all`**: one asset per dlt resource, so a retry re-runs only the resources that failed. Each pipeline uses `merge` with a primary key, so re-running an overlapping window is safe.
+- **`job__dbt_example__build_all`** is an asset job, so re-execute-from-failure re-runs only the failed and never-attempted assets. The dbt integration translates that asset subset into a `dbt build --select` of just those models, the asset-aware equivalent of `dbt retry`. Failed dbt tests show up as failed asset checks on a succeeded model and are re-run the same way.
+- **`job__dlt__ingest_all`**: one asset per dlt resource, so a retry re-runs only the resources that failed. Each pipeline uses `merge` with a primary key, so re-running an overlapping window is safe.
 - Assets skipped because of an upstream failure count as "not yet materialized" and are included in the retry.
+- The op jobs (`run_all`, `test_all`, `seed_all`, `source_freshness`, `build_fresher`) are a single op, so a retry re-runs the whole dbt command.
 
 ## After making changes
 
@@ -164,7 +173,8 @@ Runs every hook on every file (ruff, ty, dbt parse, sqlfluff, Dagster validation
 |---|---|
 | Workspace (authoritative location list) | `workspace.yaml` |
 | dlt code location | `src/orchestrator/locations/dlt/definitions.py` |
-| dbt location factory | `src/orchestrator/locations/dbt/shared.py` |
+| dbt location factory (jobs, `dbt` resource) | `src/orchestrator/locations/dbt/shared.py` |
+| dbt freshness chain (jobs, schedule, sensor) | `src/orchestrator/locations/dbt/source_freshness.py` |
 | dbt_example location and component | `src/orchestrator/locations/dbt/dbt_example/definitions.py`, `defs/dbt/defs.yaml` |
 | dlt component | `dlt_pipelines/pipelines/ingest/knmi/defs.yaml` |
 | Snowflake settings | `src/orchestrator/resources/snowflake.py` |

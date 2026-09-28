@@ -88,10 +88,11 @@ Details, including the pre-commit hooks and the CI jobs, are on [Testing](testin
 
 | Change | Files | Rule of thumb |
 |--------|-------|---------------|
-| dlt load | `dlt_pipelines/pipelines/ingest/<source>/` + `dbt/<project>/sources/src_<source>.yml` + a staging model | One folder per source, module-level `source` and `pipeline`, tables `<source>__<entity>` in `_SRC` |
+| dlt load | `dlt_pipelines/pipelines/ingest/<source>/` + `dbt/<project>/sources/src_<source>.yml` (with `freshness` and `loaded_at_field`) + a staging model | One folder per source, module-level `source` and `pipeline`, tables `<source>__<entity>` in `_SRC` |
 | dbt model | `dbt/<project>/models/<layer>/<domain>/<name>.sql` + `_conf/<name>.yml` | Reference only the layer below; every model has its YAML |
 | project | `terraform/config/projects/<project>.yaml` + `dbt/dbt_<project>/` + `src/orchestrator/locations/dbt/dbt_<project>/` + `workspace.yaml` | One project per mesh node, one location per project, `dbt_common` built by one project only |
 | Python asset | A module in the owning location, merged into its `definitions.py` | A genuinely separate concern is a new location in `workspace.yaml` |
+| Job, schedule, sensor | dbt: `build_dbt_defs()` and `source_freshness.py` in `src/orchestrator/locations/dbt/`, so every project gets the same set; dlt: `locations/dlt/definitions.py` | Named `<kind>__<location>__<name>`; stopped by default in `dev` and `dummy` ([Orchestration](../architecture/orchestration.md#jobs)) |
 
 The naming rules for all of these are on [Naming](../conventions/naming.md); the git side
 (branches, commits, review) on [Git workflow](../conventions/git-workflow.md).

@@ -6,7 +6,7 @@ icon: material/database-import
 
 A new source is one folder under `dlt_pipelines/pipelines/ingest/`, shaped exactly like `knmi`.
 Nothing registers it: the standalone runner discovers packages, the Dagster component tree
-discovers `defs.yaml` files, and `job_dlt_ingest_all` selects by key prefix. This page adds a
+discovers `defs.yaml` files, and `job__dlt__ingest_all` (with its daily schedule) selects by key prefix. This page adds a
 second REST source end to end, up to the dbt staging model that reads it. Background:
 [Ingestion](../architecture/ingestion.md).
 
@@ -222,8 +222,8 @@ just start
 ```
 
 In the UI, the asset `measurement_hourly` sits in group `dlt/ingest/airquality`; **Materialize**
-runs the same `pipeline.run(source)`. It is also part of `job_dlt_ingest_all`, without any
-change to the job. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
+runs the same `pipeline.run(source)`. It is also part of `job__dlt__ingest_all`, and so of its
+daily schedule, without any change to the job. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
 both keys from the terminal.
 
 ## 8. Expose it to dbt
@@ -231,7 +231,10 @@ both keys from the terminal.
 Two files in the dbt project that owns the source (`dbt/dbt_example` here). First the source,
 with the Dagster asset key so the lineage crosses code locations. The `schema` line is the one
 place the layer rule is spelled out by hand, from the dbt `target`, because source YAML cannot
-call macros; copy it exactly from `src_knmi.yml`.
+call macros; copy it exactly from `src_knmi.yml`. The `freshness` block and `loaded_at_field`
+make `dbt source freshness` check the table, which is what lets
+`sensor__dbt_example__source_freshness` rebuild its downstream when a load lands
+([Orchestration](../architecture/orchestration.md#schedules-and-sensors)).
 
 ```yaml title="dbt/dbt_example/sources/src_airquality.yml"
 version: 2
@@ -246,11 +249,18 @@ sources:
     # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
     # source YAML cannot call macros.
     schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
+    config:
+      # `dbt source freshness` compares the age of MAX(loaded_at_field) with these.
+      freshness:
+        warn_after: {count: 48, period: hour}
+        error_after: {count: 7, period: day}
     tables:
       - name: measurement_hourly
         identifier: airquality__measurement_hourly
         description: One row per station per hour.
         config:
+          # dlt stamps every row with its load id, the epoch seconds of the load, as text.
+          loaded_at_field: "TO_TIMESTAMP_NTZ(CAST(_dlt_load_id AS DECIMAL(20, 6)))"
           meta:
             dagster:
               # Same key as the dlt asset, so the Dagster lineage runs dlt -> dbt.
@@ -385,6 +395,6 @@ test calls the API or Snowflake.
 - [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `destination=snowflake_destination(SOURCE)`, `dataset_name=source_dataset()`
 - [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
 - [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
-- [ ] `dbt/<project>/sources/src_<source>.yml` with the `target`-based schema line, `identifier` and `meta.dagster.asset_key` matching the dlt key
+- [ ] `dbt/<project>/sources/src_<source>.yml` with the `target`-based schema line, `identifier`, `meta.dagster.asset_key` matching the dlt key, and `freshness` plus `loaded_at_field` for the freshness check
 - [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes
 - [ ] `just validate` and `just check` pass

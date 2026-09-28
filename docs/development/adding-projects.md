@@ -244,7 +244,9 @@ attributes:
   select: "fqn:*"
 ```
 
-`build_dbt_defs()` gives the location `job_dbt_energy_build_all` for free.
+`build_dbt_defs()` gives the location its jobs (`job__dbt_energy__build_all`, `run_all`, `test_all`,
+`seed_all`, `source_freshness`, `build_fresher`), `schedule__dbt_energy__source_freshness` and
+`sensor__dbt_energy__source_freshness` for free.
 
 ## 5. Register the location (engineer)
 

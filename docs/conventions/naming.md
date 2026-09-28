@@ -127,8 +127,11 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Code location (dlt) | `dlt` | `dlt` |
 | Code location (dbt) | `dbt_<project>` | `dbt_example` |
 | Python module of a dbt location | `orchestrator.locations.dbt.dbt_<project>.definitions` | `orchestrator.locations.dbt.dbt_example.definitions` |
-| Job (dlt) | `job_dlt_ingest_all` | same |
-| Job (dbt) | `job_<project>_build_all` | `job_dbt_example_build_all` |
+| Job (dlt) | `job__dlt__ingest_all` | same |
+| Job (dbt) | `job__<location>__<name>`, with `build_all`, `run_all`, `test_all`, `seed_all`, `source_freshness`, `build_fresher` | `job__dbt_example__build_all` |
+| Schedule | `schedule__<location>__<name>` | `schedule__dlt__ingest_all`, `schedule__dbt_example__source_freshness` |
+| Sensor | `sensor__<location>__<name>` | `sensor__dbt_example__source_freshness` |
+| Op | `op__<location>__<name>`, the name of the job it runs in | `op__dbt_example__build_fresher` |
 | Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/common/dim__common__calendar` |
 | Asset key (dbt seed) | `<project>/seeds/<name>`, or `<project>/packages/<package>/seeds/<name>` | `dbt_example/packages/dbt_common/seeds/seed_month` |
 | Asset group (dbt) | the key without its last segment | `dbt_example/models/02_stg/knmi` |
@@ -137,10 +140,11 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 `workspace.yaml` is the authoritative list of code locations; location names and module paths
 both use underscores. Asset keys are the same in every environment (they never carry the
 personal prefix or the `_` of a provisioned schema), which is what lets lineage cross code
-locations. When you add named definitions beyond these, prefix them by kind so they are
-unambiguous in the UI and CLI: `job_`, `schedule_`, `sensor_`, `check_`, `op_`. When the same
-factory produces a definition per location (as `build_dbt_defs` does), embed the project in the
-name (`job_dbt_example_build_all`).
+locations. Named definitions are `<kind>__<location>__<name>`: the kind (`job`, `schedule`,
+`sensor`, `op`, `check`) keeps them unambiguous in the UI and CLI, the location (`dlt`,
+`dbt_example`) keeps the definitions of every dbt project apart when one factory produces them
+(`build_dbt_defs`), and double underscores separate the parts because the parts themselves
+contain single ones (`job__dbt_example__build_all`).
 
 ## Snowflake
 

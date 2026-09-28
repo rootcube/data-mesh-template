@@ -17,7 +17,7 @@ grows from one project to many.
   without re-learning the codebase.
 - **Many projects, one shape.** Every project is a copy of `dbt_example` with its own name, so a
   convention that holds in one holds in all of them. Naming is what keeps `DB_<PROJECT>_<ENV>`,
-  `dbt_<project>` and `job_dbt_<project>_build_all` lined up.
+  `dbt_<project>` and `job__dbt_<project>__build_all` lined up.
 - **AI agents write code here.** Agents follow the same rules you do. `AGENTS.md` and the
   [AI agent pages](../ai-agents/index.md) point at this section instead of restating it, so human
   and agent output look the same in review.

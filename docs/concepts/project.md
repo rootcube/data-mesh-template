@@ -93,7 +93,7 @@ The Project also has a footprint outside `terraform/`:
 | Piece | Path | Holds |
 |-------|------|-------|
 | dbt project | `dbt/dbt_example/` | The models, sources, seeds and tests of this Project |
-| Dagster code location | `src/orchestrator/locations/dbt/dbt_example/` | `definitions.py` and `defs/dbt/defs.yaml` |
+| Dagster code location | `src/orchestrator/locations/dbt/dbt_example/` | `definitions.py` and `defs/dbt/defs.yaml`; the jobs, freshness schedule and sensor come from `build_dbt_defs()` |
 | Workspace entry | `workspace.yaml` | `location_name: "dbt_example"` |
 
 dlt loads live in the shared `dlt_pipelines/` package rather than per project; they land in the

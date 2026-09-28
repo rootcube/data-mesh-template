@@ -84,7 +84,8 @@ Detail: [Architecture](docs/architecture/index.md), [Concepts](docs/concepts/ind
 ```
 src/orchestrator/                 # Dagster package
 ├── locations/dlt/definitions.py  #   loads the dlt_pipelines component tree (one asset per dlt resource)
-├── locations/dbt/shared.py       #   build_dbt_defs(): one code location per dbt project; DataMeshDbtProjectComponent: path-based keys and groups
+├── locations/dbt/shared.py       #   build_dbt_defs(): one code location per dbt project with its jobs (job__<location>__<name>) and `dbt` resource; DataMeshDbtProjectComponent: path-based keys and groups
+├── locations/dbt/source_freshness.py #   the freshness chain of a dbt location: hourly `dbt source freshness` job + schedule, sensor, build_fresher job
 ├── locations/dbt/dbt_example/    #   definitions.py + defs/dbt/defs.yaml (DataMeshDbtProjectComponent)
 ├── resources/snowflake.py        #   SnowflakeSettings.from_env(): the only reader of SNOWFLAKE_* and ENVIRONMENT
 └── utils/dotenv.py               #   .env editing used by scripts/snowflake.py
@@ -138,10 +139,11 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 
 ## Adding things
 
-- **dlt load** ([guide](docs/development/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project and a staging model.
+- **dlt load** ([guide](docs/development/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project (schema line, `identifier`, `meta.dagster.asset_key`, `freshness` and `loaded_at_field`) and a staging model.
 - **dbt model** ([guide](docs/development/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
 - **project** ([guide](docs/development/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
 - **Python asset** ([guide](docs/development/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
+- **Job, schedule, sensor**: named `<kind>__<location>__<name>` (`job__dbt_example__build_all`, `schedule__dlt__ingest_all`). Every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`; do not add one-off jobs in a project's `definitions.py`. See [Orchestration](docs/architecture/orchestration.md#jobs).
 
 ## Critical rules
 
@@ -158,4 +160,5 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 - **Do not reference across layers.** STG cannot ref INT, MRT cannot ref EXP.
 - **Two builders of `dbt_common`.** Every project that builds the `dbt_common` models writes the same tables into the one database `.env` points at. Only one project builds them; others disable `dbt_common` models.
 - **Source YAML cannot call macros.** The source layer schema is spelled out from `target` in `sources/*.yml` (`DBT_SRC` when the prefix is blank); keep it in step with `dbt_common.generate_schema_name`.
+- **Schedules and sensors are stopped in `dev` and `dummy`** (`SnowflakeSettings.is_personal`), running elsewhere. Do not change that default; switch them on in the UI to test.
 - **Quoting in `.env`.** `just` and python-dotenv strip single quotes and read the value inside literally, so values with special characters go in single quotes; Docker `--env-file` keeps the quotes as part of the value.

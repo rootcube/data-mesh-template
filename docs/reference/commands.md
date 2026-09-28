@@ -54,7 +54,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just dbt <args>` | dbt in `dbt/dbt_example`, e.g. `just dbt build`, `just dbt parse` |
+| `just dbt <args>` | dbt in `dbt/dbt_example`, e.g. `just dbt build`, `just dbt parse`, `just dbt source freshness` |
 | `just project=dbt_x dbt <args>` | Same, in another project under `dbt/` |
 | `just dbt-all <args>` | One dbt command in every project, e.g. `just dbt-all deps`, `just dbt-all parse --target dummy` |
 | `just sqlfluff <args>` | sqlfluff from the project directory, e.g. `just sqlfluff lint models` |

@@ -10,11 +10,20 @@ sources:
     # Same rule and same target as dbt_common's generate_schema_name, spelled out here because
     # source YAML cannot call macros.
     schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
+    config:
+      # `dbt source freshness` (job__dbt_example__source_freshness, hourly) compares the age of
+      # MAX(loaded_at_field) with these. Defaults for every table of the source; a table's own
+      # `freshness:` block overrides them, and a table without `loaded_at_field` is skipped.
+      freshness:
+        warn_after: {count: 48, period: hour}
+        error_after: {count: 7, period: day}
     tables:
       - name: climate_hourly
         identifier: knmi__climate_hourly
         description: One row per station per hour (hour 1..24 = the hour ending at that time).
         config:
+          # dlt stamps every row with its load id, the epoch seconds of the load, as text.
+          loaded_at_field: "TO_TIMESTAMP_NTZ(CAST(_dlt_load_id AS DECIMAL(20, 6)))"
           meta:
             dagster:
               # Same key as the dlt asset, so the Dagster lineage runs dlt -> dbt.

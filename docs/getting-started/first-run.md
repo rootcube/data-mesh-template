@@ -16,8 +16,8 @@ code locations, both loaded:
 
 | Location | Owns |
 |----------|------|
-| `dlt` | Every dlt ingest pipeline under `dlt_pipelines/pipelines/ingest/`, plus the job `job_dlt_ingest_all` |
-| `dbt_example` | The `dbt_example` dbt project, including the shared `dbt_common` models it builds, plus the job `job_dbt_example_build_all` |
+| `dlt` | Every dlt ingest pipeline under `dlt_pipelines/pipelines/ingest/`, plus the job `job__dlt__ingest_all` and its daily schedule, stopped in `dev` |
+| `dbt_example` | The `dbt_example` dbt project, including the shared `dbt_common` models it builds, plus its jobs (`job__dbt_example__build_all`, ...), a freshness schedule and a freshness sensor, both stopped in `dev` |
 
 A location that failed to load shows the error right there; the terminal has the full trace.
 `just validate` loads the same locations without the UI.
@@ -66,6 +66,18 @@ to the query history in Snowsight) and ends with a summary; run metadata lands i
     Snowflake's Anaconda channel. If it fails with a package error, an `ORGADMIN` has not
     accepted the Anaconda terms yet. Ask your administrator, or disable the model; see
     [Troubleshooting](troubleshooting.md).
+
+## Let it run by itself
+
+Everything you just did by hand is also automated, but switched off in `dev` so a laptop never
+loads or builds on its own. Under *Automation* you find `schedule__dlt__ingest_all` (daily,
+06:00 UTC), `schedule__dbt_example__source_freshness` (every hour) and
+`sensor__dbt_example__source_freshness` (every 5 minutes), all stopped. To see the chain once:
+launch `job__dbt_example__source_freshness` from *Jobs*, then start the sensor; its next tick
+sees the KNMI source as fresher than anything in its cursor and launches
+`job__dbt_example__build_fresher` for the downstream of that source. Stop the sensor again when
+you are done. The whole set is described in
+[Orchestration](../architecture/orchestration.md#schedules-and-sensors).
 
 ## What you now have in Snowflake
 

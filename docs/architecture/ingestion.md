@@ -243,7 +243,8 @@ resource.
 | Asset key | `dlt/ingest/<source>/<entity>`: `dlt/ingest/knmi/climate_hourly` |
 | Group | `dlt/ingest/<source>` |
 | Kinds | `dlt`, `snowflake` |
-| Job | `job_dlt_ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
+| Job | `job__dlt__ingest_all` selects every key under `dlt/ingest`, so new sources join it for free |
+| Schedule | `schedule__dlt__ingest_all` runs that job daily at 06:00 UTC; stopped by default in `dev` |
 | Snowflake table | `<source-layer schema>.<source>__<entity>`: `_SRC.knmi__climate_hourly`, or `DBT_USERNAME_SRC.knmi__climate_hourly` in `dev` |
 | Stage path | `<source-layer schema>.ST_DEFAULT/dlt/ingest/<source>/`, then a folder per load, `<pipeline>__<load id>`: `_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/`, or `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__<load id>/` in `dev` |
 
