@@ -143,7 +143,7 @@ The starter ships one organisation (`example`), one team (`platform`) and one pr
 
 !!! tip "In a hurry?"
     ```bash
-    git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
+    git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
     just setup       # init, then one question: fresh account (bootstrap + provisioning) or provisioned (key pair)
     just start       # Dagster UI on http://localhost:3000
     ```

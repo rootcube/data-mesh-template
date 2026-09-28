@@ -26,8 +26,10 @@ clean-targets:
 # `- local: ../dbt_common`). It carries the shared macros (schema naming, query tag, run
 # logging, run-metadata upload) and the shared objects (calendar/time/environment
 # dims, the unknown-member seed and their upstream chain), so every project can ref() them
-# without cross-project sources. Each installing project builds its own copy; a project can
-# opt out with `models: dbt_common: +enabled: false` in its dbt_project.yml.
+# without cross-project sources. Each installing project builds its own copy; a project opts out
+# per layer folder in its dbt_project.yml (02_stg, 03_int and 04_mrt below, plus the seeds tree),
+# keeping stg__seed__unknown and seed_unknown for the unknown member its dimensions union in.
+# Not `models: dbt_common: +enabled: false`: that takes the on-run-end hooks with it, see below.
 models:
   dbt_common:
     +persist_docs:
@@ -60,7 +62,10 @@ seeds:
 # on-run-end hooks execute in the parent project's runs. This uploads the run metadata
 # (models, tests, executions, ...) into the pre__dbt__* tables in the metadata layer (_MTD)
 # of the project database (see macros/dbt_artifacts/README.md). The tables are created on
-# demand by the upload itself. The dummy target never connects, so it is skipped.
+# demand by the upload itself. The dummy target never connects, so it is skipped. These are
+# operation nodes and they read their config from the models: block above, so a project that
+# sets `models: dbt_common: +enabled: false` disables them too, silently: no upload, no run
+# summary, no warning. Disable the layer folders instead.
 on-run-end:
   - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed', 'freshness'] and target.name | trim | lower != 'dummy' %}{{ dbt_common.upload_results(results) }}{% endif %}"
   - "{% if execute and flags.WHICH in ['run', 'build', 'test', 'seed'] %}{{ dbt_common.log_run_summary(results) }}{% endif %}"

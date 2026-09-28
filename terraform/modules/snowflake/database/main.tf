@@ -14,19 +14,12 @@ terraform {
 
 locals {
   database_name = upper("DB_${var.project_code}_${var.environment_code}")
-
-  # Conditional Logic, retention based on Environment (prd = 30 days, acc = 7 days, others = 1 day)
-  data_retention = var.data_retention_time_in_days != null ? var.data_retention_time_in_days : (
-    lower(var.environment_code) == "prd" ? 30 :
-    lower(var.environment_code) == "acc" ? 7 :
-    1
-  )
 }
 
 resource "snowflake_database" "this" {
   name                        = local.database_name
   comment                     = var.comment != "" ? var.comment : "Database for Project [${var.project_code}] in [${var.environment_code}] Environment"
-  data_retention_time_in_days = local.data_retention
+  data_retention_time_in_days = var.data_retention_time_in_days
   is_transient                = var.is_transient
 
   # Removing an environment from a project (or `terraform destroy`) would drop the database with

@@ -1,6 +1,10 @@
 {#-
   Zensical's partials/tabs-item.html with one addition: the page icon in the tab.
   Drop this override once Zensical renders tab icons itself.
+
+  Copied from Zensical 0.0.64 (https://github.com/zensical/zensical), MIT licensed:
+  Copyright (c) 2025-2026 Zensical and contributors. License text in
+  LICENSES/MIT-zensical.txt, attribution in NOTICE.
 -#}
 {% macro render_content(nav_item, ref) %}
   {% set ref = ref or nav_item %}

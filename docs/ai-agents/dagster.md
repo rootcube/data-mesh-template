@@ -61,7 +61,7 @@ Everything that is an asset today comes from a component `defs.yaml`; there is n
 
 === "dbt"
 
-    `src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml`, type `orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent` (dagster-dbt's `DbtProjectComponent` with the key scheme below). It points at `dbt/dbt_example` with the shared `dbt/` profiles dir, selects `fqn:*` (every node; a bare `*` would be expanded to file names by dbt's CLI on Windows), and re-parses the project on every code-location load (`prepare_project_cli_args: ["parse", "--quiet"]`), so the manifest always matches the models on disk. Asset keys follow the file path, `<project>/models/<layer>/<domain>/<name>` (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`), with `<project>/packages/<package>/...` for nodes from a package, the same in every environment. Sources take their key from `config.meta.dagster.asset_key`, and the group is the key without its last segment (`dbt_example/models/02_stg/knmi`), which is what nests the assets in the UI (`DataMeshDbtTranslator` in `shared.py`).
+    `src/orchestrator/locations/dbt/dbt_example/defs/dbt/defs.yaml`, type `orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent` (dagster-dbt's `DbtProjectComponent` with the key scheme below). It points at `dbt/dbt_example` with the shared `dbt/` profiles dir, selects `fqn:*` (every node; a bare `*` would be expanded to file names by dbt's CLI on Windows), and re-parses the project whenever `dagster dev` loads or reloads the location (`prepare_project_cli_args: ["parse", "--quiet"]`), so the graph in the UI matches the models on disk. Other loads, `dagster definitions validate` included, do not parse: they read the manifest the last `dbt parse` wrote (`just init` and `just check` run one). Either way the manifest is `dbt/dbt_example/target/manifest.json`, because `DataMeshDbtProjectComponent` ignores dagster-dbt's `.local_defs_state` snapshot of the project instead of building the assets from it. Asset keys follow the file path, `<project>/models/<layer>/<domain>/<name>` (`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`), with `<project>/packages/<package>/...` for nodes from a package, the same in every environment. Sources take their key from `config.meta.dagster.asset_key`, and the group is the key without its last segment (`dbt_example/models/02_stg/knmi`), which is what nests the assets in the UI (`DataMeshDbtTranslator` in `shared.py`).
 
 !!! warning "Component-relative references"
     The `.pipelines.pipeline` style references in a `defs.yaml` resolve relative to the folder that holds the `defs.yaml`. Keep `pipelines.py` next to it.
@@ -82,11 +82,11 @@ There are no schedules or sensors yet. Job names carry the `job_` prefix; the na
 | `just start` | `uv run dagster dev -w workspace.yaml -h 127.0.0.1 -p 3000`, the UI on port 3000, foreground |
 | `just stop` | Kills whatever listens on port 3000 |
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` |
-| `just validate` | `uv run dagster definitions validate -w workspace.yaml`: loads every location like `start` does, without the UI |
+| `just validate` | `uv run dagster definitions validate -w workspace.yaml`: loads every location without the UI (and without the dbt re-parse `start` does) |
 
 `DAGSTER_HOME` is `.dagster/` inside the repo (set by the `justfile` and `.envrc`). `.dagster/dagster.yaml` is versioned: telemetry off, `DefaultRunCoordinator` and `DefaultRunLauncher` (runs start immediately in a subprocess, no daemon queue and no limit on concurrent runs; a limit needs the `QueuedRunCoordinator` and the daemon). Everything else in `.dagster/` is run history and safe to delete. The component cache lands in `.local_defs_state/`, also git-ignored.
 
-CI runs `just validate`'s command with `DBT_TARGET=dummy`, because the `dbt_example` location parses the dbt project on load and CI has no `.env`. Do the same locally if your `.env` is not filled in yet.
+CI sets `DBT_TARGET=dummy` for the whole job, because it has no `.env` and dbt would otherwise want Snowflake credentials to parse. Do the same locally if your `.env` is not filled in yet. `just validate` itself needs no target; it reads the manifest that step wrote.
 
 ## Resources
 
@@ -133,7 +133,7 @@ just typecheck
 just validate
 ```
 
-Loads each code location in its own subprocess and parses every `defs.yaml`. Catches import errors, broken component references, and a dbt project that does not parse. If this fails, nothing will work.
+Loads each code location in its own subprocess and parses every `defs.yaml`. Catches import errors, broken component references, and asset keys or selections the translator rejects. It does not parse the dbt projects, so run `just dbt-all parse --target dummy` first when you touched models (`just check` does both, in that order). If this fails, nothing will work.
 
 ### 4. Run tests
 

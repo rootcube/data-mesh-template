@@ -74,16 +74,17 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 | Schema | Written by | Holds |
 |--------|------------|-------|
 | `DBT_<USERNAME>_SRC` | dlt | `knmi__climate_hourly`, the API rows as loaded; the load files in the stage `ST_DEFAULT` |
-| `DBT_<USERNAME>_REF` | `dbt seed` | the `dbt_common` seeds: `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` |
+| `DBT_<USERNAME>_REF` | `dbt seed` | the `dbt_common` seeds `seed_environment`, `seed_month`, `seed_unknown`, `seed_weekday` and the project's own `seed_knmi_station`, `seed_knmi_measurement_type` |
 | `DBT_<USERNAME>_STG` | dbt | `stg__knmi__climate_hourly` and the `stg__seed__*` models |
-| `DBT_<USERNAME>_INT` | dbt | the `int__common__*` models |
-| `DBT_<USERNAME>_MRT` | dbt | `dim__common__calendar`, `dim__common__time`, `dim__common__environment` |
-| `DBT_<USERNAME>_EXP` | dbt | nothing yet: `models/05_exp/` is empty in the starter |
+| `DBT_<USERNAME>_INT` | dbt | the `int__common__*` and `int__weather__*` models |
+| `DBT_<USERNAME>_MRT` | dbt | `dim__common__calendar`, `dim__common__time`, `dim__common__environment`, `dim__weather__knmi_station`, `dim__weather__knmi_measurement_type`, `fct__weather__knmi_measurement` |
+| `DBT_<USERNAME>_EXP` | dbt | `exp__weather__station_weather`, the view consumers read |
 | `DBT_<USERNAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
 | `DBT_<USERNAME>_TMP` | dbt tests | stored test failures |
 
-`just sf check` lists the schemas. In `prd` (and `tst`, `acc` once enabled) the same
-objects live in the provisioned `_SRC`, `_STG`, ... schemas; see [Layer](../concepts/layer.md).
+`just sf check` lists the schemas. In `prd`, and in `acc` or `tst` once the project lists them
+(`tst` also ships disabled), the same objects live in the provisioned `_SRC`, `_STG`, ... schemas;
+see [Layer](../concepts/layer.md) and [Environment](../concepts/environment.md).
 
 ## Where things live locally
 

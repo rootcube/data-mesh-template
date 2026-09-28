@@ -113,8 +113,8 @@ For every environment the project lists, Terraform creates:
 
 The database module drops the default `PUBLIC` schema, so a project database holds layer
 schemas only (plus, in `dev`, the personal schemas Terraform creates per engineer). Time Travel
-retention is set on the database, 30 days in `prd`, 7 in `acc` and one day elsewhere, and the
-schemas inherit it. Databases carry `prevent_destroy`: a plan that would drop one, such as
+retention is set on the database, one day unless the environment file sets
+`data_retention_days`, and the schemas inherit it. Databases carry `prevent_destroy`: a plan that would drop one, such as
 removing an environment from the project, fails until an administrator lifts it
 ([Snowflake provisioning](../administration/snowflake-provisioning.md)).
 

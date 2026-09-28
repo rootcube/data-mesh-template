@@ -30,6 +30,10 @@ disabled: false
 required: true
 ```
 
+`data_retention_days` is optional and sets the Time Travel retention of the environment's
+databases; it defaults to one day, the Standard Edition maximum, and Enterprise editions may
+raise it up to 90 (`production.yaml` shows it).
+
 `disabled: true` hides an environment everywhere: Terraform filters it out of every project
 (`terraform/variables.tf`), and the validator warns when a project still lists it. `test` and
 `sandbox` ship disabled; enable `test` by flipping the flag and adding it to the project's

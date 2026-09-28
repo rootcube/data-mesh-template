@@ -81,7 +81,7 @@ SELECT
     WHEN tim.hour >= 11 AND tim.hour <= 11 THEN 'morning (late)'
     WHEN tim.hour >= 12 AND tim.hour <= 15 THEN 'afternoon (early)'
     WHEN tim.hour >= 16 AND tim.hour <= 16 THEN 'afternoon (late)'
-    WHEN tim.hour >= 17 AND tim.hour <= 18 THEN 'evening (vroeg)'
+    WHEN tim.hour >= 17 AND tim.hour <= 18 THEN 'evening (early)'
     WHEN tim.hour >= 19 AND tim.hour <= 20 THEN 'evening'
     WHEN tim.hour >= 21 THEN 'night'
     WHEN tim.hour <= 4 THEN 'night'

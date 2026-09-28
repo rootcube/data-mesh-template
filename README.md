@@ -27,13 +27,14 @@ winget install --id Git.Git -e
 ```
 
 Inside the checkout, `just install <tool>` adds the optional extras: `terraform` (needed for the
-fresh-account path), `direnv`, `gh`, or `all`. Details and alternatives:
+fresh-account path), `direnv` or `gh`; `all` installs `uv`, `terraform` and `direnv`. Details and
+alternatives:
 [Prerequisites](docs/getting-started/prerequisites.md).
 
 ### Run
 
 ```bash
-git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
+git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
 just setup       # init, then a one-question wizard (see below), then your .env
 just start       # Dagster UI on http://localhost:3000
 ```
@@ -93,4 +94,6 @@ See `CONTRIBUTING.md`; security issues go through `SECURITY.md`, never a public 
 
 ## License
 
-GPL-3.0, see `LICENSE`.
+GPL-3.0, see `LICENSE`. Third-party code copied into this repository (dbt_artifacts macros, one
+Zensical theme partial) stays under its own license: see [`NOTICE`](NOTICE) for the attribution and
+`LICENSES/` for the license texts.

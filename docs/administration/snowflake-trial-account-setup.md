@@ -12,8 +12,9 @@ and sets up your own key pair. Budget about fifteen minutes, most of it waiting 
 
 1. Go to [signup.snowflake.com](https://signup.snowflake.com/) and fill in the form. Any
    edition works; **Enterprise** is the default and fine (on Standard the bootstrap skips the one
-   Enterprise-only account setting, `PERIODIC_DATA_REKEYING`). Pick a cloud and region close to
-   you; the region does not matter for the starter.
+   Enterprise-only account setting, `PERIODIC_DATA_REKEYING`, and Time Travel stays at the one day
+   Standard allows: `data_retention_days` in `terraform/config/environments`). Pick a cloud and
+   region close to you; the region does not matter for the starter.
 2. Open the activation mail and choose a **username** and **password**. The username becomes
    your Snowflake login (`CURRENT_USER()` returns it uppercased, `USERNAME` for `username`). Write
    both down; the bootstrap asks for them.
@@ -57,7 +58,7 @@ when it is missing (through tfenv on Homebrew, winget on Windows).
 ## 4. Bootstrap
 
 ```bash
-git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
+git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
 just setup
 ```
 

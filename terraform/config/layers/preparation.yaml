@@ -7,5 +7,7 @@ name: "Preparation Layer"
 desc: "Initial cleansing and harmonisation of raw inputs"
 type: "processing"
 sort: 210
-disabled: false
+# Ships disabled: grant it an access tier under config/roles before enabling, or a project
+# that picks it gets a schema nobody can reach.
+disabled: true
 required: false

@@ -17,14 +17,12 @@ variable "config_path" {
 variable "SNOWFLAKE_ORGANIZATION" {
   description = "Snowflake organization name (the part before the dash in <organization>-<account>)"
   type        = string
-  sensitive   = true
 }
 
 # Mapped to TF_VAR_SNOWFLAKE_ACCOUNT environment variable
 variable "SNOWFLAKE_ACCOUNT" {
   description = "Snowflake account name (the part after the dash in <organization>-<account>)"
   type        = string
-  sensitive   = true
 }
 
 # Mapped to TF_VAR_SNOWFLAKE_USER environment variable
@@ -281,6 +279,20 @@ locals {
     x6l  = "X6LARGE"
   }
 
-  # Merge compute configs with the size mapping reference
-  computes = local.computes_raw
+  # Defaults of the optional compute attributes, the same ones compute.schema.json documents.
+  # main.tf reads these keys unguarded, so a YAML that leaves them out must still have them.
+  # `sizes` has no sensible default and is required in the schema.
+  compute_defaults = {
+    desc              = ""
+    disabled          = false
+    required          = false
+    auto_suspend      = 60
+    auto_resume       = true
+    min_cluster_count = 1
+    max_cluster_count = 1
+  }
+
+  computes = {
+    for key, compute in local.computes_raw : key => merge(local.compute_defaults, compute)
+  }
 }

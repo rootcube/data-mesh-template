@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.1.13](https://github.com/rootcube/data-mesh-template/compare/v0.1.12...v0.1.13) (2026-09-28)
+
+
+### Bug Fixes
+
+* **dagster:** build dbt assets from the project on disk and allow one-segment asset keys ([de061f1](https://github.com/rootcube/data-mesh-template/commit/de061f1851a4d0bb5f05d15f8c9cfc7ed509176c))
+* **dbt:** compile on the dummy target and warn instead of abort on a missing stage ([bbb4aa3](https://github.com/rootcube/data-mesh-template/commit/bbb4aa327f08946da7966bc998ba3a42cbd2a630))
+* **docs:** correct the onboarding pages and turn on page edit links ([5a36d25](https://github.com/rootcube/data-mesh-template/commit/5a36d257ac5ec6e5d60eeda55b1d634f8238a527))
+* **docs:** make the second-project walkthrough parse and keep the dbt_common hooks ([ea42787](https://github.com/rootcube/data-mesh-template/commit/ea427870d5e35ada53836397a53b568718c10f21))
+* **justfile:** keep argument quoting, parse on init and harden the Snowflake setup ([09903a7](https://github.com/rootcube/data-mesh-template/commit/09903a723613d1d382c0ff32c217c894d3286d1b))
+* **terraform:** accept trimmed computes, new environment codes and Standard edition retention ([d279470](https://github.com/rootcube/data-mesh-template/commit/d279470623ea66eb4659f6d26c1b84ac29937ae0))
+
+## [0.1.12](https://github.com/rootcube/data-mesh-template/compare/v0.1.11...v0.1.12) (2026-09-28)
+
+
+### Bug Fixes
+
+* drop trial defaults in Snowflake setup and update documentation ([f9fc1e4](https://github.com/rootcube/data-mesh-template/commit/f9fc1e4d5b1016fd70e26da2db6605edeeb381c0))
+
+## [0.1.11](https://github.com/rootcube/data-mesh-template/compare/v0.1.10...v0.1.11) (2026-09-28)
+
+
+### Bug Fixes
+
+* enhance drop_objects function to support ownership handling ([2cd1002](https://github.com/rootcube/data-mesh-template/commit/2cd10022520543a99206077cafd81af0307b8bb3))
+* enhance drop_objects function to support ownership management during resource deletion ([3d9f3cf](https://github.com/rootcube/data-mesh-template/commit/3d9f3cf0364370fffa97d375405aad282d34d843))
+
+
+### Documentation
+
+* update access/ workflow docs to clarify privilege rules and code ownership ([6ba7bca](https://github.com/rootcube/data-mesh-template/commit/6ba7bca401b970164d882b9376a9c82226776e59))
+
 ## [0.1.10](https://github.com/rootcube/data-mesh-template/compare/v0.1.9...v0.1.10) (2026-09-28)
 
 

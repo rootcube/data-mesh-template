@@ -1,0 +1,39 @@
+Third-party code redistributed in this repository
+=================================================
+
+This repository as a whole is licensed GPL-3.0 (see LICENSE). The components below are
+copied from other projects and stay under their own licenses. Full license texts are in
+LICENSES/.
+
+
+1. dbt_artifacts (dbt upload macros)
+
+   Path here:     dbt/dbt_common/macros/dbt_artifacts/
+   Upstream:      https://github.com/brooklyn-data/dbt_artifacts
+   Version:       2.10.0 (upstream tag 2.10.0)
+   License:       Apache License 2.0, text in LICENSES/Apache-2.0.txt
+   Copyright:     Brooklyn Data Co. and the dbt_artifacts contributors. Upstream ships the
+                  Apache-2.0 text with the appendix placeholder unfilled and no NOTICE file,
+                  so there is no upstream copyright line to reproduce verbatim.
+   Modified:      Yes. Only the upload_results macro path was copied; models, migration
+                  scripts and integration tests were not. Non-Snowflake adapter variants
+                  were deleted, adapter.dispatch and macro calls were renamespaced from
+                  dbt_artifacts to dbt_common, get_relation.sql was replaced by a
+                  naming-convention lookup, and two macros were added
+                  (upload_results/create_metadata_tables.sql and
+                  upload_individual_datasets/upload_source_freshness.sql).
+                  File-by-file detail: dbt/dbt_common/macros/dbt_artifacts/README.md.
+
+
+2. Zensical (documentation theme partial)
+
+   Path here:     overrides/partials/tabs-item.html
+   Upstream:      https://github.com/zensical/zensical
+   Version:       0.0.64, file zensical/templates/partials/tabs-item.html
+   License:       MIT, text in LICENSES/MIT-zensical.txt
+   Copyright:     Copyright (c) 2025-2026 Zensical and contributors
+   Modified:      Yes, in two places. The upstream header comment was replaced by one
+                  explaining the override, and render_content() now includes the page's
+                  icon: front-matter SVG (from .icons/) before the title on index pages,
+                  so navigation tabs show an icon the way Material for MkDocs does. The
+                  rest of the file is upstream verbatim.

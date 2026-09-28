@@ -119,14 +119,16 @@ Four seeds (`seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`), t
 `stg__seed__*` models, the `int__common__*` chain and three dimensions
 (`dim__common__calendar`, `dim__common__time`, `dim__common__environment`). The whole chain
 is drawn on [Layers in practice](layers.md#the-common-dimensions-from-dbt_common). Each project
-that installs `dbt_common` builds its own copy; in Dagster they show up under the group
-`dbt_common`.
+that installs `dbt_common` builds its own copy; in Dagster they show up in groups under
+`<project>/packages/dbt_common/`, one per key directory
+(`.../models/02_stg/seed`, `.../models/03_int/common`, `.../models/04_mrt/common`, `.../seeds`).
 
 !!! warning "Exactly one project builds them"
-    Two projects building `dbt_common` models produce the same asset keys in two code
-    locations, which Dagster rejects. `dbt_example` builds them (`dbt_common: +enabled: true`
-    in its `dbt_project.yml`). Every other project disables them and, if it needs a shared
-    dimension, reads it as a source. See [Adding a project](../development/adding-projects.md).
+    Two projects building `dbt_common` models get distinct asset keys (the key carries the
+    project), but they write the same table into the one database `.env` points at.
+    `dbt_example` builds them (`dbt_common: +enabled: true` in its `dbt_project.yml`). Every
+    other project disables them per layer folder and, if it needs a shared dimension, reads it
+    as a source. See [Adding a project](../development/adding-projects.md).
 
 `int__common__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
 the `holidays` package from the Anaconda channel. The country is the `holiday_country` meta

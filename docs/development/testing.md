@@ -5,8 +5,8 @@ icon: material/test-tube
 # Testing
 
 Three kinds of checks, in increasing scope: pytest for Python code, dbt tests for the data, and
-`just validate` for the wiring between everything. `just check` runs what CI runs; the
-pre-commit hooks run the relevant subset on every commit.
+`just validate` for the wiring between everything. `just check` runs what CI runs, apart from
+the Terraform fmt and validate legs; the pre-commit hooks run the relevant subset on every commit.
 
 ## Python tests (pytest)
 
@@ -25,6 +25,7 @@ instance.
 | `tests/test_keypair.py` | `scripts/snowflake.py`: key generation, PKCS#8 output, passphrase encryption, key fingerprints and the replace prompt, key rotation with `.bak` files, schema prefix rules, context discovery, `init.sql` and `account_settings.sql` |
 | `tests/test_dotenv.py` | `update_env_file()`: in-place replacement of every line of a key, appending, creating the file, bare versus single-quoted values, refusing values `.env` cannot hold |
 | `tests/test_dlt_pipelines.py` | `discover()` finds the `knmi` source; the load stage, merge staging in the temporary layer and `truncate_staging_dataset` from `.dlt/config.toml` |
+| `tests/test_dbt_asset_keys.py` | `compute_asset_key()`: the path-based key for a project's own models, the `packages/<package>/` prefix for package nodes, Windows path separators, and a `config.meta.dagster.asset_key` that overrides all of it |
 
 Conventions for new tests: a `test_<module>.py` next to these, plain functions, `tmp_path` for
 files, no network. Logic worth testing lives in plain functions (a date chunker, a settings
@@ -65,11 +66,12 @@ necessary, not sufficient.
 just validate    # dagster definitions validate -w workspace.yaml
 ```
 
-Loads every code location in `workspace.yaml`, each in its own subprocess, exactly like
-`just start` does. It catches import errors, a broken `defs.yaml`, a dbt project that does not
-parse, and missing dbt packages (the dbt locations run `dbt parse` on load). Run it after any
-change to `src/`, `dlt_pipelines/`, `dbt/` or `workspace.yaml`. If it fails, `just start` will
-fail the same way.
+Loads every code location in `workspace.yaml`, each in its own subprocess. It catches import
+errors, a broken `defs.yaml`, translator and selection errors, and missing dbt packages. The dbt
+locations read the manifest the last `dbt parse` wrote (`just init` and `just check` run it;
+only `dagster dev` re-parses on load), so run `just dbt-all parse --target dummy` after editing
+models before you trust the result. Run it after any change to `src/`, `dlt_pipelines/`, `dbt/`
+or `workspace.yaml`. If it fails, `just start` will fail the same way.
 
 Dagster's CLI marks `dagster definitions validate` as superseded by `dg check defs`, which
 only loads the project's `defs_module` from `pyproject.toml` and ignores `workspace.yaml`. The
@@ -79,7 +81,7 @@ same in PowerShell.
 
 ## `just check`
 
-Everything CI runs, in one recipe:
+What CI runs, apart from the Terraform fmt and validate legs, in one recipe:
 
 ```bash
 just check
@@ -88,12 +90,14 @@ just check
 1. `just lint`: `ruff check`, `ruff format --check`, `sqlfluff lint models` in the dbt project
 2. `just typecheck`: `ty check` over `src/`, `dlt_pipelines/`, `scripts/`, `tests/`
 3. `just test`: pytest
-4. `dbt parse --target dummy` in every project (`scripts/dbt_all.py`)
+4. `dbt parse --target dummy` in every project (`scripts/dbt_all.py`), as is and again with
+   `--use-v2-parser`, so the projects stay ready for dbt v2
 5. `dagster definitions validate -w workspace.yaml`
 6. The Terraform YAML validation (`terraform/config/_validation/validate_configs.py`, the same
    thing `just tf-validate-config` runs)
+7. `just docs build --strict`
 
-`just fmt` first (ruff format, `ruff check --fix`, `sqlfluff fix models`) saves a round trip.
+`just fmt` first (`ruff check --fix`, ruff format, `sqlfluff fix models`) saves a round trip.
 
 ## Pre-commit hooks
 
@@ -121,16 +125,24 @@ in the repo. The two hooks that call `just` need it on the `PATH`, also for a co
 
 ## What CI runs
 
-`.github/workflows/ci.yml` runs on every push to `main` and every pull request, five jobs in
-parallel:
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request: a `Changed paths`
+job that lists what the change touches, then five check jobs in parallel:
 
 | Job | Steps |
 |-----|-------|
 | Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
-| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
+| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in `dbt/dbt_example`, `dagster definitions validate -w workspace.yaml` with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
 | Docs | `uv sync --locked --group docs`, `zensical build --strict` |
 | Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
+
+On a pull request each check job runs only when the change touches its inputs; a skipped job
+counts as passed for the required checks. Python and Terraform watch their own trees, dbt + Dagster
+watches `dbt/`, `src/`, `dlt_pipelines/` and `workspace.yaml`, Docs watches `docs/`, `mkdocs.yml`,
+`overrides/` and the files the pages include with `--8<--`, and the Setup matrix only the tooling
+path: the justfile, `scripts/`, `.env.example`, `.envrc` and the dbt package files. A dependency
+change (`pyproject.toml`, `uv.lock`, `.python-version`) or an edit to `ci.yml` runs everything, as
+do pushes to `main` and manual runs.
 
 Every job but `Setup` installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after changing
 dependencies, run `uv lock` and commit `uv.lock`. `Setup` installs the way an engineer does, through

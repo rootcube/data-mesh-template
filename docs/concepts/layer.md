@@ -19,9 +19,9 @@ One file per layer under `terraform/config/layers/`. The `code` becomes the sche
 | Key (file) | `code` | Type | Purpose | `required` | `disabled` | Used by `example` |
 |------------|--------|------|---------|------------|------------|-------------------|
 | `source` | `src` | input | Actively collected raw data from source systems | yes | no | yes |
-| `import` | `imp` | input | Received data contracts from other Projects' expose outputs | no | no | no |
+| `import` | `imp` | input | Received data contracts from other Projects' expose outputs | no | yes | no |
 | `reference` | `ref` | input | Curated reference and lookup datasets used across models | no | no | yes |
-| `preparation` | `prp` | processing | Initial cleansing and harmonisation of raw inputs | no | no | no |
+| `preparation` | `prp` | processing | Initial cleansing and harmonisation of raw inputs | no | yes | no |
 | `staging` | `stg` | processing | Mandatory landing layer for standardising and cleaning inputs | yes | no | yes |
 | `integration` | `int` | processing | Reconciled and integrated entities, the business layer | no | no | yes |
 | `mart` | `mrt` | processing | Analytics-ready models optimised for specific use cases | no | no | yes |
@@ -57,9 +57,10 @@ operational
 :   Bookkeeping that is not a modelling step: `mtd` for run metadata, `tmp` for short-lived
     work that nothing may depend on.
 
-`metadata` is one of the starter's additions to the platform model. `application` ships
-disabled: a project that lists it gets a validator warning and no schema until an
-administrator flips the flag.
+`metadata` is one of the starter's additions to the platform model. `application`, `import`
+and `preparation` ship disabled because no role grants anything on them yet: a project that
+lists one gets a validator warning and no schema until an administrator adds an access tier
+under `terraform/config/roles/` and flips the flag.
 
 ## How data flows
 

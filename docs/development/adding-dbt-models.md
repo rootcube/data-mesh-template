@@ -215,12 +215,16 @@ and `exposures/weather_dashboard.yml` names that consumer.
 
 ## Where Dagster comes in
 
-Nothing to do. The `dbt_example` code location re-parses the project on load, so after
-`just validate` (or a reload in the UI) the new model shows up as
+Nothing to do. `dagster dev` re-parses the project when it loads the `dbt_example` location, so
+after `just start` (or a reload of the location in the running UI) the new model shows up as
 `dbt_example/models/03_int/weather/int__weather__station_day` (group
 `dbt_example/models/03_int/weather`), downstream of
 `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`. Materializing it runs
 `dbt build` for that selection.
+
+`just validate` does not parse dbt. It reads the manifest the last `dbt parse` wrote, which
+`just init` and `just check` run for you; after editing models outside those, run
+`just dbt-all parse --target dummy` first.
 
 ## Checklist
 

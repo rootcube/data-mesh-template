@@ -4,6 +4,9 @@ Vendored from [brooklyn-data/dbt_artifacts](https://github.com/brooklyn-data/dbt
 (Apache License 2.0). Only the upload machinery is included - the macros invoked (directly or
 transitively) by `upload_results`. Models, migration scripts, and integration tests were not vendored.
 
+The Apache-2.0 license text ships at `LICENSES/Apache-2.0.txt` in the repository root, and `NOTICE`
+records the attribution and a summary of the changes documented below.
+
 ## Trims applied
 
 - **Snowflake only.** This repo runs dbt-core 1.11 on Snowflake exclusively. Every adapter-specific

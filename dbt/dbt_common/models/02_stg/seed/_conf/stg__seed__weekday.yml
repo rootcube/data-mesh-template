@@ -42,7 +42,7 @@ models:
 
       - name: weekday_name
         description: Full name of the weekday (e.g. Monday, Tuesday)
-        data_type: varchar(20)
+        data_type: varchar(10)
 
         data_tests:
           - not_null:

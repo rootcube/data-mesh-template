@@ -12,8 +12,8 @@
 
     As a post_hook (per model or directory-level in dbt_project.yml):
         +post-hook:
-          - "{{ search_optimization(this) }}"
-          - "{{ search_optimization(this, 'EQUALITY(col_a), SUBSTRING(col_b)') }}"
+          - "{{ dbt_common.search_optimization(this) }}"
+          - "{{ dbt_common.search_optimization(this, 'EQUALITY(col_a), SUBSTRING(col_b)') }}"
 #}*/
 
 {% macro search_optimization(target_relation, operations='EQUALITY(*), SUBSTRING(*)') %}

@@ -5,7 +5,10 @@ attributes:
     project_dir: '{{ context.project_root }}/dbt/dbt_example'
     # profiles.yml is shared by every project under dbt/ (DBT_PROFILES_DIR points there too).
     profiles_dir: '{{ context.project_root }}/dbt'
-    # Re-parse on every code-location load so the manifest always matches the models on disk.
+    # `dagster dev` runs this to re-parse the project when it loads or reloads the location, so
+    # the manifest matches the models on disk. Other loads (`dagster definitions validate`) do
+    # not parse; they read the manifest the last `dbt parse` wrote, which `just init` and
+    # `just check` run. DataMeshDbtProjectComponent keeps both paths on that one manifest.
     prepare_project_cli_args: ["parse", "--quiet"]
   # Every node. Not a bare "*": dbt's CLI (click) expands that to the file names in the project
   # directory on Windows, which then selects nothing.

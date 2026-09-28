@@ -94,6 +94,7 @@ def test_merge_staging_tables_go_to_the_temporary_layer(monkeypatch: pytest.Monk
 
 
 def test_merge_staging_tables_are_emptied_after_each_load() -> None:
-    # Resolved like dlt's loader does, from the [load] section of .dlt/config.toml.
+    # Resolved like dlt's loader does, from the [load] section of .dlt/config.toml (conftest.py
+    # points DLT_PROJECT_DIR at the repo so this holds from any working directory).
     config = resolve_configuration(LoaderConfiguration(), sections=(known_sections.LOAD,), accept_partial=True)
     assert config.truncate_staging_dataset is True

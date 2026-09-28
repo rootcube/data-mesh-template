@@ -10,7 +10,16 @@
     {{ return('') }}
   {% endif %}
 
-  {% set stage = target.database ~ '.' ~ (dbt_common.generate_schema_name('src', none) | trim) ~ '.ST_DEFAULT' %}
+  {% set schema = target.database ~ '.' ~ (dbt_common.generate_schema_name('src', none) | trim) %}
+  {% set stage = schema ~ '.ST_DEFAULT' %}
+
+  {# No stage yet, or no privileges on it: warn and let the run continue instead of aborting it. #}
+  {% set found = run_query("SHOW STAGES LIKE 'ST_DEFAULT' IN SCHEMA " ~ schema) %}
+  {% if found | length == 0 %}
+    {{ log('Skipped the directory table refresh: ' ~ stage ~ ' does not exist or is not authorized. `just tf apply` provisions it (terraform/stages.tf).', info=true) }}
+    {{ return('') }}
+  {% endif %}
+
   {% do run_query('ALTER STAGE ' ~ stage ~ ' REFRESH') %}
   {{ log('Refreshed the directory table of ' ~ stage, info=true) }}
 

@@ -1,9 +1,12 @@
 [project]
 name = "datamesh-starter"
-version = "0.1.10"
+version = "0.1.13"
 description = "Starter template for a data mesh platform: Dagster, dlt and dbt on Snowflake."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
+license = "GPL-3.0-only"
+# LICENSES/ and NOTICE cover the third-party code copied into this repo (see NOTICE).
+license-files = ["LICENSE", "LICENSES/*", "NOTICE"]
 dependencies = [
     # Orchestration
     "dagster>=1.13",
@@ -23,6 +26,9 @@ dependencies = [
     "python-dotenv>=1.1",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/rootcube/data-mesh-template"
 
 [dependency-groups]
 # Installed on every plain `uv sync` (default group below).

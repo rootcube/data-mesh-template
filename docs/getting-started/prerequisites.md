@@ -37,9 +37,10 @@ Homebrew on macOS and Linux and winget on Windows:
 | Tool | Needed for |
 |------|------------|
 | `terraform` | The fresh-account path of `just setup`, which installs it for you when missing, and everything under [Administration](../administration/index.md); Homebrew installs it through tfenv |
+| `tfenv` | macOS and Linux only: the Terraform version manager on its own, without installing a Terraform version |
 | `direnv` | Optional: activates `.venv` and loads `.env` when you `cd` into the checkout (the repo ships an `.envrc`), which `just` already does for its own recipes |
 | `gh` | The GitHub CLI, for pull requests from the terminal |
-| `all` | All of the above |
+| `all` | `uv`, `terraform` and `direnv`; `gh` stays optional and is not part of it |
 
 Engineers on a provisioned platform need none of them.
 

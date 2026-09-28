@@ -204,7 +204,7 @@ locations are the ones in `workspace.yaml`.
 
 ```bash
 just start                                                         # UI on :3000, Ctrl+C stops
-just stop                                                          # kill whatever listens on port 3000
+just stop                                                          # stop dagster dev on port 3000; another program there is reported, not killed
 just validate                                                      # load every location, no UI
 just dagster asset list -m orchestrator.locations.dlt.definitions  # any Dagster CLI command
 ```

@@ -5,16 +5,26 @@
 
 Every pipelines/ingest/<source>/pipelines.py exposes a module-level `source` and `pipeline`;
 `run` imports that module and calls `pipeline.run(source)`.
+
+Pipeline state and working data stay in the repo (.dlt/data), as they do under `just dlt`.
 """
 
 from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import pkgutil
 import sys
+from pathlib import Path
 
-import dlt_pipelines.pipelines.ingest as ingest_pkg
+ROOT = Path(__file__).resolve().parents[1]
+# The justfile exports these; without them dlt would keep its state in ~/.dlt instead of the repo.
+# Set before dlt is imported, which happens through the import below.
+os.environ.setdefault("DLT_PROJECT_DIR", str(ROOT))
+os.environ.setdefault("DLT_DATA_DIR", str(ROOT / ".dlt" / "data"))
+
+import dlt_pipelines.pipelines.ingest as ingest_pkg  # noqa: E402
 
 
 def discover() -> dict[str, str]:
