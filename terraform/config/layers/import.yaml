@@ -7,5 +7,7 @@ name: "Import Layer"
 desc: "Received data contracts from other Projects' EXP outputs"
 type: "input"
 sort: 120
-disabled: false
+# Ships disabled: grant it an access tier under config/roles before enabling, or a project
+# that picks it gets a schema nobody can reach.
+disabled: true
 required: false

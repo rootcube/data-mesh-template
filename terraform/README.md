@@ -12,7 +12,7 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 | Concept | Snowflake object | Example |
 |---------|------------------|---------|
 | Project × Environment | database `DB_<PROJECT>_<ENV>` | `DB_EXAMPLE_DEV`, `DB_EXAMPLE_PRD` |
-| Layer | schema `_<LAYER>` in that database | `_SRC`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_REF`, `_MTD`, `_TMP` |
+| Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with warehouse grants and one access role per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding a tier of privileges on the layer schema (`view`, `read`, `edit`, `full`), four per layer | `AR_EXAMPLE_PRD__MRT__READ`, `AR_EXAMPLE_DEV__SRC__FULL` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
@@ -126,7 +126,7 @@ One YAML file per object, validated against the JSON schemas in `config/_validat
 | `organisations/` | the organisation | one file |
 | `teams/` | teams that own projects | `organisation` refers to the organisation file name |
 | `projects/` | one file per project | `team`, `environments`, `layers`, `computes`, `roles`; `"*"` means all enabled |
-| `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere |
+| `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere, so a project that still lists it plans to drop its database and the plan fails (see State and teardown); `data_retention_days` sets Time Travel |
 | `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names; optional `privileges` adds to an access tier on that layer (stages in `source`) |
 | `accesses/` | the access tiers view, read, edit, full | the privileges of a tier on a layer schema; each layer × tier becomes an access role |
 | `roles/` | project roles (engineer, analyst, ingest, transform) and platform roles (`global/`, disabled) | privileges per compute and database, an access tier per layer and environment, inherited roles |
@@ -263,5 +263,6 @@ included, run `just tf clean`. It lists what goes and asks you to type the accou
 then has Terraform destroy everything but the databases, drops the databases as `TERRAFORM_USER`
 (`SYSADMIN`, which owns them) and removes them from the state last. A run that stops halfway can
 simply be repeated. `just tf apply` provisions everything again afterwards. A dropped database can
-be restored with `UNDROP DATABASE` while its Time Travel retention lasts (30 days in `prd`). The
-bootstrap objects from `init.sql`, the account parameters and your own key stay.
+be restored with `UNDROP DATABASE` while its Time Travel retention lasts (one day, or what the
+environment's `data_retention_days` says). The bootstrap objects from `init.sql`, the account
+parameters and your own key stay.

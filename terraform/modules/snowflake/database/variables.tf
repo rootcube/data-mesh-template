@@ -9,12 +9,13 @@ variable "project_code" {
 }
 
 variable "environment_code" {
-  description = "The Environment (SBX, DEV, TST, ACC, PRD)"
+  description = "The Environment code (SBX, DEV, TST, ACC, PRD, or any other in config/environments)"
   type        = string
 
   validation {
-    condition     = contains(["sbx", "dev", "tst", "acc", "prd"], lower(var.environment_code))
-    error_message = "Environment must be one of: sbx, dev, tst, acc, prd."
+    # Same shape as `code` in environment.schema.json, so a new environment needs no module change.
+    condition     = can(regex("^[a-z]{3}$", lower(var.environment_code)))
+    error_message = "Environment code must be three letters (see config/environments)."
   }
 }
 
@@ -25,12 +26,15 @@ variable "comment" {
 }
 
 variable "data_retention_time_in_days" {
-  description = "Number of days for which Snowflake retains historical data"
+  description = "Number of days for which Snowflake retains historical data (Time Travel)"
   type        = number
-  default     = null # null: 30 days in prd, 7 in acc, 1 elsewhere (see main.tf)
+  # 1 is the Standard Edition maximum; raise it per environment with `data_retention_days` in
+  # config/environments. An environment without that key passes null, hence nullable = false.
+  default  = 1
+  nullable = false
 
   validation {
-    condition     = var.data_retention_time_in_days == null ? true : (var.data_retention_time_in_days >= 0 && var.data_retention_time_in_days <= 90)
+    condition     = var.data_retention_time_in_days >= 0 && var.data_retention_time_in_days <= 90
     error_message = "Data retention must be between 0 and 90 days."
   }
 }

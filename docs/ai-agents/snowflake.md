@@ -23,7 +23,7 @@ Platform administrators provision everything with Terraform from the YAML under 
 
 Owners follow Snowflake's recommendation (`terraform/providers.tf`): `SYSADMIN` creates and owns databases, schemas, stages and warehouses, `SECURITYADMIN` the roles and every grant, `USERADMIN` the users; every project role is granted to `SYSADMIN`.
 
-`terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep 30 days of Time Travel in `prd`, 7 in `acc` and one elsewhere (the database module); their schemas inherit it.
+`terraform/config/projects/example.yaml` lists what the starter project provisions: environments `development` and `production`, the eight layers above, the `default` compute (X-Small, auto-suspend after 60 seconds) and the roles `ingest`, `transform`, `engineer`, `analyst`. Environment codes are `dev`, `tst`, `acc`, `prd` (`terraform/config/environments/`). Databases keep one day of Time Travel unless the environment file sets `data_retention_days` (Standard Edition allows at most 1, Enterprise up to 90); their schemas inherit it.
 
 The four purposes, from `terraform/config/roles/`. A role names an access tier per layer and environment (`view`, `read`, `edit`, `full`), never a privilege list; the privileges of a tier are in `terraform/config/accesses/<tier>.yaml`, the layer-specific extras under `privileges` in `terraform/config/layers/<layer>.yaml` (stages in `source`, scratch `CREATE TABLE` and `CREATE VIEW` in `temporary`):
 

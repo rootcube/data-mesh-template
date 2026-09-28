@@ -132,6 +132,9 @@
     "computePrivilegesByEnvironment": {
       "type": "object",
       "description": "Compute privileges by environment. Use 'all' for all environments or specific environment codes (dev, tst, acc, prd)",
+      "propertyNames": {
+        "pattern": "^(all|dev|tst|acc|prd|sbx)$"
+      },
       "additionalProperties": {
         "type": "array",
         "items": {
@@ -170,6 +173,9 @@
     "databasePrivilegesByEnvironment": {
       "type": "object",
       "description": "Database privileges by environment on top of the implicit USAGE. Use 'all' for all environments or specific environment codes.",
+      "propertyNames": {
+        "pattern": "^(all|dev|tst|acc|prd|sbx)$"
+      },
       "additionalProperties": {
         "type": "array",
         "items": {

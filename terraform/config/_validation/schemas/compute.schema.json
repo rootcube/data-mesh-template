@@ -4,7 +4,7 @@
   "title": "Compute Configuration",
   "description": "Standardized execution resource abstractions for sizing, scaling, and isolating compute.",
   "type": "object",
-  "required": ["code", "name"],
+  "required": ["code", "name", "sizes"],
   "additionalProperties": false,
   "properties": {
     "code": {

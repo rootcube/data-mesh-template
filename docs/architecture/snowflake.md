@@ -29,8 +29,8 @@ For every project in `terraform/config/projects/` and each of its environments:
 
 The example project has two environments, so the same set exists once more with `PRD`:
 `DB_EXAMPLE_PRD`, `RL_EXAMPLE_PRD__*`, `WH_EXAMPLE_PRD`. Nothing is shared between the two.
-Each database keeps 30 days of Time Travel in `prd`, 7 in `acc` and one elsewhere, which its
-schemas inherit, and carries `prevent_destroy`, so no plan drops it by accident.
+Each database keeps one day of Time Travel, or the `data_retention_days` its environment file
+sets, which its schemas inherit, and carries `prevent_destroy`, so no plan drops it by accident.
 
 Terraform connects through Snowflake's system roles, so every object has the owner Snowflake
 recommends: `SYSADMIN` creates and owns the databases, schemas, stages and warehouses,

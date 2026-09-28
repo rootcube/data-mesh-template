@@ -38,6 +38,13 @@
       "description": "Alternative name or abbreviation for the environment",
       "maxLength": 50
     },
+    "data_retention_days": {
+      "type": "integer",
+      "description": "Time Travel retention of this environment's databases; Standard Edition allows 0 or 1, Enterprise editions up to 90",
+      "minimum": 0,
+      "maximum": 90,
+      "default": 1
+    },
     "disabled": {
       "type": "boolean",
       "description": "Whether this environment is disabled and unavailable for use",
