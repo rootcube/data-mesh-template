@@ -180,6 +180,11 @@ release-please, on every push to `main`, from `.github/workflows/release-please.
 pull request, and on its merge the tag and the GitHub release. It is not a check on your pull
 request.
 
+Docs, on every push to `main` that touches the site (`docs/`, `overrides/`, `mkdocs.yml`,
+`terraform/README.md`), from `.github/workflows/docs.yml`: the strict build again, then the deploy
+to GitHub Pages at the `site_url` in `mkdocs.yml`. Not a check on your pull request either; CI's
+`docs` job is.
+
 Dependabot, weekly on Monday, from `.github/dependabot.yml`: one grouped pull request per
 ecosystem for Python packages (`uv.lock`), GitHub Actions and the Terraform providers, with
 conventional titles (`chore(deps)`, `ci(deps)`) so they never bump the release version on their

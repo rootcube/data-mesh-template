@@ -1,6 +1,8 @@
 # Documentation site, built by Zensical from this MkDocs-format config. Local: `just docs` (http://localhost:8000).
 site_name: Data Mesh Platform Starter
 site_description: A runnable starter for a data mesh platform on Snowflake with Dagster, dlt and dbt.
+# Where the built site is published, so canonical links and the sitemap are right.
+site_url: https://rootcube.github.io/data-mesh-template/
 repo_url: https://github.com/rootcube/data-mesh-template
 repo_name: rootcube/data-mesh-template
 edit_uri: edit/main/docs/

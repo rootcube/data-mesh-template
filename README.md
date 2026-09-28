@@ -9,6 +9,7 @@ multi-project mesh: one dbt project and one Dagster code location per project, a
 
 > Full documentation lives in `docs/` and is served with `just docs` (Zensical). This
 > README is the quickstart and a map.
+> The published site: <https://rootcube.github.io/data-mesh-template/>.
 
 ## Quickstart (engineer)
 
