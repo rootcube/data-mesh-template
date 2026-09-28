@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.15](https://github.com/rootcube/data-mesh-template/compare/v0.1.14...v0.1.15) (2026-09-28)
+
+
+### Features
+
+* add the adoption guide and harden the key, context and teardown paths ([#50](https://github.com/rootcube/data-mesh-template/issues/50)) ([deda997](https://github.com/rootcube/data-mesh-template/commit/deda997017e41087e2ef1c6117cedb628fd7c44e))
+* implement source freshness checks and scheduling for dbt assets ([#51](https://github.com/rootcube/data-mesh-template/issues/51)) ([e2a0c37](https://github.com/rootcube/data-mesh-template/commit/e2a0c373688d3d74998510e8d32d568cda3e3fac))
+
+
+### Bug Fixes
+
+* **dbt:** lint dbt_common, anchor the calendar window and drop session-dependent date casts ([#49](https://github.com/rootcube/data-mesh-template/issues/49)) ([a7af931](https://github.com/rootcube/data-mesh-template/commit/a7af9315aef65da3ca70634e17626b861a37ea53))
+* **dlt:** fail on empty loads, name the source after the source, and pin the copied dlt internals ([#48](https://github.com/rootcube/data-mesh-template/issues/48)) ([9dcfc2d](https://github.com/rootcube/data-mesh-template/commit/9dcfc2dea04f49cac9d11e7cc81834ce68b0dda3))
+* **terraform:** keep the bootstrap on Snowflake's security defaults and close four config traps ([#46](https://github.com/rootcube/data-mesh-template/issues/46)) ([b16f2c1](https://github.com/rootcube/data-mesh-template/commit/b16f2c1ea4c47a7f393b399733bb1154e4916ded))
+
+
+### Documentation
+
+* check titled code fences against their source files ([#45](https://github.com/rootcube/data-mesh-template/issues/45)) ([bf4bd17](https://github.com/rootcube/data-mesh-template/commit/bf4bd17251ba336969c4b07a3ee1ac6a583cec7f))
+
 ## [0.1.14](https://github.com/rootcube/data-mesh-template/compare/v0.1.13...v0.1.14) (2026-09-28)
 
 
