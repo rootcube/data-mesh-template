@@ -1,0 +1,54 @@
+name: Docs
+
+# Publishes the documentation site to GitHub Pages. CI already builds it on every pull request;
+# this workflow is the one that deploys, so `main` is the only branch it runs on.
+# Pages must be enabled with source "GitHub Actions" under Settings > Pages first.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'overrides/**'
+      - 'mkdocs.yml'
+      # Pulled into a page with --8<--, so it is part of the site.
+      - 'terraform/README.md'
+      - '.github/workflows/docs.yml'
+  # Manual rerun from the Actions tab, and the way to deploy the first time.
+  workflow_dispatch:
+
+# The deploy needs to write Pages and to mint the OIDC token Pages verifies; the checkout is read.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time: a second push replaces the run still going.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+      - run: uv sync --locked --group docs
+      - run: uv run --group docs zensical build --strict
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

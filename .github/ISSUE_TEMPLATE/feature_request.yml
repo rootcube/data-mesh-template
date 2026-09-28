@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest a change to the starter
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is missing
+      description: The problem you ran into, not only the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would do about it
+      description: Optional. A starter stays small, so say why this belongs in every copy of it.
