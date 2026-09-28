@@ -110,7 +110,7 @@ today; keep it that way if you can.
 | Constants | `UPPER_SNAKE_CASE` | `ENV_PREFIX`, `DAYS_BACK`, `STATIONS`, `SOURCE_LAYER` |
 | Classes | `PascalCase` | `SnowflakeSettings` |
 | Functions, methods, variables | `lower_snake_case` | `build_dbt_defs`, `fetch_hourly_observations`, `schema_for_layer` |
-| Module-private names | `_` prefix | `_build_defs`, `_INGEST_CRON` |
+| Module-private names | `_` prefix | `_build_defs` |
 | Booleans | `is_` / `has_` prefix | `is_personal`, `is_encrypted` |
 
 Imports are ordered stdlib, third-party, local, each group separated by a blank line (ruff's `I`
