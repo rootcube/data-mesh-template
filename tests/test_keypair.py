@@ -37,6 +37,10 @@ def test_generate_key_pair_writes_loadable_pkcs8_and_public_body(tmp_path: Path)
     body = script.public_key_body(public_path)
     assert body.startswith("MIIB") and "-----" not in body and "\n" not in body
     assert script.key_is_encrypted(private_path) is False
+    if sys.platform != "win32":
+        # The one security behaviour of the key pair: nobody but the owner reads the private key.
+        assert private_path.stat().st_mode & 0o777 == 0o600
+        assert tmp_path.stat().st_mode & 0o777 == 0o700
 
 
 def test_generate_key_pair_with_passphrase_is_encrypted(tmp_path: Path) -> None:
@@ -521,12 +525,35 @@ def test_prompt_context_asks_again_for_an_unusable_prefix_and_not_at_all_outside
     assert script.prompt_context(prd) == prd
 
 
-def test_choose_role_asks_until_it_gets_a_listed_number(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_choose_role_asks_until_it_gets_a_listed_number(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = load_script()
     replies = iter(["0", "x", "3", "-1", "2"])
     monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
     roles = ["RL_EXAMPLE_PRD__ANL", "RL_EXAMPLE_DEV__ENG"]
     assert script.choose_role(roles, wanted=None, interactive=True) == "RL_EXAMPLE_PRD__ANL"
+    # A role outside dev is marked in the list, so a mistyped number is visible before it is made.
+    out = capsys.readouterr().out
+    assert "RL_EXAMPLE_DEV__ENG\n" in out
+    assert "RL_EXAMPLE_PRD__ANL  (prd: shared schemas, not a laptop)" in out
+
+
+def test_confirm_environment_asks_before_pointing_env_outside_dev(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = load_script()
+    dev = SnowflakeSettings(user="JANE", role="RL_EXAMPLE_DEV__ENG", database="DB_EXAMPLE_DEV")
+    prd = SnowflakeSettings(user="JANE", role="RL_EXAMPLE_PRD__ANL", database="DB_EXAMPLE_PRD")
+    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail(f"asked: {prompt}"))
+    script.confirm_environment(dev, interactive=True)  # dev needs no confirmation
+    script.confirm_environment(prd, interactive=False)  # --yes or --role: warn, do not ask
+    assert capsys.readouterr().out.count("DB_EXAMPLE_PRD") == 1
+    monkeypatch.setattr("builtins.input", lambda prompt: "")  # the default is No
+    with pytest.raises(SystemExit):
+        script.confirm_environment(prd, interactive=True)
+    monkeypatch.setattr("builtins.input", lambda prompt: "y")
+    script.confirm_environment(prd, interactive=True)
 
 
 def test_public_key_fingerprint_is_the_sha256_of_the_der_key(tmp_path: Path) -> None:
@@ -562,6 +589,22 @@ def test_slot_needs_key_skips_the_same_key_and_asks_before_replacing_another(
     monkeypatch.setattr("builtins.input", lambda prompt: "")  # the default is No
     with pytest.raises(SystemExit):
         script.slot_needs_key(other, "JANE", "RSA_PUBLIC_KEY", public_path)
+
+
+def test_slot_needs_key_replaces_a_key_this_run_generated_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Rotation: the key in the slot is the one being replaced, so no other machine is involved."""
+    script = load_script()
+    _, public_path = script.generate_key_pair("me", key_dir=tmp_path)
+    other = FakeConnection(desc_user("JANE", "SHA256:another="))
+    monkeypatch.setattr("builtins.input", lambda prompt: "")  # a bare Enter rotates
+    assert script.slot_needs_key(other, "JANE", "RSA_PUBLIC_KEY", public_path, generated=True) is True
+    out = capsys.readouterr().out
+    assert "holds the key registered before" in out and "another machine" not in out
+    monkeypatch.setattr("builtins.input", lambda prompt: "n")
+    with pytest.raises(SystemExit):
+        script.slot_needs_key(other, "JANE", "RSA_PUBLIC_KEY", public_path, generated=True)
 
 
 def test_register_key_pair_keeps_the_old_key_when_snowflake_refuses(
@@ -640,6 +683,22 @@ def test_write_env_reads_back_what_it_wrote(tmp_path: Path, monkeypatch: pytest.
     }
     with pytest.raises(SystemExit):
         script.write_env({"SNOWFLAKE_PRIVATE_KEY_PASSPHRASE": "it's"})
+
+
+def test_write_env_fills_in_the_commented_tf_var_block_instead_of_repeating_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`just sf bootstrap` writes TF_VAR_*, which .env.example ships commented out."""
+    script = load_script()
+    env_file = tmp_path / ".env"
+    env_file.write_text(script.ENV_EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(script, "ENV_FILE", env_file)
+    script.write_env({"TF_VAR_SNOWFLAKE_ORGANIZATION": "MYORG", "TF_VAR_SNOWFLAKE_ACCOUNT": "ACC"})
+    text = env_file.read_text(encoding="utf-8")
+    assert text.count("TF_VAR_SNOWFLAKE_ORGANIZATION") == 1
+    assert "# TF_VAR_SNOWFLAKE_ACCOUNT=" not in text
+    assert "# TF_VAR_SNOWFLAKE_USER=TERRAFORM_USER" in text  # keys it does not write stay commented
+    assert dotenv_values(env_file)["TF_VAR_SNOWFLAKE_ACCOUNT"] == "ACC"
 
 
 STATE = {
@@ -791,8 +850,63 @@ def test_clean_destroys_the_rest_then_drops_the_databases(monkeypatch: pytest.Mo
     assert conn.executed == ['DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"']
 
 
-def test_clean_on_an_empty_state_asks_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_on_an_empty_state_says_so_and_fails(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty state means this checkout knows nothing, not that the account is clean."""
     script = load_script()
     calls = fake_terraform(monkeypatch, script, [])
-    assert script.cmd_clean(None) == 0
+    assert script.cmd_clean(None) == 1
     assert calls == [("init", "-input=false")]
+    out = capsys.readouterr().out
+    assert "tracks no objects" in out and "--existing sync" in out
+
+
+def test_clean_names_what_stays_in_the_account(capsys: pytest.CaptureFixture[str]) -> None:
+    """The init.sql objects and the account_settings.sql parameters survive `just tf clean`."""
+    script = load_script()
+    script.print_leftovers()
+    out = capsys.readouterr().out
+    assert "DROP USER TERRAFORM_USER;" in out
+    assert "DROP WAREHOUSE WH_PLATFORM_PROVISIONING;" in out
+    assert "TERRAFORM_USER holds SYSADMIN, SECURITYADMIN, USERADMIN and a registered RSA key" in out
+    assert "ALTER ACCOUNT UNSET TIMEZONE, TIMESTAMP_TYPE_MAPPING," in out
+
+
+def test_keygen_keeps_the_pair_force_replaces(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = load_script()
+    monkeypatch.setattr(script, "KEY_DIR", tmp_path)
+    private_path, _ = script.generate_key_pair("terraform", key_dir=tmp_path)
+    before = private_path.read_bytes()
+    assert script.cmd_keygen(argparse.Namespace(name="terraform", passphrase=False, force=False)) == 1
+    assert private_path.read_bytes() == before
+    assert script.cmd_keygen(argparse.Namespace(name="terraform", passphrase=False, force=True)) == 0
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        "terraform.p8",
+        "terraform.p8.bak",
+        "terraform.pub",
+        "terraform.pub.bak",
+    ]
+    assert (tmp_path / "terraform.p8.bak").read_bytes() == before
+    assert private_path.read_bytes() != before
+    assert "Snowflake still holds its public key" in capsys.readouterr().out
+
+
+def test_wizard_asks_again_until_the_answer_is_one_two_or_three(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    calls: list[list[str]] = []
+
+    def fake_main(argv: list[str]) -> int:
+        calls.append(argv)
+        return 0
+
+    monkeypatch.setattr(script, "main", fake_main)
+    replies = iter(["fresh", "4", "", "2"])  # the empty answer takes the default, 1
+    monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
+    assert script.cmd_wizard(None) == 0
+    assert calls == [["bootstrap"]]
+    replies = iter(["2"])
+    assert script.cmd_wizard(None) == 0
+    assert calls[-1] == ["setup"]

@@ -99,6 +99,7 @@ nav:
       - Snowflake authentication: getting-started/snowflake-auth.md
       - First run: getting-started/first-run.md
       - Troubleshooting: getting-started/troubleshooting.md
+      - Making it yours: getting-started/adopting.md
   - Concepts:
       - concepts/index.md
       - Organisation: concepts/organisation.md

@@ -52,6 +52,10 @@ just start       # Dagster UI on http://localhost:3000
 `just sf check` proves the key-pair login works; `just sf context` re-points `.env` at another
 project later.
 
+Adopting this as your own platform?
+[Making it yours](docs/getting-started/adopting.md) covers renaming or removing the example,
+taking over the release furniture, and keeping your copy in step with upstream.
+
 Run bare `just` for the full recipe list, or see the docs page *Reference > Commands*.
 
 ## What is inside

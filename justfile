@@ -362,3 +362,27 @@ pre-commit-install:
 [private]
 _dirs:
     @uv run python -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('.dagster', '.dlt/data')]"
+
+# --- Local state ------------------------------------------------------------
+
+# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+[unix]
+reset-local:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -d .dagster ]; then find .dagster -mindepth 1 -maxdepth 1 ! -name dagster.yaml -exec rm -rf {} +; fi
+    rm -rf .dlt/data src/orchestrator/defs/.local_defs_state dbt/*/target dbt/*/logs logs .cache
+    mkdir -p .dagster .dlt/data
+    uv run python scripts/dbt_all.py deps --quiet
+    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    echo "local state reset"
+
+# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+[windows]
+reset-local:
+    @Get-ChildItem .dagster -Exclude dagster.yaml -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+    @Remove-Item -Path .dlt\data, src\orchestrator\defs\.local_defs_state, dbt\*\target, dbt\*\logs, logs, .cache -Recurse -Force -ErrorAction SilentlyContinue
+    @New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
+    uv run python scripts/dbt_all.py deps --quiet
+    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    @Write-Host "local state reset"

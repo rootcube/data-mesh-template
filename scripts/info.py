@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import re
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,8 @@ from dotenv import dotenv_values
 from orchestrator.resources.snowflake import SnowflakeSettings
 
 ROOT = Path(__file__).resolve().parents[1]
+# A key .env.example only shows commented out, such as the TF_VAR block: optional, not drift.
+COMMENTED_KEY = re.compile(r"^#\s*([A-Za-z_][A-Za-z0-9_]*)=")
 
 
 def tool(command: str, *args: str) -> str:
@@ -29,6 +32,19 @@ def package(name: str) -> str:
         return importlib.metadata.version(name)
     except importlib.metadata.PackageNotFoundError:
         return "not installed"
+
+
+def print_env_drift(env_file: Path, example: Path) -> None:
+    """One line per key .env.example sets that .env misses, and per key .env has that it does not know."""
+    documented = set(dotenv_values(example))
+    optional = {
+        match[1] for line in example.read_text(encoding="utf-8").splitlines() if (match := COMMENTED_KEY.match(line))
+    }
+    present = set(dotenv_values(env_file))
+    for key in sorted(documented - present):
+        print(f"  .env drift  {key} is in .env.example, not in .env (copy the line over)")
+    for key in sorted(present - documented - optional):
+        print(f"  .env drift  {key} is in .env, not in .env.example (removed upstream?)")
 
 
 def main() -> int:
@@ -64,6 +80,7 @@ def main() -> int:
         else:
             hint = "just sf context"
         print(f"  next        {hint}")
+        print_env_drift(env_file, ROOT / ".env.example")
     else:
         print("  .env        missing (run `just init`, then `just sf setup`)")
     for name in (".dagster", ".dlt/data", "dbt/dbt_example/packages"):

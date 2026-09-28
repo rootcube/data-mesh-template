@@ -14,6 +14,9 @@ project's development database. Four steps, each one page:
 
 Something off? [Troubleshooting](troubleshooting.md) covers the usual suspects.
 
+Making the starter your own platform, renaming the example and keeping up with upstream:
+[Making it yours](adopting.md).
+
 !!! info "Engineers only"
     These pages are for engineers who work in the repository. Nothing here needs Terraform.
     If you are setting up the Snowflake account or onboarding people, go to
