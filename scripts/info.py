@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+# scripts/ is on sys.path because this runs as `python scripts/info.py`.
+from dbt_all import projects as dbt_projects
 from dotenv import dotenv_values
 
 from orchestrator.resources.snowflake import SnowflakeSettings
@@ -34,7 +36,7 @@ def package(name: str) -> str:
         return "not installed"
 
 
-def print_env_drift(env_file: Path, example: Path) -> None:
+def print_env_drift(env_file: Path, example: Path, width: int) -> None:
     """One line per key .env.example sets that .env misses, and per key .env has that it does not know."""
     documented = set(dotenv_values(example))
     optional = {
@@ -42,9 +44,9 @@ def print_env_drift(env_file: Path, example: Path) -> None:
     }
     present = set(dotenv_values(env_file))
     for key in sorted(documented - present):
-        print(f"  .env drift  {key} is in .env.example, not in .env (copy the line over)")
+        print(f"  {'.env drift':<{width}} {key} is in .env.example, not in .env (copy the line over)")
     for key in sorted(present - documented - optional):
-        print(f"  .env drift  {key} is in .env, not in .env.example (removed upstream?)")
+        print(f"  {'.env drift':<{width}} {key} is in .env, not in .env.example (removed upstream?)")
 
 
 def main() -> int:
@@ -60,17 +62,23 @@ def main() -> int:
         print(f"  {name:<14} {package(name)}")
     print()
     print("Local setup:")
+    # One line per dbt project `just dbt-all deps` installs into, so a rename or a second project shows up here.
+    checks = [(".dagster", ROOT / ".dagster"), (".dlt/data", ROOT / ".dlt" / "data")]
+    checks += [(f"{project.name} packages", project / "packages") for project in dbt_projects()]
+    labels = [".env", ".env drift", "private key", "context", "next", *(label for label, _ in checks)]
+    width = max(len(label) for label in labels)
     env_file = ROOT / ".env"
     if env_file.exists():
         settings = SnowflakeSettings.from_env({k: (v or "") for k, v in dotenv_values(env_file).items()})
         missing = settings.missing()
-        print(f"  .env        present{' (missing: ' + ', '.join(missing) + ')' if missing else ''}")
+        print(f"  {'.env':<{width}} present{' (missing: ' + ', '.join(missing) + ')' if missing else ''}")
         if settings.private_key_path:
             state = "present" if settings.key_path().exists() else "MISSING"
-            print(f"  private key {settings.key_path()} ({state})")
+            print(f"  {'private key':<{width}} {settings.key_path()} ({state})")
         if not missing:
             print(
-                f"  context     {settings.database} as {settings.role} on {settings.warehouse} ({settings.environment})"
+                f"  {'context':<{width}} {settings.database} as {settings.role} "
+                f"on {settings.warehouse} ({settings.environment})"
             )
         # Credentials and key in place but no project context: `just sf setup` would only repeat itself.
         if not missing:
@@ -79,12 +87,12 @@ def main() -> int:
             hint = "just sf setup"
         else:
             hint = "just sf context"
-        print(f"  next        {hint}")
-        print_env_drift(env_file, ROOT / ".env.example")
+        print(f"  {'next':<{width}} {hint}")
+        print_env_drift(env_file, ROOT / ".env.example", width)
     else:
-        print("  .env        missing (run `just init`, then `just sf setup`)")
-    for name in (".dagster", ".dlt/data", "dbt/dbt_example/packages"):
-        print(f"  {name:<11} {'present' if (ROOT / name).exists() else 'missing'}")
+        print(f"  {'.env':<{width}} missing (run `just init`, then `just sf setup`)")
+    for label, path in checks:
+        print(f"  {label:<{width}} {'present' if path.exists() else 'missing'}")
     return 0
 
 

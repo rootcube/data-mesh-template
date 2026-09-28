@@ -13,8 +13,8 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | Command | What it does |
 |---------|--------------|
 | `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup`, an account provisioned from another checkout runs `just sf bootstrap --existing ask --account-settings skip`. It asks again for any answer that is not 1, 2 or 3 |
-| `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` in every project |
-| `just info` | Tool and package versions, `.env` and private key status, what to run next, and one line per key `.env.example` sets that your `.env` misses (or the other way round) |
+| `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` and `dbt parse` in every project |
+| `just info` | Tool and package versions, `.env` and private key status, what to run next, the local state folders and the installed packages of every dbt project, and one line per key `.env.example` sets that your `.env` misses (or the other way round) |
 | `just reset-local` | Delete the git-ignored local state (`.dagster/` except `dagster.yaml`, `.dlt/data/`, `src/orchestrator/defs/.local_defs_state/`, `dbt/*/target/`, `dbt/*/logs/`, `logs/`, `.cache/`), recreate `.dagster/` and `.dlt/data/`, then `dbt deps` and `dbt parse` in every project. Stop `just start` first |
 | `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, or `all` (the default); `gh` is available too but optional, nothing in the repo needs it |
 
@@ -39,7 +39,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground; runs `just stop` first so a forgotten instance never doubles the daemon |
 | `just port=3001 start` | Same on another port |
-| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers); another program on the port is reported, not killed |
+| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers) and wait for the port to come free; another program on the port is reported, not killed |
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` or `just dagster job list -m orchestrator.locations.dlt.definitions` |
 | `just validate` | Load every code location like `start` does, without the UI, then check that the dlt and dbt asset keys still match |
 
