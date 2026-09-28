@@ -19,7 +19,7 @@ through pull requests, and release-please turns the conventional commits on it i
 
 ```mermaid
 flowchart LR
-    A[short-lived branch] -->|push + pull request| B[CI: 5 jobs]
+    A[short-lived branch] -->|push + pull request| B[CI jobs]
     B -->|review| C[merge to main]
     C -->|release-please| D[release PR]
     D -->|merge| E[tag + GitHub release]
@@ -30,8 +30,8 @@ flowchart LR
 2. **Commit.** Pre-commit hooks run on every `git commit` (install them once with
    `just pre-commit-install`). If a hook fails, fix the cause and commit again. Never
    `git commit --no-verify`; CI runs the same checks anyway.
-3. **Open a pull request to `main`.** CI runs the five jobs from `.github/workflows/ci.yml` on
-   every pull request and on every push to `main`.
+3. **Open a pull request to `main`.** CI runs the jobs from `.github/workflows/ci.yml` that the
+   changed paths need on every pull request, and all of them on every push to `main`.
 4. **Review and merge.** Keep diffs small and single-purpose ("one thing at a time", per
    `AGENTS.md`). A reviewable pull request touches one concern: one dlt load, one dbt model with
    its YAML, one project's Terraform YAML, one docs fix. A squash merge turns the pull request
@@ -159,7 +159,9 @@ Pre-commit, on every commit, from `.pre-commit-config.yaml`:
 `just pre-commit` runs every hook on every file, which is the quickest way to find out what CI
 will say.
 
-CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`:
+CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`. On a pull request a
+`changes` job first lists the touched paths and each job below runs only when its inputs changed
+(see [Testing](../development/testing.md#what-ci-runs)); a push to `main` runs them all:
 
 | Job | Runs |
 |---|---|
