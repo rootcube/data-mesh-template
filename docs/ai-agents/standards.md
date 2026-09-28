@@ -15,7 +15,7 @@ just fmt                # ruff format + ruff check --fix + sqlfluff fix (active 
 just typecheck          # ty check
 just test               # pytest
 just validate           # dagster definitions validate -w workspace.yaml
-just check              # everything CI runs: lint, typecheck, test, dbt parse (dummy), validate, Terraform YAML
+just check              # CI minus the Terraform CLI: lint, typecheck, test, dbt parse (dummy), validate, Terraform YAML, docs build
 just pre-commit         # the full hook chain, on all files
 ```
 

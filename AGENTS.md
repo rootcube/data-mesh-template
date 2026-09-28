@@ -153,7 +153,7 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 
 ## Common pitfalls
 
-- **`dbt deps` first.** The Dagster dbt location parses the project on load; without packages it fails. `just dbt-all deps`.
+- **`dbt deps` and `dbt parse` first.** The Dagster dbt locations read `target/manifest.json`; only `dagster dev` re-parses on load. `just dbt-all deps`, then `just dbt-all parse --target dummy` (`just init` and `just check` do both).
 - **Every dbt model needs its `_conf/<model>.yml`** with column descriptions, `data_type` and named tests.
 - **Do not reference across layers.** STG cannot ref INT, MRT cannot ref EXP.
 - **Two builders of `dbt_common`.** Every project that builds the `dbt_common` models writes the same tables into the one database `.env` points at. Only one project builds them; others disable `dbt_common` models.

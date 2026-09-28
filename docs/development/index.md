@@ -73,9 +73,9 @@ flowchart LR
 | Step | Command | Catches |
 |------|---------|---------|
 | Format | `just fmt` | ruff format and lint fixes, `sqlfluff fix models` in the dbt project |
-| Wire-up | `just validate` | Every code location loads: import errors, broken `defs.yaml`, dbt parse errors, missing `dbt deps` |
+| Wire-up | `just validate` | Every code location loads: import errors, broken `defs.yaml`, missing `dbt deps`; the dbt locations read the manifest of the last `dbt parse` |
 | Behaviour | `just test`, `just dbt build --select <model>+` | Python unit tests; dbt models, seeds and data tests in your personal schemas |
-| Everything CI does | `just check` | `lint` + `typecheck` + `test`, then `dbt parse --target dummy` in every project (as is, and with `--use-v2-parser`), `dagster definitions validate` and the Terraform YAML validation |
+| What CI does, minus the Terraform CLI | `just check` | `lint` + `typecheck` + `test`, then `dbt parse --target dummy` in every project (as is, and with `--use-v2-parser`), `dagster definitions validate`, the Terraform YAML validation and the strict docs build |
 
 Details, including the pre-commit hooks and the CI jobs, are on [Testing](testing.md).
 

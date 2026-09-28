@@ -42,7 +42,7 @@ Run at least steps 1 to 4 before presenting work. All of them also run in pre-co
 === "just"
 
     ```bash
-    just fmt    # ruff format . + ruff check --fix . (+ sqlfluff fix)
+    just fmt    # ruff check --fix . + ruff format . (+ sqlfluff fix)
     just lint   # ruff check . + ruff format --check . (+ sqlfluff lint), what CI runs
     ```
 
@@ -98,7 +98,7 @@ If you changed anything under `src/orchestrator/` or `dlt_pipelines/`, this catc
 ### 5. Everything CI runs
 
 ```bash
-just check         # lint + typecheck + test + dbt parse (dummy) + validate + Terraform YAML
+just check         # lint + typecheck + test + dbt parse (dummy) + validate + Terraform YAML + docs build
 just pre-commit    # every hook on every file
 ```
 

@@ -56,7 +56,14 @@ def main() -> int:
             print(
                 f"  context     {settings.database} as {settings.role} on {settings.warehouse} ({settings.environment})"
             )
-        print(f"  next        {'just sf setup' if missing else 'just sf check, then just start'}")
+        # Credentials and key in place but no project context: `just sf setup` would only repeat itself.
+        if not missing:
+            hint = "just sf check, then just start"
+        elif settings.missing(SnowflakeSettings.CREDENTIALS) or not settings.key_path().exists():
+            hint = "just sf setup"
+        else:
+            hint = "just sf context"
+        print(f"  next        {hint}")
     else:
         print("  .env        missing (run `just init`, then `just sf setup`)")
     for name in (".dagster", ".dlt/data", "dbt/dbt_example/packages"):

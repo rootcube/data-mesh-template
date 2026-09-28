@@ -27,10 +27,13 @@ takes care of everything else.
 ## Clone and init
 
 ```bash
-git clone git@github.com:rootcube/data-mesh-template.git
+git clone https://github.com/rootcube/data-mesh-template.git
 cd data-mesh-template
 just init
 ```
+
+With a GitHub SSH key in place, `git clone git@github.com:rootcube/data-mesh-template.git` does the
+same; HTTPS needs nothing set up.
 
 `just init` is idempotent and does, in order:
 
@@ -41,7 +44,8 @@ just init
 3. Copies `.env.example` to `.env` if you have no `.env` yet.
 4. Creates the local state folders `.dagster/` and `.dlt/data/`.
 5. Runs `dbt deps` in every dbt project (installs `dbt_utils` and links `dbt_common`).
-6. Runs `direnv allow` when direnv is installed.
+6. Runs `dbt parse --target dummy` in every dbt project, so `just validate` has a manifest to read.
+7. Runs `direnv allow` when direnv is installed.
 
 It ends with `Done. Next: just setup`. `just setup` runs `init` itself and then asks one
 question: a fresh account you hold `ACCOUNTADMIN` on gets the full bootstrap and provisioning
@@ -57,9 +61,10 @@ Homebrew on macOS and Linux and winget on Windows:
 | Tool | Needed for |
 |------|------------|
 | `terraform` | The fresh-account path of `just setup`, which installs it for you when missing, and everything under [Administration](../administration/index.md); Homebrew installs it through tfenv |
+| `tfenv` | macOS and Linux only: the Terraform version manager on its own, without installing a Terraform version |
 | `direnv` | Optional: activates `.venv` and loads `.env` when you `cd` into the checkout, which `just` already does for its own recipes |
 | `gh` | The GitHub CLI, for pull requests from the terminal |
-| `all` | All of the above |
+| `all` | `uv`, `terraform` and `direnv`; `gh` stays optional and is not part of it |
 
 ## Verify
 
