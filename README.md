@@ -93,4 +93,6 @@ See `CONTRIBUTING.md`; security issues go through `SECURITY.md`, never a public 
 
 ## License
 
-GPL-3.0, see `LICENSE`.
+GPL-3.0, see `LICENSE`. Third-party code copied into this repository (dbt_artifacts macros, one
+Zensical theme partial) stays under its own license: see [`NOTICE`](NOTICE) for the attribution and
+`LICENSES/` for the license texts.
