@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.9](https://github.com/rootcube/data-mesh-template/compare/v0.1.8...v0.1.9) (2026-09-28)
+
+
+### Features
+
+* update dbt configurations for v2 parser compatibility and enhance onboarding documentation ([73f96ed](https://github.com/rootcube/data-mesh-template/commit/73f96ed004f060c79fc4a1a0e34e1f6651943628))
+
+
+### Bug Fixes
+
+* add precondition to user resource for better error handling on non-existent logins ([9820d0c](https://github.com/rootcube/data-mesh-template/commit/9820d0ca6faf0ff6bd3ca07a809256487165e9ca))
+
 ## [0.1.8](https://github.com/rootcube/data-mesh-template/compare/v0.1.7...v0.1.8) (2026-09-25)
 
 
