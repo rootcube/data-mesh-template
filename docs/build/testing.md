@@ -6,7 +6,8 @@ icon: material/test-tube
 
 Three kinds of check, in increasing scope: pytest for Python code, dbt tests for the data, and
 `just validate` for the wiring between everything. `just check` runs what CI runs, apart from the
-Terraform fmt and validate legs, and the pre-commit hooks run the relevant subset on every commit.
+Terraform fmt and validate legs and the hygiene hooks, and the pre-commit hooks run the relevant
+subset on every commit.
 
 ## Python tests (pytest)
 
@@ -153,10 +154,11 @@ carries templates; `detect-private-key` keeps a `.p8` out of the repo, they live
 ## What CI runs
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request: a `Changed paths`
-job that lists what the change touches, then five check jobs in parallel:
+job that lists what the change touches, then six check jobs in parallel:
 
 | Job | Steps |
 |-----|-------|
+| Hygiene hooks | `uv sync --locked`, then `pre-commit run --all-files` for `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-added-large-files`, `check-merge-conflict` and `detect-private-key` |
 | Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
 | dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in every project under `dbt/`, `dagster definitions validate -w workspace.yaml` and `check_asset_keys.py`, both with `DBT_TARGET=dummy` |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
@@ -173,6 +175,12 @@ do pushes to `main` and manual runs. The `Setup` matrix is not a required check 
 ruleset: it is the fresh-machine test of the setup path, and a runner hiccup on one OS should not
 block a pull request. Treat a red leg as a bug in that recipe all the same.
 
+`Hygiene hooks` is the one job `Changed paths` does not gate: it takes seconds, and trailing
+whitespace or a stray private key can land in any file. It is also the only part of the pre-commit
+chain CI would otherwise miss, since the rest needs `just`, the dbt packages and the terraform
+binary and every check it makes is a step in another job. It is not a required check in the `main`
+ruleset yet; add its `Hygiene hooks` context to `.github/rulesets/main.json` to make it one.
+
 Every job but `Setup` installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after
 changing dependencies, run `uv lock` and commit `uv.lock`. `Setup` installs the way an engineer
 does, through `just init`. CI holds no Snowflake credentials at all, and everything it runs works
@@ -183,6 +191,7 @@ exists and why dlt and the Dagster resource check credentials lazily.
 
 | Check | Local | Commit hook | CI |
 |-------|-------|-------------|----|
+| hygiene hooks (whitespace, end of file, YAML, large files, merge markers, private keys) | `just pre-commit` | yes | yes (Hygiene job) |
 | ruff, ty | `just lint`, `just typecheck` | yes | yes |
 | pytest | `just test` | no | yes |
 | sqlfluff | `just lint` | yes (every project under `dbt/`) | yes |
