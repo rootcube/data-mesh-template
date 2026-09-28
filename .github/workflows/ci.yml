@@ -94,7 +94,11 @@ jobs:
       - run: uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
-      - run: cd dbt/dbt_example && uv run sqlfluff lint models --config ../.sqlfluff
+      # Every project under dbt/, the shared dbt_common package included.
+      - run: |
+          for project in dbt/*/dbt_project.yml; do
+            (cd "${project%/*}" && uv run sqlfluff lint models --config ../.sqlfluff)
+          done
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       - run: uv run dagster definitions validate -w workspace.yaml

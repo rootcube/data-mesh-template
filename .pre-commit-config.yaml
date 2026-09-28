@@ -52,10 +52,17 @@ repos:
         pass_filenames: false
 
       - id: sqlfluff-lint
-        name: sqlfluff lint (dbt models)
+        name: sqlfluff lint (dbt_example models)
         entry: just sqlfluff lint models
         language: system
         files: ^dbt/dbt_example/models/.*\.sql$
+        pass_filenames: false
+      # One hook per project: each only fires when that project's models change.
+      - id: sqlfluff-lint-common
+        name: sqlfluff lint (dbt_common models)
+        entry: just project=dbt_common sqlfluff lint models
+        language: system
+        files: ^dbt/dbt_common/models/.*\.sql$
         pass_filenames: false
 
   # Dagster: every code location must load (`just validate` sets the warning filter on every OS).

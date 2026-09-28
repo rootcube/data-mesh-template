@@ -62,7 +62,7 @@ models:
               name: int__common__calendar__month_nr__not_negative
 
       - name: week_nr
-        description: Calendar week number
+        description: Calendar week number, per the WEEK_OF_YEAR_POLICY session parameter (iso_week_nr does not depend on it)
         data_type: integer
 
         data_tests:
@@ -110,7 +110,7 @@ models:
               name: int__common__calendar__year_month_nr__not_negative
 
       - name: year_week_nr
-        description: Combined year and week as a single integer (YYYYWW)
+        description: Combined year and week as a single integer (YYYYWW), both calendar-based; iso_year_week_nr is the one that holds across a year boundary
         data_type: integer
 
         data_tests:
@@ -242,7 +242,7 @@ models:
         data_type: char(1)
 
       - name: is_first_day_of_week
-        description: Indicator whether the date is the first day of the week (Y/N)
+        description: Indicator whether the date is the Monday of its week (Y/N)
         data_type: char(1)
 
       - name: is_last_day_of_year
@@ -258,7 +258,7 @@ models:
         data_type: char(1)
 
       - name: is_last_day_of_week
-        description: Indicator whether the date is the last day of the week (Y/N)
+        description: Indicator whether the date is the Sunday of its week (Y/N)
         data_type: char(1)
 
       - name: is_leap_year
@@ -290,7 +290,7 @@ models:
         data_type: date
 
       - name: first_date_of_week
-        description: First date of the week for this date
+        description: Monday of the week for this date
         data_type: date
 
       - name: last_date_of_year
@@ -306,7 +306,7 @@ models:
         data_type: date
 
       - name: last_date_of_week
-        description: Last date of the week for this date
+        description: Sunday of the week for this date
         data_type: date
 
       - name: iso_year_sort

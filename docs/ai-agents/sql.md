@@ -90,9 +90,10 @@ Always run at least steps 1 and 2 before presenting changes.
 === "just"
 
     ```bash
-    just sqlfluff fix models/02_stg/knmi   # one path
-    just sqlfluff lint models              # check only, what the hook and CI run
-    just fmt                               # ruff + sqlfluff fix models
+    just sqlfluff fix models/02_stg/knmi         # one path
+    just sqlfluff lint models                    # check only, dbt_example
+    just project=dbt_common sqlfluff lint models # the shared package, same rules
+    just fmt                                     # ruff + sqlfluff fix, every project under dbt/
     ```
 
 === "sqlfluff directly"
