@@ -1,14 +1,17 @@
 terraform {
   required_version = ">= 1.5.0"
 
+  # Providers are pinned to a patch range, not a whole major: a new provider minor then falls
+  # outside the constraint and Dependabot opens a pull request for it. The modules under
+  # modules/snowflake/ keep the loose `~> 2.0`; this root pin is what decides the version.
   required_providers {
     snowflake = {
       source  = "snowflakedb/snowflake"
-      version = "~> 2.0"
+      version = "~> 2.21.0"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.6"
+      version = "~> 3.9.0"
     }
   }
 }

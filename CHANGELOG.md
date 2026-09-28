@@ -63,7 +63,6 @@
 
 ### Bug Fixes
 
-* enhance drop_objects function to support ownership handling ([2cd1002](https://github.com/rootcube/data-mesh-template/commit/2cd10022520543a99206077cafd81af0307b8bb3))
 * enhance drop_objects function to support ownership management during resource deletion ([3d9f3cf](https://github.com/rootcube/data-mesh-template/commit/3d9f3cf0364370fffa97d375405aad282d34d843))
 
 
@@ -76,7 +75,6 @@
 
 ### Features
 
-* **access:** add access roles / privileges per layer (improve RBAC) ([7b478d0](https://github.com/rootcube/data-mesh-template/commit/7b478d0788417a8db9ddade52a1032964189a9be))
 * **access:** add access roles and privileges per layer for better RBAC management. ([33d49f4](https://github.com/rootcube/data-mesh-template/commit/33d49f4eab4ce560353c5dcd13cbdea0249cf700))
 
 ## [0.1.9](https://github.com/rootcube/data-mesh-template/compare/v0.1.8...v0.1.9) (2026-09-28)
@@ -96,7 +94,6 @@
 
 ### Features
 
-* add CI setup job for multi-OS support and update documentation ([a6ac223](https://github.com/rootcube/data-mesh-template/commit/a6ac223a08debb125a21f73056c872b3cce07f00))
 * add CI setup job for multi-OS support and update documentation ([9c288cd](https://github.com/rootcube/data-mesh-template/commit/9c288cda89ec0b0cd6156f303128e5c3bea82fef))
 * update sqlfluff commands to include config path for linting and fixing models ([141370a](https://github.com/rootcube/data-mesh-template/commit/141370a4b61ca381695637f32efbb9675cf2d354))
 
@@ -104,7 +101,6 @@
 ### Bug Fixes
 
 * **dbt:** correct calendar dates, schema resolution and holiday config ([19a15b6](https://github.com/rootcube/data-mesh-template/commit/19a15b671f6bcde5029dd774783126ae7947ca90))
-* **docs:** update Terraform commands to reflect changes in `just tf c… ([8d54b7c](https://github.com/rootcube/data-mesh-template/commit/8d54b7c6b70d217ad306829bb993db1f905aa616))
 * **docs:** update Terraform commands to reflect changes in `just tf clean` ([23e892d](https://github.com/rootcube/data-mesh-template/commit/23e892d0389b8323312a927deb74664798f2a00c))
 * **ingestion:** fail closed on a blank prefix and empty staging tables ([b09a3e5](https://github.com/rootcube/data-mesh-template/commit/b09a3e5b2128680a4830fd0883b796e2a1825074))
 * **setup:** harden key-pair setup, bootstrap and .env writing ([f807113](https://github.com/rootcube/data-mesh-template/commit/f807113f13f870d4e523053ca284173258c11a81))
@@ -121,7 +117,6 @@
 
 ### Features
 
-* remove unused weather measurement and observation YAML files ([dd1c6b2](https://github.com/rootcube/data-mesh-template/commit/dd1c6b2927ca19f4aea17572d9bcca3166af8299))
 * remove unused weather measurement and observation YAML files ([ac01fc8](https://github.com/rootcube/data-mesh-template/commit/ac01fc8050a95b6454c045e572ec45f6589e46ca))
 
 ## [0.1.6](https://github.com/rootcube/data-mesh-template/compare/v0.1.5...v0.1.6) (2026-09-25)
@@ -129,7 +124,6 @@
 
 ### Features
 
-* add personal schema prefix support and update related documenta… ([36200f1](https://github.com/rootcube/data-mesh-template/commit/36200f1605af0e3dba54b07dbd6c4f3796d4e70d))
 * add personal schema prefix support and update related documentation ([eef641e](https://github.com/rootcube/data-mesh-template/commit/eef641e99d94f048bd6b49802a242412c7ef291e))
 
 ## [0.1.5](https://github.com/rootcube/data-mesh-template/compare/v0.1.4...v0.1.5) (2026-09-25)
@@ -138,7 +132,6 @@
 ### Features
 
 * add KNMI weather data models and seeds for measurement types and stations ([8d02d2a](https://github.com/rootcube/data-mesh-template/commit/8d02d2a4dd7b97e3b0f70f098aeb40813489f16f))
-* handle fresh install on Windows ([33ab62b](https://github.com/rootcube/data-mesh-template/commit/33ab62be6c392bf39abbfb5fe1fc1add50c13716))
 * handle fresh install on Windows and improve setup wizard if account already exists (tf state sync/wipe options added). ([4f0fee8](https://github.com/rootcube/data-mesh-template/commit/4f0fee86ded5f36d69f9623738e0af0b83f54ed7))
 * update dlt ingestion and dbt models for knmi ([10aaff6](https://github.com/rootcube/data-mesh-template/commit/10aaff680d637bd37db53c008c1e401db391b7bc))
 
@@ -167,9 +160,7 @@
 
 * enhance setup instructions for clarity and usability, including Terraform installation guidance ([b7d73f2](https://github.com/rootcube/data-mesh-template/commit/b7d73f265ff5fa5b537f9e53750d021049174c6a))
 * enhance user configuration handling with warnings for missing account logins ([e527773](https://github.com/rootcube/data-mesh-template/commit/e527773df165180968504ac6a7edca7f4e339ec9))
-* implement staging tables in temporary layer for merge loads in … ([1212389](https://github.com/rootcube/data-mesh-template/commit/121238961c8cd0e7270b1fa3d24f66a331c5dc91))
 * implement staging tables in temporary layer for merge loads in Snowflake ([14044ef](https://github.com/rootcube/data-mesh-template/commit/14044ef19dfed8947a549aa280aa74c0e882bca4))
-* improve setup experience ([a4f2c87](https://github.com/rootcube/data-mesh-template/commit/a4f2c87d74a80d179dd33ddf0bdce4393f62174d))
 * improve setup experience with clearer instructions and tool installation guidance ([8cb48df](https://github.com/rootcube/data-mesh-template/commit/8cb48df770d4dd4a971cb1d8fe0f0288b4fac08d))
 
 ## [0.1.2](https://github.com/rootcube/data-mesh-template/compare/v0.1.1...v0.1.2) (2026-09-24)
@@ -193,7 +184,6 @@
 * enhance setup instructions and commands for clarity and usability ([305fab9](https://github.com/rootcube/data-mesh-template/commit/305fab97c9bf3ba03297dfa11c0e2a0d0c651929))
 * initialize repository ([222d6c8](https://github.com/rootcube/data-mesh-template/commit/222d6c8be9e802fe4c311cf93c10dba363f4b119))
 * introduce common models for environment, time, and holiday dimensions ([dd74741](https://github.com/rootcube/data-mesh-template/commit/dd747410c068e62d9c7ed042a85843e4f4a01929))
-* merge init repo ([222d6c8](https://github.com/rootcube/data-mesh-template/commit/222d6c8be9e802fe4c311cf93c10dba363f4b119))
 
 
 ### Bug Fixes

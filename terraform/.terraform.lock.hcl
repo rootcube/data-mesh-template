@@ -3,7 +3,7 @@
 
 provider "registry.terraform.io/hashicorp/random" {
   version     = "3.9.1"
-  constraints = "~> 3.6"
+  constraints = "~> 3.9.0"
   hashes = [
     "h1:7uiStw0Rl9KOdX5UNMG/sp9nyadoD4LZekQTiYlYPhE=",
     "h1:PYbnOqRuGn4c0/Ae1f7yOS/0zvmXNHFJRZjuF4KECnM=",
@@ -27,7 +27,7 @@ provider "registry.terraform.io/hashicorp/random" {
 
 provider "registry.terraform.io/snowflakedb/snowflake" {
   version     = "2.21.0"
-  constraints = "~> 2.0"
+  constraints = "~> 2.0, ~> 2.21.0"
   hashes = [
     "h1:56GLsFqW/tO/IalDOwh+LMjf2DJyfX0OtMzqBg31Dq4=",
     "h1:GchA6+jx3FjcGDO4Wl6zfdfniLi4uJrse8SvAwbnBlA=",

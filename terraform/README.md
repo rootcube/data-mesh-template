@@ -5,6 +5,9 @@ conceptual model: **Organisation** > **Team** > **Project** > **Environment** > 
 **Roles**, **Computes** }, plus **Users** who may assume project roles. Only platform
 administrators run this; engineers never need Terraform.
 
+This file doubles as the Snowflake provisioning page of the documentation site, so edit it
+here and the site follows.
+
 ## What one project becomes
 
 For every project and each of its environments (`config/projects/<project>.yaml`):
