@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.17](https://github.com/rootcube/data-mesh-template/compare/v0.1.16...v0.1.17) (2026-09-28)
+
+
+### Bug Fixes
+
+* **dbt:** upload the graph only on run and build, unpivot in one scan, and relax the config rule ([#63](https://github.com/rootcube/data-mesh-template/issues/63)) ([a02857e](https://github.com/rootcube/data-mesh-template/commit/a02857efc59b0cd0b1b8711577b55ef0875a183c))
+* **justfile:** discover dbt projects in just info, wait without lsof in just stop, guard the Windows installs ([#61](https://github.com/rootcube/data-mesh-template/issues/61)) ([b372bcc](https://github.com/rootcube/data-mesh-template/commit/b372bcc92cbe321dffbbe923f60fad1e1ce0f535))
+
+
+### Documentation
+
+* restructure the site into Start, Build, Operate, Understand and Reference ([#56](https://github.com/rootcube/data-mesh-template/issues/56)) ([b33b950](https://github.com/rootcube/data-mesh-template/commit/b33b95082528be585fde8d3257806e534c8d9e10))
+
 ## [0.1.16](https://github.com/rootcube/data-mesh-template/compare/v0.1.15...v0.1.16) (2026-09-28)
 
 
