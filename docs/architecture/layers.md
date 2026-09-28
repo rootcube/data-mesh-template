@@ -195,7 +195,8 @@ connects, so it skips the upload.
 ## The common dimensions from dbt_common
 
 `dbt_common` is installed as a package and its models build as part of `dbt_example`, in the
-same layers, under the Dagster group `dbt_common`:
+same layers, in Dagster groups under `dbt_example/packages/dbt_common/` (one per key directory:
+`models/02_stg/seed`, `models/03_int/common`, `models/04_mrt/common`, `seeds`):
 
 ```mermaid
 flowchart LR

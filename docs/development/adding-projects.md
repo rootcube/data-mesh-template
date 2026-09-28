@@ -131,13 +131,27 @@ models:
       +tags: ["layer=stg"]
     # 03_int, 04_mrt, 05_exp unchanged
 
-  # dbt_example builds the shared dbt_common models; this project only uses the macros.
-  dbt_common:
-    +enabled: false             # was true
+  # dbt_example builds the shared dbt_common models; this project only uses the macros and
+  # the unknown member.
+  dbt_common:                   # was +enabled: true
+    02_stg:
+      +enabled: false
+      seed:
+        stg__seed__unknown:
+          +enabled: true
+    03_int:
+      +enabled: false
+    04_mrt:
+      +enabled: false
 
 seeds:
   dbt_energy:                   # was dbt_example
     +schema: ref
+
+  dbt_common:
+    +enabled: false
+    seed_unknown:
+      +enabled: true
 ```
 
 Three things matter here:
@@ -146,14 +160,22 @@ The `name`
 :   It is the dbt package name, the first segment of every asset key and group, and part of the
     asset job name.
 
-`dbt_common: +enabled: false`
+`dbt_common` disabled per layer folder
 :   Every project installs `dbt_common`, but exactly one builds its models. Two projects building
     `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
-    write the same table into the one database `.env` points at. The macros, the dispatch
-    overrides and the `on-run-start` / `on-run-end` hooks keep working with the models disabled.
-    The copied `+meta: {holiday_country: NL}` under
-    `dbt_common: 03_int: common: int__common__holiday:` only matters in the project that builds
-    the models; there it is a literal meta config, not a var, so `--vars` does not change it.
+    write the same table into the one database `.env` points at. Disable the layer folders, not
+    the package: the `on-run-end` hooks are operation nodes that read their config from the
+    `models:` block, so a package-level `models: dbt_common: +enabled: false` disables them too
+    and the project silently stops uploading its run metadata to `_MTD`. With the folder-level
+    disable the macros, the dispatch overrides and the `on-run-start` / `on-run-end` hooks keep
+    working. Two nodes stay enabled: `stg__seed__unknown` and the seed it reads, `seed_unknown`.
+    Every dimension ends with a `UNION ALL` on `stg__seed__unknown` for its unknown member, so a
+    project without it cannot follow the mart pattern; this project materializes those two small
+    tables itself, same content as in `dbt_example`, under its own asset keys. Seeds are a
+    separate config tree, which is why they need a second `dbt_common:` block. The copied
+    `+meta: {holiday_country: NL}` under `dbt_common: 03_int: common: int__common__holiday:` goes
+    with the rest of that block: it only matters in the project that builds the models, and there
+    it is a literal meta config, not a var, so `--vars` does not change it.
 
 The dispatch block stays
 :   Without `search_order: ["dbt_common", "dbt"]` the project falls back to dbt's own
@@ -161,9 +183,31 @@ The dispatch block stays
     profile's default schema plus the layer) instead of the provisioned `_STG`.
 
 `packages.yml` is the same file in every project: the local `../dbt_common` plus `dbt_utils`.
-Delete the copied `sources/src_knmi.yml` and `models/02_stg/knmi/` unless this project owns
-that source. Asset keys carry the project name (`dbt_energy/models/...`), so a model name only has to be
+Asset keys carry the project name (`dbt_energy/models/...`), so a model name only has to be
 unique within its project.
+
+Then strip the example content. The KNMI weather chain runs from the source through all four
+layers into an exposure, so removing only the source and its staging model leaves the rest of the
+chain pointing at a model that is gone and the project stops parsing
+(`Model 'model.dbt_energy.int__weather__knmi_measurement' ... depends on a node named
+'stg__knmi__climate_hourly' which was not found`). Remove all of it:
+
+```bash
+cd dbt/dbt_energy
+rm sources/src_knmi.yml
+rm exposures/weather_dashboard.yml
+rm -r models/02_stg/knmi models/02_stg/seed
+rm -r models/03_int/weather models/04_mrt/weather models/05_exp/weather
+rm seeds/seed_knmi_station.csv seeds/seed_knmi_measurement_type.csv
+rm seeds/_conf/seed_knmi_station.yml seeds/_conf/seed_knmi_measurement_type.yml
+```
+
+What stays is the layout: the empty `models/02_stg`, `models/03_int`, `models/04_mrt` and
+`models/05_exp` folders, `sources/`, `exposures/`, `seeds/` and the `_conf/` convention inside
+them, plus `macros/` and `tests/`. Git does not track an empty folder, so give each one a
+`.gitkeep` the way `macros/` and `tests/` already have. Until the first model lands, `dbt parse`
+warns that the configuration paths in `dbt_project.yml` apply to no resources; that is the empty
+layers, not a mistake.
 
 Install the packages for the new project:
 
@@ -244,13 +288,13 @@ and switch `.env` to move. The locations of other projects still load (parsing n
 
 ## Sharing data between projects
 
-With `dbt_common` disabled, `ref('dim__common__calendar')` does not resolve in the new project,
-and the tables `dbt_example` builds live in `DB_EXAMPLE_<ENV>`, not in yours. That is the point
-of the mesh: a project publishes through its `_EXP` layer and other projects read that contract
-(the `import` layer under `terraform/config/layers/` exists for received contracts). The starter
-provisions no cross-project grants, so reading another project's `_EXP` is an administrator's
-decision in `terraform/config/roles/`. See [Layer](../concepts/layer.md) and
-[Layers in practice](../architecture/layers.md).
+With the `dbt_common` mart models disabled, `ref('dim__common__calendar')` does not resolve in
+the new project, and the tables `dbt_example` builds live in `DB_EXAMPLE_<ENV>`, not in yours.
+That is the point of the mesh: a project publishes through its `_EXP` layer and other projects
+read that contract (the `import` layer under `terraform/config/layers/` exists for received
+contracts). The starter provisions no cross-project grants, so reading another project's `_EXP`
+is an administrator's decision in `terraform/config/roles/`. See
+[Layer](../concepts/layer.md) and [Layers in practice](../architecture/layers.md).
 
 ## What stays per project
 
@@ -277,7 +321,8 @@ Administrator:
 
 Engineer:
 
-- [ ] `dbt/dbt_<project>/dbt_project.yml`: `name`, the `models:` and `seeds:` keys, `dbt_common: +enabled: false`, dispatch block kept
+- [ ] `dbt/dbt_<project>/dbt_project.yml`: `name`, the `models:` and `seeds:` keys, the `dbt_common` layer folders disabled (not the package) with `stg__seed__unknown` and `seed_unknown` kept, dispatch block kept
+- [ ] The example content is gone: `sources/src_knmi.yml`, `exposures/`, the weather models in all four layers, `models/02_stg/seed/` and the `seed_knmi_*` seeds
 - [ ] `packages.yml` unchanged (`../dbt_common` + `dbt_utils`); `just dbt-all deps` ran
 - [ ] `src/orchestrator/locations/dbt/dbt_<project>/definitions.py` and `defs/dbt/defs.yaml` point at the new project
 - [ ] `workspace.yaml` lists `dbt_<project>`
