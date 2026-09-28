@@ -140,7 +140,7 @@ Full rules: [Conventions](docs/conventions/index.md). The hard musts:
 
 - **dlt load** ([guide](docs/development/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project and a staging model.
 - **dbt model** ([guide](docs/development/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
-- **project** ([guide](docs/development/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`. Exactly one project builds the `dbt_common` models.
+- **project** ([guide](docs/development/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
 - **Python asset** ([guide](docs/development/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
 
 ## Critical rules

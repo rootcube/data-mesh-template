@@ -118,6 +118,30 @@ The check runs attach to the pull request's head commit under the same job names
 the ruleset. No personal access token or secret is involved; if a release pull request ever
 shows missing checks, `gh workflow run ci.yml --ref <its branch>` is the manual equivalent.
 
+## Code owners
+
+`.github/CODEOWNERS` says who reviews what; GitHub requests those reviewers on every pull
+request that touches a matching path. The file follows the one in rootcube/platform, trimmed to
+this tree: the engineers own everything by default, the platform administrators own
+`terraform/`, `.github/` and the project tooling (`justfile`, `pyproject.toml`,
+`.pre-commit-config.yaml`), and every project has a block of its own, owned by its team (`team`
+in `terraform/config/projects/<project>.yaml`): its dbt project, its Dagster location, its dlt
+sources and its project file, which the administrators keep as well because layers, computes
+and roles are provisioning. Adding a project adds a block
+([Adding a project](../development/adding-projects.md)); a copy of this starter renames the
+`@rootcube/...` teams to its own. GitHub flags a handle it cannot resolve on the file's page,
+only teams with write access get requested, and on a private repository code owners need a
+paid plan; without one the file is inert.
+
+The file requests reviews, it does not require them. It becomes a gate at the same moment
+approvals stop being zero: set `require_code_owner_review` to `true` and
+`required_approving_review_count` to `1` in `.github/rulesets/main.json`, then update the
+ruleset (`gh api repos/rootcube/data-mesh-template/rulesets` lists its id):
+
+```bash
+gh api -X PUT repos/rootcube/data-mesh-template/rulesets/<id> --input .github/rulesets/main.json
+```
+
 ## What runs when
 
 Pre-commit, on every commit, from `.pre-commit-config.yaml`:
@@ -131,7 +155,7 @@ Pre-commit, on every commit, from `.pre-commit-config.yaml`:
 | `sqlfluff lint` | `dbt/dbt_example/models/**/*.sql` | The SQL rules; lint only, so run `just fmt` first |
 | `dagster definitions validate` | `src/`, `dlt_pipelines/` | Every code location must load |
 | `terraform fmt` | `.tf` files | Needs the `terraform` binary, so administrators in practice |
-| `validate_configs.py` | `terraform/config/**` | The YAML schemas and cross-references, sub-folders included: a project's `code` equals its file name, users name existing projects, roles and environments (`just tf-validate-config`) |
+| `validate_configs.py` | `terraform/config/**` | The YAML schemas and cross-references, sub-folders included: a project's `code` equals its file name, users name existing projects, roles and environments, roles and layers name existing access tiers, and stage or file format privileges appear only in the extras of `input` layers, never in a tier (`just tf-validate-config`) |
 
 `just pre-commit` runs every hook on every file, which is the quickest way to find out what CI
 will say.
