@@ -2,6 +2,9 @@
 # Layer: Source
 # =============
 
+# `src` is a contract, not just a schema name: stages.tf keys the dlt load stages off it, and
+# dbt_common's refresh_stages macro refreshes `<src schema>.ST_DEFAULT`. Renaming it drops every
+# load stage without an error.
 code: "src"
 name: "Source Layer"
 desc: "Actively collected raw data from source systems"
