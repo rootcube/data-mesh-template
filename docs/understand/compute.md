@@ -7,15 +7,11 @@ icon: material/server
 Compute is a standardised abstraction for sizing, scaling and isolating execution resources.
 The platform defines a small set of reusable compute profiles, each with a type, sizes and
 policies, and provisions them per Project × Environment. That keeps workload classes from
-interfering with each other, makes cost attributable per project and environment, and replaces
-ad-hoc sizing with a few deliberate choices.
+interfering with each other and replaces ad-hoc sizing with a few deliberate choices.
 
-Principles:
-
-- Profiles are defined once, platform-wide, and reused consistently.
-- Instances are provisioned per Project × Environment.
-- Workload classes do not share compute: a heavy transformation must not slow down reporting.
-- Compute is selected explicitly per workload, not implied by where the code lives.
+A profile is defined once, platform-wide, and instantiated per Project × Environment. Workload
+classes do not share compute, so a heavy transformation cannot slow down reporting, and a
+workload picks its compute explicitly rather than inheriting it from wherever the code lives.
 
 ## The profiles
 
@@ -69,8 +65,8 @@ Roles get warehouse privileges through `privileges.computes` in `roles/*.yaml`:
 |------|----------|------------|
 | `engineer` | `default`, `ingest`, `transform` | `USAGE`, `OPERATE`, `MONITOR` |
 | `analyst` | `default` | `USAGE` |
-| `ingest` | `ingest` | `USAGE`, `OPERATE` |
-| `transform` | `transform` | `USAGE`, `OPERATE` |
+| `ingest` | `default`, `ingest` | `USAGE`, `OPERATE` |
+| `transform` | `default`, `transform` | `USAGE`, `OPERATE` |
 
 Two details of `terraform/main.tf` are worth knowing before you change a project's `computes`:
 
@@ -87,11 +83,10 @@ on. It comes from `init.sql`, not from a compute profile.
 ## In the repo
 
 `SNOWFLAKE_WAREHOUSE` in `.env` is the warehouse every tool uses: dbt through
-`dbt/profiles.yml`, dlt through `SnowflakeSettings.dlt_credentials()`, Python assets through
-`SnowflakeSettings.connect()`. For an engineer that is
-`WH_<PROJECT>_DEV`, written by `just sf setup`. There is no per-job warehouse selection
-yet; when a project adds the `transform` profile, pointing dbt at `WH_<PROJECT>_<ENV>__TFM_M`
-is a change of that one variable in the deployed environment.
+`dbt/profiles.yml`, dlt and Python assets through `SnowflakeSettings`. For an engineer that is
+`WH_<PROJECT>_DEV`, written by `just sf setup`. There is no per-job warehouse selection yet;
+when a project adds the `transform` profile, pointing dbt at `WH_<PROJECT>_<ENV>__TFM_M` is a
+change of that one variable in the deployed environment.
 
-Back to the [Concepts overview](index.md), or on to how the tools implement all of this:
-[Architecture](index.md).
+That closes the model. How the four tools implement it starts at
+[Ingestion](ingestion.md), and every name pattern is on [Naming](../reference/naming.md).

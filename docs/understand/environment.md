@@ -55,46 +55,26 @@ environment. Nothing is copied between environments by hand.
 
 ## Development is special
 
-Development is shared: several engineers work in one `DB_EXAMPLE_DEV`. To keep them out of
-each other's way, every engineer works in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`,
-for example `DBT_USERNAME_STG`. Terraform creates them for every user who holds the engineer
-role in `dev` (the `personal` block in `roles/engineer.yaml`, `environments: [dev]`); dlt and dbt
-only use them. The provisioned `_<LAYER>` schemas exist in `dev` too; the other environments use
-only those.
-
-The rule is implemented twice, once in Python and once in Jinja, and the dbt source YAML
-repeats it from the dbt `target`:
-
-| Where | Personal (`dev`) | Shared (`tst`, `acc`, `prd`) |
-|-------|------------------|------------------------------|
-| `SnowflakeSettings.schema_for_layer()` in `src/orchestrator/resources/snowflake.py` | `<SNOWFLAKE_SCHEMA>_<LAYER>` | `_<LAYER>` |
-| `dbt_common.generate_schema_name` | `<target.schema>_<LAYER>` | `_<LAYER>` |
-| `dbt/dbt_example/sources/src_knmi.yml` | `<target.schema>_SRC` | `_SRC` |
-
-A blank `SNOWFLAKE_SCHEMA` in `dev` does not fall through to the shared schemas: all three use
-the placeholder prefix `DBT` (`DBT_SRC`, `DBT_STG`), which nobody has, so they fail loudly.
+Development is shared: several engineers work in one `DB_EXAMPLE_DEV`. To keep them out of each
+other's way, every engineer works in personal schemas named `<SNOWFLAKE_SCHEMA>_<LAYER>`, for
+example `DBT_USERNAME_STG`, which Terraform creates for every user who holds the engineer role
+in `dev` (the `personal` block in `roles/engineer.yaml`). Everywhere else the same code writes
+to the provisioned `_<LAYER>` schemas. Python, Jinja and the dbt source YAML each implement that
+one rule; [Environment variables](../reference/environment-variables.md) has all three, and
+what a blank prefix does.
 
 ## In the repo
 
 `ENVIRONMENT` in `.env` says which environment a checkout runs as (`dev`, `tst`, `acc` or
-`prd`). Three things read it:
-
-- `dbt/profiles.yml`: the target follows `ENVIRONMENT` unless `DBT_TARGET` overrides it. The
-  `dev` target uses 8 threads and your personal schema prefix; `tst`, `acc` and `prd` use 16
-  threads and the `_<LAYER>` schemas.
-- `SnowflakeSettings.from_env()`: `is_personal` is true for `dev` (and for `dummy`), which
-  switches the dlt dataset and the Dagster resource to personal schemas.
-- `src_knmi.yml`: the source schema expression above, through the dbt target (so `DBT_TARGET`
-  moves it along with the models).
-
-The rest of the connection (`SNOWFLAKE_ROLE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_WAREHOUSE`) has to
-match the environment: `RL_EXAMPLE_DEV__ENG`, `DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV` for `dev`.
-`just sf setup` writes those for an engineer.
+`prd`). It picks the dbt target in `dbt/profiles.yml` unless `DBT_TARGET` overrides it, and it
+sets `is_personal` on `SnowflakeSettings`, which is what switches dlt and Dagster to the
+personal schemas. The rest of the connection has to match: `RL_EXAMPLE_DEV__ENG`,
+`DB_EXAMPLE_DEV` and `WH_EXAMPLE_DEV` for `dev`. `just sf setup` writes those for an engineer.
 
 ## In Snowflake
 
-The environment `code` is the `<ENV>` segment of every project-scoped name:
-`DB_<PROJECT>_<ENV>`, `RL_<PROJECT>_<ENV>__<PURPOSE>`, `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]`.
-Nothing is shared between two environments of the same project except the account they live in.
+The environment `code` is the `<ENV>` segment of every project-scoped name
+([Naming](../reference/naming.md)). Nothing is shared between two environments of the same
+project except the account they live in.
 
 Next: [Layer](layer.md).

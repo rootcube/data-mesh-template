@@ -7,16 +7,10 @@ icon: material/account-group-outline
 A Team is the human ownership and accountability unit. It is a group of people responsible
 for building, operating and supporting one or more Projects.
 
-## Key characteristics
-
-- A Team owns **one or more Projects**
-- A Project has **exactly one owning Team**
-- Teams define responsibility, not technical isolation
-- Teams may align with departments, domains or product teams
-
-Teams exist for governance, onboarding, support routing and accountability. They do not
-structure technical resources directly: there is no database, role or warehouse per Team.
-Isolation is the Project's job.
+A Team owns one or more Projects, and a Project has exactly one owning Team. Teams may align
+with departments, domains or product teams; they exist for governance, onboarding, support
+routing and accountability. They do not structure technical resources: there is no database,
+role or warehouse per Team. Isolation is the Project's job.
 
 ## In this repo
 
@@ -42,8 +36,9 @@ nowhere else; there is no automated escalation or support path wired to it.
 
 ## In Snowflake
 
-Nothing. Terraform loads `teams/` (see `terraform/variables.tf`) so that projects can reference
-a team, but no Snowflake object carries the team name. Ownership is visible through the
-Project's objects instead: whoever holds `RL_EXAMPLE_PRD__ENG` is the platform team.
+Nothing. Terraform loads `terraform/config/teams/` (see `terraform/variables.tf`) so that
+projects can reference a team, but no Snowflake object carries the team name, and so no team
+appears in [Naming](../reference/naming.md). Ownership is visible through the Project's objects
+instead: whoever holds `RL_EXAMPLE_PRD__ENG` is the platform team.
 
 Next: [Project](project.md).

@@ -11,7 +11,7 @@ just start
 ```
 
 runs `dagster dev` in the foreground (++ctrl+c++ stops it) with `DAGSTER_HOME=.dagster`, so run
-history survives restarts. Open <http://localhost:3000>. Under *Deployment* you should see two
+history survives a restart. Open <http://localhost:3000>. Under *Deployment* you should see two
 code locations, both loaded:
 
 | Location | Owns |
@@ -28,14 +28,14 @@ The starter source is the KNMI weather API: public, no credentials, small (seven
 last 30 days, hourly).
 
 1. *Assets*, search `climate_hourly` (key `dlt/ingest/knmi/climate_hourly`, group `dlt/ingest/knmi`).
-2. **Materialize** (or, under *Jobs*, launch the source's `job__dlt__ingest_<source>`, which
-   materializes every asset of the source). The run fetches the observations and merges them into the table
-   `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, which Terraform
-   provisioned for you, through your own load stage `DBT_<USERNAME>_SRC.ST_DEFAULT`.
-3. Check:
+2. **Materialize**, or launch the source's `job__dlt__ingest_<source>` under *Jobs*, which
+   materializes every asset of the source. The run fetches the observations and merges them into
+   `knmi__climate_hourly` in your personal source schema `DBT_<USERNAME>_SRC`, through your own
+   load stage `DBT_<USERNAME>_SRC.ST_DEFAULT`.
+3. Count what landed:
 
     ```bash
-    just sf query "SELECT COUNT(*) FROM DBT_<USERNAME>_SRC.knmi__climate_hourly"
+    just sf query "SELECT COUNT(1) FROM DBT_<USERNAME>_SRC.knmi__climate_hourly"
     ```
 
 The same pipeline runs without Dagster, which is handy while developing a source:
@@ -49,35 +49,34 @@ loading.
 
 ## Build the dbt models
 
-In the asset graph, `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly` hangs directly under the dlt asset: the dbt
-source declares the dlt asset key, so the lineage runs across the two code locations. Select
-the dbt assets and materialize, or from the terminal:
+In the asset graph, `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly` hangs directly
+under the dlt asset: the dbt source declares the dlt asset key, so the lineage runs across the two
+code locations. Select the dbt assets and materialize, or from the terminal:
 
 ```bash
 just dbt build
 ```
 
-`dbt build` seeds, runs and tests everything in `dbt_example`, including the calendar, time
-and environment dimensions from `dbt_common`. Every run starts with a run-info banner (links
-to the query history in Snowsight) and ends with a summary; run metadata lands in the
-`pre__dbt__*` tables of your metadata schema.
+`dbt build` seeds, runs and tests everything in `dbt_example`, including the calendar, time and
+environment dimensions from `dbt_common`. Every run opens with a run-info banner (links to the
+query history in Snowsight) and closes with a summary; run metadata lands in the `pre__dbt__*`
+tables of your metadata schema.
 
 !!! note "`int__common__holiday` needs Anaconda packages"
-    That `dbt_common` model is a Python (Snowpark) model that imports `holidays` from
-    Snowflake's Anaconda channel. If it fails with a package error, an `ORGADMIN` has not
-    accepted the Anaconda terms yet. Ask your administrator, or disable the model; see
+    That `dbt_common` model is a Python (Snowpark) model that imports `holidays` from Snowflake's
+    Anaconda channel. If it fails with a package error, an `ORGADMIN` has not accepted the
+    Anaconda terms yet. Ask your administrator, or disable the model; see
     [Troubleshooting](troubleshooting.md).
 
 ## Let it run by itself
 
-Everything you just did by hand is also automated, but switched off in `dev` so a laptop never
-loads or builds on its own. Under *Automation* you find a daily schedule per dlt source and, per dbt
-project, an hourly freshness schedule and a freshness sensor, all stopped. To see the chain
-once: launch the project's `job__<project>__source_freshness` from *Jobs*, then start its
-sensor; the next tick sees every source as fresher than anything in its cursor and launches
+Everything you just did by hand is automated too, and switched off in `dev` so that a laptop never
+loads or builds on its own. Under *Automation* you find a daily schedule per dlt source and, per
+dbt project, an hourly freshness schedule and a freshness sensor, all stopped. To watch the chain
+once: launch the project's `job__<project>__source_freshness` from *Jobs*, then start its sensor.
+The next tick sees every source as fresher than anything in its cursor and launches
 `job__<project>__build_fresher` for their downstream. Stop the sensor again when you are done.
-The definitions and their names are described in
-[Orchestration](../understand/orchestration.md#jobs).
+What these are named and why: [Orchestration](../understand/orchestration.md#jobs).
 
 ## What you now have in Snowflake
 
@@ -94,9 +93,9 @@ Everything sits in `DB_EXAMPLE_DEV`, in schemas prefixed with your `SNOWFLAKE_SC
 | `DBT_<USERNAME>_MTD` | the `dbt_common` `on-run-end` hook | `pre__dbt__*` run metadata |
 | `DBT_<USERNAME>_TMP` | dbt tests | stored test failures |
 
-`just sf check` lists the schemas. In `prd`, and in `acc` or `tst` once the project lists them
-(`tst` also ships disabled), the same objects live in the provisioned `_SRC`, `_STG`, ... schemas;
-see [Layer](../understand/layer.md) and [Environment](../understand/environment.md).
+`just sf check` lists the schemas. In the shared environments the same objects live in the
+provisioned `_SRC`, `_STG`, ... schemas instead; see [Layer](../understand/layer.md) and
+[Environment](../understand/environment.md).
 
 ## Where things live locally
 
@@ -112,16 +111,16 @@ see [Layer](../understand/layer.md) and [Environment](../understand/environment.
 | `logs/` | `dbt.log` from a dbt run started outside a project directory |
 | `.cache/` | The docs build cache (`just docs`) |
 
-Everything except `.dagster/dagster.yaml` and `.dlt/config.toml` is git-ignored state and safe
-to delete; git brings the two config files back, and deleting the rest only resets your local
-run history. `just reset-local` does it in one go: it removes every path above except the two
-versioned config files and `packages/` (which `dbt deps` refreshes anyway), recreates `.dagster/`
-and `.dlt/data/`, and reruns `dbt deps` and `dbt parse`. Stop `just start` first.
+Everything except `.dagster/dagster.yaml` and `.dlt/config.toml` is git-ignored state and safe to
+delete; git brings those two back, and losing the rest only resets your local run history.
+`just reset-local` does it in one go: it removes every path above except the two versioned config
+files and `packages/` (which `dbt deps` refreshes anyway), recreates `.dagster/` and `.dlt/data/`,
+and reruns `dbt deps` and `dbt parse`. Stop `just start` first.
 
 ## Stopping
 
-++ctrl+c++ in the terminal running `just start`. `just start` stops a forgotten instance
-first, and `just stop` does the same on its own.
+++ctrl+c++ in the terminal running `just start`. `just start` stops a forgotten instance itself,
+and `just stop` does the same on its own.
 
-Ready to change things? Head to [Development](../build/index.md). Want the model behind
-the names first? [Concepts](../understand/index.md).
+Ready to change things? [Build](../build/index.md). Want the model behind the names first?
+[Understand](../understand/index.md).

@@ -4,6 +4,9 @@ icon: material/lifebuoy
 
 # Troubleshooting
 
+Symptom first, fix underneath. Two commands answer most of what these entries ask you to check:
+`just info` for the tools and `.env`, `just sf check` for what Snowflake sees you as.
+
 **`just: command not found`**
 :   Install it: `brew install just` or `winget install --id Casey.Just -e`, then open a new shell.
 
@@ -25,10 +28,9 @@ icon: material/lifebuoy
     again and let it re-register the existing key.
 
 **`Object does not exist, or operation cannot be performed` in dbt or dlt**
-:   Usually a wrong role or database in `.env`, or a role you have not been granted.
-    `just sf check` shows what you are connected as; the values should be
-    `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your administrator can list your grants
-    with `just tf output -json user_role_grants`.
+:   A wrong role or database in `.env`, or a role you were never granted. `just sf check` shows
+    what you are connected as; it should be `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your
+    administrator can list your grants with `just tf output -json user_role_grants`.
 
 **`Insufficient privileges to operate on database` on your first load or build**
 :   dlt or dbt tried to create a schema, which the engineer role may not do: your personal
@@ -65,8 +67,9 @@ icon: material/lifebuoy
     `dbt deps` has not run yet (`just dbt-all deps`).
 
 **Port 3000 already in use**
-:   `just start` stops a previous `dagster dev` of this checkout by itself. When something else
-    listens on the port, `just stop` frees it, or run on another port: `just port=3001 start`.
+:   `just start` stops a previous `dagster dev` of this checkout by itself. When something that is
+    not Dagster listens on the port, `just stop` names the process and leaves it alone: close it
+    yourself, or run on another port with `just port=3001 start`.
 
 **`int__common__holiday` fails with a package error**
 :   This Python model needs the Anaconda terms accepted on the Snowflake account (an `ORGADMIN`

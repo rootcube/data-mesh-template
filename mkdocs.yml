@@ -92,6 +92,10 @@ markdown_extensions:
 plugins:
   - search
 
+# Snippets included with --8<-- are not pages of their own.
+exclude_docs: |
+  includes/
+
 nav:
   - Home: index.md
   - Start:

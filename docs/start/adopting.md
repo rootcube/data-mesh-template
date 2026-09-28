@@ -4,14 +4,15 @@ icon: material/content-copy
 
 # Making it yours
 
-This repository is a starter, not a dependency: you copy it and it becomes your platform. Three
-things to do once, in this order: take your own copy, rename or remove the example, and take over
-the repository furniture that still points at the upstream project.
+This repository is a starter, not a dependency: you copy it and it becomes yours. Three things to
+do once, in this order: take your own copy, rename or remove the example, and take over the
+repository furniture that still points at the upstream project.
 
 ## Take your own copy
 
 Use GitHub's **Use this template** button if upstream offers it, or fork, or clone and push to a
-repository of your own. Either way add upstream as a second remote, so you can still pull fixes:
+repository of your own. Either way, add upstream as a second remote; that is what later fixes
+arrive through:
 
 ```bash
 git clone https://github.com/<you>/<your-repo>.git && cd <your-repo>
@@ -19,7 +20,7 @@ git remote add upstream https://github.com/rootcube/data-mesh-template.git
 git fetch upstream
 ```
 
-Then continue with [Getting started](index.md): `just init`, `just setup`.
+Then continue with [Start](index.md): `just init`, `just setup`.
 
 ## Rename or remove the example
 
@@ -37,7 +38,7 @@ you do not. A project's `code` has to equal its file name, and the Snowflake nam
 | dbt project | the folder `dbt/dbt_example/` and `name:` in its `dbt_project.yml`; then `project := "dbt_example"` in the `justfile` and the `dbt/dbt_example` paths in `.github/workflows/ci.yml`, `.pre-commit-config.yaml` and `scripts/info.py` |
 | Dagster code location | the package `src/orchestrator/locations/dbt/dbt_example/` (`definitions.py` and `defs/dbt/defs.yaml`) and its block in `workspace.yaml` |
 | dlt source | the folder `dlt_pipelines/pipelines/ingest/knmi/`; then `dbt/dbt_example/sources/src_knmi.yml`, the models under `models/02_stg/knmi/`, `models/03_int/weather/`, `models/04_mrt/weather/` and `models/05_exp/weather/`, the seeds `seed_knmi_station` and `seed_knmi_measurement_type` with their `_conf/` YAML, and the exposure under `exposures/` |
-| Tests that assert on the example | `tests/test_dlt_pipelines.py` imports the KNMI source at module level, so deleting the source breaks collection and with it the whole `just test` run; `tests/test_dbt_asset_keys.py`, `tests/test_snowflake_settings.py` and `tests/test_keypair.py` assert on `dbt_example` and the `EXAMPLE` object names |
+| Tests that assert on the example | `tests/test_dlt_knmi.py` covers the KNMI source and skips itself when the folder is gone (`pytest.importorskip`), so deleting the source costs you coverage, not a red suite; `tests/test_dbt_asset_keys.py`, `tests/test_snowflake_settings.py` and `tests/test_keypair.py` assert on `dbt_example` and the `EXAMPLE` object names |
 | Defaults in `.env` | `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE` and `SNOWFLAKE_DATABASE` in `.env.example`, and in your own `.env` (or rerun `just sf context`) |
 | Code ownership | the `Project: example` block and the `@rootcube/...` teams in `.github/CODEOWNERS` |
 
@@ -50,8 +51,8 @@ Adding your own alongside the example instead of renaming it:
 
 ## Take over the repository furniture
 
-Everything below still names the upstream repository. It is inert or wrong in your copy until you
-change it.
+Everything below still names the upstream repository, so in your copy it is inert or plain wrong
+until you change it.
 
 | What | Do |
 |------|----|

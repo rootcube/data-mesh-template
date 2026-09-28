@@ -15,18 +15,11 @@ deploy that across every Environment.
 
 ## What it is, what it is not
 
-A Project **is**:
-
-- a stable boundary for data and compute ownership, expected to live for years
-- the unit for cost attribution and operational accountability
-- an isolation boundary for storage, compute, credentials and roles, and code
-
-A Project **is not**:
-
-- a temporary experiment (the platform reserves temporary projects with a time-to-live for that)
-- a single pipeline or workflow
-- an environment
-- a collection of dashboards
+A Project is a stable boundary for data and compute ownership, expected to live for years: the
+unit of cost attribution and operational accountability, and the isolation boundary for
+storage, compute, credentials, roles and code. It is not a temporary experiment (the platform
+reserves temporary projects with a time-to-live for that), a single pipeline, an environment,
+or a collection of dashboards.
 
 Refactoring inside a Project is normal. Renaming, splitting or merging Projects is a breaking
 change, and decommissioning one is an explicit, controlled process.
@@ -83,10 +76,11 @@ Disabled entries are dropped
     `source`, `staging` and `expose`, the environments `development` and `production`, and
     the compute `default`.
 
-The project `code` becomes part of every Snowflake name and must be lowercase letters, digits
-and underscores, starting with a letter (checked by the database module). It must also equal
-the file name: Terraform names the objects after the file name (`projects/example.yaml` gives
-`DB_EXAMPLE_*`), and `just tf-validate-config` rejects a `code` that differs.
+The project `code` becomes part of every Snowflake name ([Naming](../reference/naming.md)) and
+must be lowercase letters, digits and underscores, starting with a letter (checked by the
+database module). It must also equal the file name: Terraform names the objects after the file
+name (`projects/example.yaml` gives `DB_EXAMPLE_*`), and `just tf-validate-config` rejects a
+`code` that differs.
 
 The Project also has a footprint outside `terraform/`:
 
@@ -112,17 +106,13 @@ For every environment the project lists, Terraform creates:
 | Grants | database, schema, warehouse and role-to-role grants per role | `USAGE` on `DB_EXAMPLE_DEV` for every role |
 
 The database module drops the default `PUBLIC` schema, so a project database holds layer
-schemas only (plus, in `dev`, the personal schemas Terraform creates per engineer). Time Travel
-retention is set on the database, one day unless the environment file sets
-`data_retention_days`, and the schemas inherit it. Databases carry `prevent_destroy`: a plan that would drop one, such as
-removing an environment from the project, fails until an administrator lifts it
+schemas only, plus the personal schemas Terraform creates per engineer in `dev`. Databases
+carry `prevent_destroy`: a plan that would drop one, such as removing an environment from the
+project, fails until an administrator lifts it
 ([Snowflake provisioning](../operate/snowflake-provisioning.md)).
 
-## Adding a project
-
-Copy `projects/example.yaml` to `projects/<code>.yaml` with that `code`, then copy `dbt/dbt_example` and
-`src/orchestrator/locations/dbt/dbt_example`, and add one block to `workspace.yaml`. Exactly one
-project builds the `dbt_common` models. The walkthrough is
-[Adding a project](../build/adding-projects.md).
+Adding a project is copying a folder four times over: the YAML, the dbt project, the Dagster
+location and the `workspace.yaml` entry. [Adding a project](../build/adding-projects.md) walks
+through it.
 
 Next: [Environment](environment.md).

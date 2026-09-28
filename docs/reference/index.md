@@ -4,124 +4,65 @@ icon: material/book-open-variant
 
 # Reference
 
-- [Commands](commands.md): every `just` recipe, for engineers and administrators.
-- [Environment variables](environment-variables.md): everything `.env` can hold, what the tooling sets itself, and how the values turn into schema names.
-- [Glossary](glossary.md): the concept terms (organisation, team, project, environment, layer, role, compute, user) and the tool terms used across these docs.
+The rest of the site explains how the platform works. This section is for looking things up:
+the rules, the names, the recipes, the variables, and what a word means when you have forgotten.
 
-<!-- MERGE-ME: everything below came verbatim from docs/conventions/index.md; fold it into this page and delete this marker -->
+## The hard musts
 
----
-icon: material/ruler-square
----
+`AGENTS.md` is the instruction file every AI agent reads, and it is just as binding for people.
+Its non-negotiables:
 
-# Conventions
+1. **Never hardcode credentials.** The `SNOWFLAKE_*` block in `.env`, written by `just sf setup`,
+   is the only place they live. See [Environment variables](environment-variables.md).
+2. **Never bypass pre-commit.** No `--no-verify`. Fix the cause; CI runs the same checks and fails
+   the pull request anyway. See [What runs when](git-workflow.md#what-runs-when).
+3. **Reference only the layer directly below.** STG cannot `ref()` an INT model, MRT cannot
+   `ref()` an EXP model. See [Layer reference rules](dbt-style-guide.md#layer-reference-rules).
+4. **Validate before presenting work.** `just fmt`, `just validate`, `just test`, `just check`.
+   See [the validation loop](ai-agents.md#the-validation-loop).
+5. **Use existing patterns** before adding an abstraction. `dlt_pipelines/`,
+   `src/orchestrator/` and the models under `dbt/` already have a shape for nearly everything.
 
-This repository is small, but it has the same surfaces as a production data platform: Dagster
-code locations, a shared dbt package plus one dbt project per mesh node, a dlt package, Terraform
-configuration, and three languages (Python, SQL, YAML). Humans and AI agents both write here.
-These conventions keep all of it looking like one person wrote it, and they hold as the mesh
-grows from one project to many.
+Per surface, one line each:
 
-## Why this matters here
+| Surface | The rule | Page |
+|---|---|---|
+| Python | ruff (line length 120, rules `E F I UP B`), ty, full annotations, `X \| None` never `Optional[X]` | [Python style](python-style.md) |
+| SQL | sqlfluff Snowflake dialect: keywords upper, identifiers lower, leading commas, 2-space indent, `CAST()` not `::`, CTEs not subqueries | [SQL style](sql-style.md) |
+| dbt | A `_conf/<model>.yml` per model, a named test on every key, the layer rules | [dbt style guide](dbt-style-guide.md) |
+| Names | `stg__<source>__<entity>`, `int__<domain>__<entity>`, `(dim\|fct\|brg\|agg)__<domain>__<entity>`, `exp__<domain>__<entity>` | [Naming](naming.md) |
+| Commits | Conventional commits; release-please derives the version, so never bump it by hand | [Commit messages](git-workflow.md#commit-messages) |
 
-- **One repo, many surfaces.** A single change can touch a dlt pipeline, its `defs.yaml`, a dbt
-  source, a staging model and its `_conf/` YAML. Consistent patterns mean you can read any of them
-  without re-learning the codebase.
-- **Many projects, one shape.** Every project is a copy of `dbt_example` with its own name, so a
-  convention that holds in one holds in all of them. Naming is what keeps `DB_<PROJECT>_<ENV>`,
-  `dbt_<project>` and `job__dbt_<project>__build_all` lined up.
-- **AI agents write code here.** Agents follow the same rules you do. `AGENTS.md` and the
-  [AI agent pages](ai-agents.md) point at this section instead of restating it, so human
-  and agent output look the same in review.
-- **Most of it is enforced.** Pre-commit hooks and the CI workflow run ruff, ty, pytest,
-  `dbt parse`, sqlfluff, `dagster definitions validate`, `terraform fmt`, the Terraform YAML
-  validation and a strict docs build. If it is not formatted right, it does not merge. See
-  [Git workflow](git-workflow.md).
+## The pages
 
-## Critical rules
-
-From `AGENTS.md`, and non-negotiable:
-
-1. **Never hardcode credentials.** Environment variables only: the `SNOWFLAKE_*` block in `.env`,
-   written by `just sf setup`.
-2. **Never bypass pre-commit.** Fix the issue instead of reaching for `--no-verify`.
-3. **Follow the [dbt style guide](dbt-style-guide.md)** and the layer rules: models reference only
-   the layer directly below.
-4. **Test your changes.** `just test` for Python, `dbt test` (part of `just dbt build`) for SQL,
-   `just validate` for Dagster, `just tf-validate-config` for the Terraform YAML.
-5. **Use existing patterns** before creating new abstractions. Check `dlt_pipelines/`,
-   `src/orchestrator/` and the existing dbt models first.
-
-## Keep it simple
-
-The design philosophy, straight from `AGENTS.md`:
-
-- **Solve the problem at hand**, not hypothetical future problems. No abstractions, factories or
-  patterns "just in case".
-- **Small, flat functions.** One thing per function. More than three levels of indentation means
-  refactor; more than four parameters means use a dataclass.
-- **Readable over clever.** Write code a junior developer can follow.
-- **No unnecessary indirection.** No wrapper that only calls another function; no class where a
-  function will do.
-- **Three is not a pattern.** Extract a helper only when the same logic appears in genuinely
-  different contexts.
-- **Delete dead code.** Do not comment it out; git history keeps it.
-
-## In this section
-
-<div class="grid cards" markdown>
-
--   :material-language-python:{ .lg .middle } **[Python style](python-style.md)**
-
-    ---
-
-    ruff (line length 120, rules `E F I UP B`), ty, full type annotations in Python 3.13 syntax,
-    naming, and the patterns to reuse.
-
--   :material-code-tags:{ .lg .middle } **[SQL style](sql-style.md)**
-
-    ---
-
-    The sqlfluff Snowflake rule set in practice: uppercase keywords, leading commas, 2-space
-    indent, `CAST()` not `::`, good-vs-bad examples, how to run the linter.
-
--   :material-book-cog:{ .lg .middle } **[dbt style guide](dbt-style-guide.md)**
-
-    ---
-
-    Layers and reference rules, `_conf/` YAML placement, tests, materializations, sources, seeds,
-    macros and the shared `dbt_common` package.
-
--   :material-tag-text:{ .lg .middle } **[Naming](naming.md)**
-
-    ---
-
-    One naming reference: dbt models per layer, columns, dlt tables and asset keys, Dagster
-    locations and jobs, Snowflake databases, schemas, roles and warehouses.
-
--   :material-git:{ .lg .middle } **[Git workflow](git-workflow.md)**
-
-    ---
-
-    Short-lived branches, pull requests, conventional-commit style messages, the pre-commit hooks
-    and the CI jobs.
-
-</div>
+| Page | What it holds |
+|---|---|
+| [Python style](python-style.md) | ruff and ty, type annotations, naming, error handling, the patterns to reuse instead of reinventing |
+| [SQL style](sql-style.md) | The sqlfluff rule set in practice: capitalisation, commas, casts, joins, CTEs, Jinja |
+| [dbt style guide](dbt-style-guide.md) | Layers and reference rules, what every model needs, `_conf/` YAML, sources, seeds, tests, macros, `dbt_common` |
+| [Naming](naming.md) | Every name in one place: models, columns, tests, dlt tables, asset keys, Dagster definitions, Snowflake objects, Terraform config files |
+| [Git workflow](git-workflow.md) | Branches, conventional commits, releases, the protected `main`, code owners, and what runs when |
+| [Commands](commands.md) | Every `just` recipe, for engineers and administrators |
+| [Environment variables](environment-variables.md) | Everything `.env` can hold, what the tooling sets itself, and how the values turn into schema names |
+| [Glossary](glossary.md) | The concept and tool terms these docs use, one anchor per term |
+| [For AI agents](ai-agents.md) | The agent entry points, the validation loop, what to run after changing what, and the pitfalls |
 
 ## Where the rules live
+
+Each rule has one config file that decides it and at least one check that enforces it.
 
 | Concern | Config | Enforced by |
 |---|---|---|
 | Python lint + format | `pyproject.toml`, `[tool.ruff]` | pre-commit (`ruff format`, `ruff check --fix`), CI `python` job |
 | Python types | `pyproject.toml`, `[tool.ty]` | pre-commit (`ty check`), CI `python` job |
 | Python tests | `pyproject.toml`, `[tool.pytest.ini_options]` | CI `python` job (not a pre-commit hook: run `just test` yourself) |
-| SQL lint | `dbt/.sqlfluff` (shared by every project) | pre-commit (`sqlfluff lint models`), CI `dbt-and-dagster` job |
-| dbt validity | `dbt/*/dbt_project.yml`, `dbt/profiles.yml` | pre-commit (`dbt parse` with the `dummy` target), CI `dbt-and-dagster` job |
-| Dagster definitions | `workspace.yaml` | pre-commit (`dagster definitions validate`), CI `dbt-and-dagster` job |
+| SQL lint | `dbt/.sqlfluff` (shared by every project) | pre-commit (`sqlfluff lint models`, one hook per project), CI `dbt-and-dagster` job |
+| dbt validity | `dbt/*/dbt_project.yml`, `dbt/profiles.yml` | pre-commit (`dbt parse` with the `dummy` target, on both parsers), CI `dbt-and-dagster` job |
+| Dagster definitions | `workspace.yaml` | pre-commit (`dagster definitions validate` plus the asset-key check), CI `dbt-and-dagster` job |
 | Terraform formatting | `terraform/` | pre-commit (`terraform fmt`), CI `terraform` job |
-| Terraform YAML | `terraform/config/_validation/schemas/*.json` | pre-commit (`validate-configs`), CI `terraform` job, `just check` |
-| Docs | `mkdocs.yml` | CI `docs` job (`zensical build --strict`) |
+| Terraform YAML | `terraform/config/_validation/schemas/*.json` | pre-commit (`validate-configs`), CI `terraform` job, `just tf-validate-config` |
+| Docs | `mkdocs.yml` | pre-commit (`check_doc_fences.py`), CI `docs` job (the fence check and `zensical build --strict`) |
 
-`just check` runs the Python, dbt, Dagster and Terraform YAML part of that list locally (lint,
-typecheck, test, dbt parse, Dagster validate, config validation); `just pre-commit` runs every
-hook on every file. Full list: [Commands](commands.md).
+`just check` runs all of it except the Terraform CLI part; `just pre-commit` runs every hook on
+every file. The full list of recipes is on [Commands](commands.md), the hook and job tables on
+[Git workflow](git-workflow.md#what-runs-when).

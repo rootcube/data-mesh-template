@@ -8,6 +8,10 @@ Python 3.13, formatted and linted by ruff, type-checked by ty, fully type-annota
 deliberately boring. This page covers formatting, typing, naming, the simplicity rules, and the
 patterns to reuse instead of reinventing.
 
+The version is pinned in `.python-version` and `requires-python = ">=3.13,<3.14"`, and **uv**
+manages the environment. Nobody activates the venv: every command runs through `uv run`, which
+`just` does for you.
+
 ## ruff
 
 ruff is the only Python linter and formatter. Configuration lives in `pyproject.toml`:
@@ -79,8 +83,9 @@ Reviewers (and agents) check for it; ty checks that the annotations you write ar
 ## Type checking
 
 [ty](https://docs.astral.sh/ty/) is the type checker. Configuration lives in `pyproject.toml`
-under `[tool.ty]`: it checks `src/`, `dlt_pipelines/`, `scripts/` and `tests/` against Python
-3.13. `dbt/` is left out for the same Snowpark reason as above.
+under `[tool.ty]`: it checks `src/`, `dlt_pipelines/`, `scripts/`, `tests/` and
+`terraform/config/_validation/` against Python 3.13. `dbt/` is left out for the same Snowpark
+reason as above.
 
 === "just"
 
@@ -140,16 +145,10 @@ class SnowflakeSettings:
 
     account: str = ""
     user: str = ""
-    ...
     environment: str = "dev"
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str] | None = None) -> SnowflakeSettings:
-        ...
-
-    def schema_for_layer(self, layer_code: str) -> str:
-        """The schema a layer lives in: `_<LAYER>`, or `<SNOWFLAKE_SCHEMA>_<LAYER>` in dev."""
-        ...
+    def from_env(cls, env: Mapping[str, str] | None = None) -> SnowflakeSettings: ...
 ```
 
 ## Error handling and logging
@@ -199,15 +198,12 @@ dlt destination and dataset
     build the destination and the source-layer schema every ingest pipeline loads into. A new
     pipeline calls them; it does not build its own.
 
-Dagster code locations
-:   `build_dbt_defs(project_name, defs_module)` in `src/orchestrator/locations/dbt/shared.py` turns
-    a dbt project into a code location with its jobs (`job__<project>__build_all`, `run_all`,
-    `test_all`, `seed_all`) and the source-freshness chain of `source_freshness.py`. dlt loads are
-    declared in a `defs.yaml` next to the pipeline (`dagster_dlt.DltLoadCollectionComponent`),
-    dbt projects in `defs/dbt/defs.yaml` (`DataMeshDbtProjectComponent` in `shared.py`, a
-    `dagster_dbt.DbtProjectComponent` with path-based keys). Extend those instead
-    of writing assets by hand. See [adding Python assets](../build/adding-python-assets.md)
-    and [adding dlt loads](../build/adding-dlt-loads.md).
+Dagster definitions
+:   `build_dbt_defs()` in `src/orchestrator/locations/dbt/shared.py` turns a dbt project into a
+    code location with its jobs and its source-freshness chain; dlt loads and dbt projects are
+    declared in a `defs.yaml` rather than in Python. Extend those factories instead of writing
+    assets and jobs by hand. See [adding Python assets](../build/adding-python-assets.md) and
+    [adding dlt loads](../build/adding-dlt-loads.md).
 
 `.env` editing
 :   `update_env_file()` in `src/orchestrator/utils/dotenv.py` rewrites `KEY=value` lines and keeps
@@ -240,14 +236,45 @@ DataFrame libraries in one function.
 pytest, configured in `pyproject.toml` (`testpaths = ["tests"]`, `addopts = "-q"`). Tests are
 offline: no Snowflake, no network. Plain test functions named
 `test_<function>_<what_it_should_do>`, in files named after the module they cover
-(`tests/test_dotenv.py`, `tests/test_snowflake_settings.py`), using pytest fixtures such as
-`tmp_path`. Full guidance: [Testing](../build/testing.md).
+(`tests/test_dotenv.py`, `tests/test_snowflake_settings.py`). Two habits keep them free of
+mocking:
 
-## Enforcement
+- **Pass inputs as arguments.** `SnowflakeSettings.from_env(env)` takes any mapping, so a test
+  builds a dict instead of patching `os.environ`. Write new functions the same way.
+- **Write into `tmp_path`.** Anything that touches a file (`.env`, a key pair) gets the pytest
+  fixture, never the repo.
+
+`scripts/` is not a package: `tests/test_keypair.py` loads `scripts/snowflake.py` by path with
+`importlib.util.spec_from_file_location`. Copy that helper to test another script. What the suite
+covers, and the dbt and Dagster halves of testing: [Testing](../build/testing.md).
+
+## Dependencies
+
+`pyproject.toml` is authoritative and `uv` resolves it. The `dev` group installs on every plain
+`uv sync` (`default-groups`); the `docs` group is pulled in by `just docs` with `--group docs`.
+
+```bash
+uv sync            # after pulling dependency changes
+uv lock --upgrade  # rewrites uv.lock
+```
+
+Never edit `uv.lock` by hand. CI installs with `uv sync --locked`, so a lockfile that no longer
+matches `pyproject.toml` fails the build: run `uv lock` and include it in the same change.
+
+## Where the configuration lives
+
+| What | Where |
+|---|---|
+| ruff | `pyproject.toml`: `[tool.ruff]`, `[tool.ruff.lint]` |
+| ty | `pyproject.toml`: `[tool.ty.src]`, `[tool.ty.environment]` |
+| pytest | `pyproject.toml`: `[tool.pytest.ini_options]` |
+| Dependency groups | `pyproject.toml`: `[dependency-groups]`, `[tool.uv]` |
+| dg (Dagster CLI) | `pyproject.toml`: `[tool.dg]`, `[tool.dg.project]` |
+| Hooks | `.pre-commit-config.yaml` |
 
 Pre-commit runs `ruff format`, `ruff check --fix` and `ty check` on every commit that touches
-Python. The CI `python` job repeats `ruff format --check`, `ruff check`, `ty check` and `pytest`
-on every pull request. pytest is not a pre-commit hook, so run `just test` before you push.
+Python; the CI `python` job repeats them and adds `pytest`, which is not a hook, so run
+`just test` yourself. The full chain: [What runs when](git-workflow.md#what-runs-when).
 
 !!! danger "Never `--no-verify`"
     Bypassing pre-commit hooks is explicitly forbidden. If a hook fails, fix the cause; the same
@@ -257,5 +284,5 @@ on every pull request. pytest is not a pre-commit hook, so run `just test` befor
 
 - [Naming](naming.md): dlt asset keys, Dagster names, schemas
 - [Adding Python assets](../build/adding-python-assets.md)
-- [AI agent guide: Python](python-style.md)
+- [For AI agents](ai-agents.md): what to run after changing what
 - [Commands](commands.md)

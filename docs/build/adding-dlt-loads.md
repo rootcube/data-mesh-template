@@ -4,22 +4,20 @@ icon: material/database-import
 
 # Adding a dlt load
 
-A new source is one folder under `dlt_pipelines/pipelines/ingest/`, shaped exactly like `knmi`.
-Nothing registers it: the standalone runner discovers packages, the Dagster component tree
-discovers `defs.yaml` files, the dlt location gives every source folder its `job__dlt__ingest_<source>` with a daily schedule, and `job__dlt__ingest_all` selects by key prefix. This page adds a
-second REST source end to end, up to the dbt staging model that reads it. Background:
-[Ingestion](../understand/ingestion.md).
+A new source is one folder under `dlt_pipelines/pipelines/ingest/`, shaped exactly like `knmi`,
+and nothing registers it: the runner discovers packages, the Dagster component tree discovers
+`defs.yaml` files, and the dlt location gives every source folder its own job and daily schedule.
+This page adds a second REST source end to end, up to the dbt staging model that reads it. How it
+works underneath: [Ingestion](../understand/ingestion.md).
 
-Every load lands in the **source layer** of the project database: schema `_SRC`, or your
-personal `<SNOWFLAKE_SCHEMA>_SRC` in dev (`DBT_<USERNAME>_SRC`), as a table named
+Every load lands in the source layer of the project database as a table named
 `<source>__<entity>`. The schema comes from `source_dataset()` in
 `dlt_pipelines/utils/destination.py`; you never spell it out.
 
 !!! info "The example is made up"
-    The pages below use a fictional air-quality API called `airquality` with one entity,
-    `measurement_hourly`. The URL, parameters and field names are placeholders; swap in the
-    real endpoint you are ingesting. The KNMI files next to it are the reference for every
-    detail.
+    Everything below uses a fictional air-quality API called `airquality` with one entity,
+    `measurement_hourly`. The URL, parameters and field names are placeholders. The KNMI files
+    next to it are the reference for every detail.
 
 ## 1. Create the folder
 
@@ -34,12 +32,12 @@ dlt_pipelines/pipelines/ingest/airquality/
 
 The folder name is the source name. It becomes the first half of the table name
 (`airquality__measurement_hourly`), part of the asset key (`dlt/ingest/airquality/...`) and the
-argument of `just dlt run airquality`. Keep it short, lowercase, letters only.
+argument to `just dlt run airquality`. Keep it short, lowercase, letters only.
 
 ## 2. constants.py
 
-Everything that is a setting rather than logic: the URL, what to fetch, how far back. Sizing
-comments help the next reader.
+Settings rather than logic: the URL, what to fetch, how far back. Sizing comments help the next
+reader.
 
 ```python title="dlt_pipelines/pipelines/ingest/airquality/constants.py (new file)"
 """Constants for the airquality ingest pipeline."""
@@ -100,8 +98,8 @@ Full type hints on every function; `just typecheck` runs `ty` over `dlt_pipeline
 
 ## 4. pipelines.py
 
-The dlt objects. Two module-level names are the contract: `source` and `pipeline`. Copy the
-KNMI file and change the names, the primary key and the fetch function.
+The dlt objects. Two module-level names are the contract: `source` and `pipeline`. Copy the KNMI
+file and change the names, the primary key and the fetch function.
 
 ```python title="dlt_pipelines/pipelines/ingest/airquality/pipelines.py (new file)"
 """dlt pipeline: airquality hourly measurements -> Snowflake source layer (airquality__measurement_hourly).
@@ -149,7 +147,7 @@ pipeline = dlt.pipeline(
 )
 ```
 
-Choices to make:
+The choices worth thinking about:
 
 `primary_key`
 :   The grain of one row, in the API's own field names. With `write_disposition="merge"`,
@@ -165,21 +163,18 @@ Choices to make:
     the project shares one `_SRC` schema.
 
 `name=SOURCE` on the source
-:   The dlt source name is the source, never one of its entities: it names the dlt schema and has
-    to hold for every resource the source grows. Asset keys do not depend on it; `defs.yaml` sets
-    them.
+:   Never one of its entities: it names the dlt schema and has to hold for every resource the
+    source grows. Asset keys do not depend on it; `defs.yaml` sets them.
 
 More resources
-:   One `@dlt.resource` per endpoint, all yielded from the same source function, each with its
-    own `table_name`. Each becomes its own table and its own Dagster asset.
+:   One `@dlt.resource` per endpoint, all yielded from the same source function, each with its own
+    `table_name`. Each becomes its own table and its own Dagster asset.
 
 `snowflake_destination(SOURCE)` and `source_dataset()`
-:   Always these two. They read `SNOWFLAKE_*` and `ENVIRONMENT` from `.env` through
-    `SnowflakeSettings`, so there is nothing to configure per source; the source name only picks
-    the folder of the load files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`
-    (`DBT_<USERNAME>_SRC.ST_DEFAULT/dlt/ingest/airquality/` in dev). Credentials
-    are only checked when the pipeline runs, which is why the module imports cleanly without a
-    `.env`.
+:   Always these two. They read `SNOWFLAKE_*` and `ENVIRONMENT` through `SnowflakeSettings`, so
+    there is nothing to configure per source; the source name only picks the folder of the load
+    files in the stage, `_SRC.ST_DEFAULT/dlt/ingest/airquality/`. Credentials are checked when the
+    pipeline runs, which is why the module imports cleanly without a `.env`.
 
 ## 5. defs.yaml
 
@@ -215,11 +210,10 @@ just dlt run airquality
 just sf query "SELECT COUNT(1) FROM DBT_<USERNAME>_SRC.airquality__measurement_hourly"
 ```
 
-`just sf check` prints your layer schemas if you are unsure of the prefix. In dev the
-schema is your personal one that Terraform provisioned; dlt only adds the new tables to it.
-`RUNTIME__LOG_LEVEL=INFO` in `.env` shows the extract,
-normalize and load steps. Something wrong with the data? `just dlt run airquality --full-refresh`
-drops the source's tables and state and loads again.
+`just sf check` prints your layer schemas if you are unsure of the prefix. dlt only adds tables to
+the schema Terraform provisioned for you; it never creates one. `RUNTIME__LOG_LEVEL=INFO` in
+`.env` shows the extract, normalize and load steps. Something wrong with the data?
+`just dlt run airquality --full-refresh` drops the source's tables and state and loads again.
 
 ## 7. Run it in Dagster
 
@@ -228,19 +222,19 @@ just validate    # the dlt location loads with the new defs.yaml
 just start
 ```
 
-In the UI, the asset `measurement_hourly` sits in group `dlt/ingest/airquality`; **Materialize**
-runs the same `pipeline.run(source)`. It has its own `job__dlt__ingest_<source>` and daily `schedule__dlt__ingest_<source>`, and is
-part of `job__dlt__ingest_all`, without any change to the code. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints
-both keys from the terminal.
+In the UI the asset `measurement_hourly` sits in group `dlt/ingest/airquality`, and
+**Materialize** runs the same `pipeline.run(source)`. It has its own `job__dlt__ingest_<source>`
+and daily `schedule__dlt__ingest_<source>`, and joins `job__dlt__ingest_all`, without a line of
+extra code. `just dagster asset list -m orchestrator.locations.dlt.definitions` prints both keys
+from the terminal.
 
 ## 8. Expose it to dbt
 
-Two files in the dbt project that owns the source (`dbt/dbt_example` here). First the source,
-with the Dagster asset key so the lineage crosses code locations. The `schema` line is the one
-place the layer rule is spelled out by hand, from the dbt `target`, because source YAML cannot
-call macros; copy it exactly from `src_knmi.yml`. The `freshness` block and `loaded_at_field`
-make `dbt source freshness` check the table, which is what lets the project's freshness
-sensor (`sensor__<project>__source_freshness`) rebuild its downstream when a load lands
+Two files in the dbt project that owns the source (`dbt/dbt_example` here). First the source, with
+the Dagster asset key so the lineage crosses code locations. Copy the `schema` line exactly from
+`src_knmi.yml`: it is the one place the layer rule is spelled out by hand, because source YAML
+cannot call macros. The `freshness` block and `loaded_at_field` are what let the project's
+freshness sensor rebuild the downstream when a load lands
 ([Orchestration](../understand/orchestration.md#schedules-and-sensors)).
 
 ```yaml title="dbt/dbt_example/sources/src_airquality.yml (new file)"
@@ -285,11 +279,11 @@ sources:
             description: dlt load package that wrote the row.
 ```
 
-`name` is the entity (what `source('airquality', 'measurement_hourly')` refers to);
-`identifier` is the physical table, `<source>__<entity>`.
+`name` is the entity (what `source('airquality', 'measurement_hourly')` refers to); `identifier`
+is the physical table, `<source>__<entity>`.
 
-Then the staging model, in the house SQL style (a `cte_` CTE, explicit table names with `AS`,
-leading commas, two-space indent, uppercase keywords, `CAST()`), plus its YAML in `_conf/`:
+Then the staging model in the [house SQL style](../reference/sql-style.md), plus its YAML in
+`_conf/`:
 
 ```sql title="dbt/dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly.sql (new file)"
 {{
@@ -377,11 +371,10 @@ just dbt build --select stg__airquality__measurement_hourly
 just sqlfluff lint models
 ```
 
-The model lands as `DBT_<USERNAME>_STG.STG__AIRQUALITY__MEASUREMENT_HOURLY` in your dev database.
 After `just start` (or a reload of the `dbt_example` location in the running UI), the graph shows
 `dlt/ingest/airquality/measurement_hourly` feeding
-`dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly`.
-From here on it is [Adding a dbt model](adding-dbt-models.md).
+`dbt_example/models/02_stg/airquality/stg__airquality__measurement_hourly`. From here on it is
+[Adding a dbt model](adding-dbt-models.md).
 
 ## 9. Validate
 
@@ -392,16 +385,11 @@ just test
 just validate
 ```
 
-`tests/test_dlt_pipelines.py` shows how a source is asserted to be discoverable
-(`discover()["knmi"]`); add the same line for the new one if you like. Tests stay offline: no
-test calls the API or Snowflake.
+`tests/test_dlt_knmi.py` shows how a source is asserted to be discoverable
+(`discover()["knmi"]`); add the same line for the new one if you like. Tests stay offline: none of
+them calls the API or Snowflake. The rest of the loop is on [Testing](testing.md).
 
-## Checklist
-
-- [ ] Folder under `dlt_pipelines/pipelines/ingest/<source>/` with `__init__.py`, `constants.py`, `source.py`, `pipelines.py`, `defs.yaml`
-- [ ] `pipelines.py` exposes module-level `source` and `pipeline`; resources use `table_name="<source>__<entity>"`; `destination=snowflake_destination(SOURCE)`, `dataset_name=source_dataset()`
-- [ ] `defs.yaml` has `key_prefix` `["dlt", "ingest", "<source>"]`, `group_name` `dlt/ingest/<source>` and `deps: []`
-- [ ] `just dlt run <source>` loads rows; `just sf query` counts them in `<prefix>_SRC`
-- [ ] `dbt/<project>/sources/src_<source>.yml` with the `target`-based schema line, `identifier`, `meta.dagster.asset_key` matching the dlt key, and `freshness` plus `loaded_at_field` for the freshness check
-- [ ] Staging model plus `_conf` YAML with named tests; `just dbt build --select <model>` passes
-- [ ] `just validate` and `just check` pass; `just dagster job list -m orchestrator.locations.dlt.definitions` lists `job__dlt__ingest_<source>`
+Three things prove the source is really wired in, and they are worth running in this order:
+`just sf query` counts rows in `<prefix>_SRC`,
+`just dagster job list -m orchestrator.locations.dlt.definitions` lists
+`job__dlt__ingest_<source>`, and `just check` passes.

@@ -24,35 +24,28 @@ Two related pages carry the rules this page does not repeat:
 
 ## Layers
 
-Data flows through the layer schemas of the project database, `DB_<PROJECT>_<ENV>`. Each dbt
-layer has its own folder, schema, purpose and default materialization (from
-`dbt/dbt_example/dbt_project.yml`):
+Each layer has its own folder, `+schema` and default materialization, all set in
+`dbt/dbt_example/dbt_project.yml`. What the layers are for and where they sit in the flow:
+[Layer](../understand/layer.md).
 
-| Layer | Folder | Schema | Materialized | Purpose |
-|---|---|---|---|---|
-| Source | (dlt, not dbt) | `_SRC` | table | Data landed 1:1 by dlt as `<source>__<entity>`, e.g. `knmi__climate_hourly` |
-| Reference | `seeds/` | `_REF` | seed | Static reference data (CSV) |
-| Staging | `models/02_stg` | `_STG` | table | Typed, renamed, unit-converted source data |
-| Integration | `models/03_int` | `_INT` | table | Business logic, joins, enrichment |
-| Mart | `models/04_mrt` | `_MRT` | table | Dimensional model (dimensions, facts) |
-| Expose | `models/05_exp` | `_EXP` | view | Published outputs: the project's contract with consumers and other projects |
-
-Two more schemas are dbt's own: test failures are stored in `_TMP` (`+store_failures: true`,
-`+schema: tmp`), and the `dbt_common` `on-run-end` hook uploads run metadata (models, tests,
-executions) into `pre__dbt__*` tables in `_MTD`.
-
-The schema names above are the provisioned ones in `tst`, `acc` and `prd`. In `dev` every
-engineer works in personal copies prefixed with `SNOWFLAKE_SCHEMA`: `DBT_USERNAME_STG`,
-`DBT_USERNAME_MRT`, and so on, all in the shared `DB_<PROJECT>_DEV`. `dbt_common` overrides
-`generate_schema_name` to implement that rule; a model without a `+schema` config lands in
-`SNOWFLAKE_SCHEMA` itself (`DBT` by profile default, `_TMP` in the shared environments).
-
-| target | `target.schema` | `+schema` | Result |
+| Layer | Folder | `+schema` | Materialized |
 |---|---|---|---|
-| dev | `DBT_USERNAME` | `stg` | `DBT_USERNAME_STG` |
-| dev | `DBT_USERNAME` | (none) | `DBT_USERNAME` |
-| prd | `_TMP` | `stg` | `_STG` |
-| prd | `_TMP` | (none) | `_TMP` |
+| Reference | `seeds/` | `ref` | seed |
+| Staging | `models/02_stg` | `stg` | table |
+| Integration | `models/03_int` | `int` | table (views in `dbt_common`) |
+| Mart | `models/04_mrt` | `mrt` | table |
+| Expose | `models/05_exp` | `exp` | view |
+
+The source layer is dlt's, not dbt's: staging reads it through `source()`. Two more schemas are
+dbt's own bookkeeping, and no model targets them by hand: stored test failures go to `tmp`
+(`+store_failures: true`) and the `dbt_common` `on-run-end` hook uploads run metadata into
+`pre__dbt__*` tables in `mtd`.
+
+`dbt_common.generate_schema_name` turns a `+schema` into a schema of the project database
+`DB_<PROJECT>_<ENV>`: `_STG` in the shared environments, your personal `DBT_USERNAME_STG` in
+`dev`. A model without a `+schema` lands in `target.schema` itself, which nobody provisions in
+`dev`, so give every model its layer. The full table:
+[How the values become schema names](environment-variables.md#how-the-values-become-schema-names).
 
 ## Layer reference rules
 
@@ -140,6 +133,8 @@ joins. Materialized as `table` because downstream models read these often.
 
 Record-level derivations from the row's own fields belong here (the KNMI hour-ending timestamp,
 the `-1` precipitation sentinel). Anything that needs another row or another table does not.
+No model in the repo is incremental: staging rebuilds in full, and deduplicating the overlapping
+fetch window is dlt's job through a `merge` load on the primary key.
 
 ```sql title="dbt/dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly.sql"
 --8<-- "dbt/dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly.sql"
@@ -537,7 +532,7 @@ data_tests:
 ```
 
 Use `severity: warn` on any non-critical test. Failures are stored (`+store_failures: true`) in
-the `_TMP` schema (`DBT_<USERNAME>_TMP` in dev), so you can query the offending rows.
+the `_TMP` schema (`DBT_<USERNAME>_TMP` in dev), where you can query the offending rows.
 
 Run tests with `just dbt test`, or as part of `just dbt build`, which seeds, runs and tests in
 dependency order.
@@ -547,9 +542,9 @@ dependency order.
 - Every model and every column has a `description` in its `_conf/` YAML.
 - Descriptions are written directly in the YAML. This repo has no doc blocks; add them only when
   the same description is genuinely reused across models.
-- The shared `on-run-start` hook prints a run banner with links to the Snowsight query history,
-  and the `on-run-end` hooks print a summary and upload run metadata to `_MTD`. You get those for
-  free.
+- The shared `on-run-start` hook prints a run banner with links to the Snowsight query history
+  and refreshes the directory table of the dlt load stage; the `on-run-end` hooks print a run
+  summary and upload the run metadata. Both come from `dbt_common`; no model declares them.
 
 ## Macros
 
@@ -564,7 +559,8 @@ dependency order.
 - `dbt_common` overrides two dbt-internal macros through dispatch: `generate_schema_name` (the
   layer schema rule above) and `set_query_tag` (every query tagged with the dbt invocation id). A
   consuming project lists `dbt_common` first in its `dispatch` search order, as
-  `dbt/dbt_example/dbt_project.yml` does.
+  `dbt/dbt_example/dbt_project.yml` does. A project that skips that block gets dbt's own
+  `<target>_<custom>` naming instead, and its schemas come out as `_TMP_STG` outside `dev`.
 
 ## dbt_common
 
@@ -588,8 +584,9 @@ union in. Not `models: dbt_common: +enabled: false`: that also disables the `on-
 so the project stops uploading its run metadata. Macros, hooks and generic tests keep working
 either way.
 
-`dbt_common` declares no package dependencies of its own; each project lists `dbt_utils` in its
-own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
+`dbt_common` declares no package dependencies of its own, and adding one there would not reach
+the projects: a project's `package-lock.yml` hashes only its own `packages.yml`. So every project
+lists `dbt_utils` itself. To run `dbt deps` in every project: `just dbt-all deps`.
 
 !!! note "One Python model"
     `int__common__holiday.py` is a Snowpark model (the public holidays of the country in the `holiday_country` meta config, `NL` by default, via the `holidays` package). The consuming project sets that config as a literal in its `dbt_project.yml` (`models: dbt_common: 03_int: common: int__common__holiday: +meta: {holiday_country: NL}`), not as a var. It
@@ -604,7 +601,7 @@ own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
 
 - [SQL style](sql-style.md): formatting and syntax (sqlfluff)
 - [Naming](naming.md): model, column, tag and test naming in one place
-- [Layers](../understand/layer.md): the layer model end to end
-- [Adding dbt models](../build/adding-dbt-models.md): the step-by-step workflow
+- [Layer](../understand/layer.md): the layer model end to end
+- [Adding a dbt model](../build/adding-dbt-models.md): the step-by-step workflow
 - [Testing](../build/testing.md): dbt tests and pytest
-- [Transformation architecture](../understand/transformation.md): how the projects are wired into Dagster
+- [Transformation](../understand/transformation.md): how the projects are wired into Dagster

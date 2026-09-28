@@ -190,9 +190,15 @@ Common patterns, all from this repo:
 {{ ref('stg__knmi__climate_hourly') }}                      -- reference a model
 {{ source('knmi', 'climate_hourly') }}                      -- reference a source table
 {{ ref('dim__common__calendar') }}                         -- a shared dbt_common model
-{{ dbt_common.utc_now() }}                                  -- a shared macro
+{{ dbt_common.utc_now() }}                                  -- a shared macro, always namespaced
 {{ dbt_utils.generate_surrogate_key(['station_code']) }}    -- dbt_utils
+{{ this }}                                                  -- the model's own relation, for post-hooks
 ```
+
+Never spell out a database or schema in a model: `source()`, `ref()` and
+`dbt_common.generate_schema_name` resolve them per environment, and a literal one writes into
+somebody else's schema the moment the target changes. The rule they implement:
+[How the values become schema names](environment-variables.md#how-the-values-become-schema-names).
 
 When a Jinja block genuinely cannot be made lint-clean, fence it:
 
@@ -204,18 +210,9 @@ When a Jinja block genuinely cannot be made lint-clean, fence it:
 
 ## Column naming
 
-| Type | Pattern | Example |
-|---|---|---|
-| Surrogate key (dim) | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
-| Surrogate key (fct) | `id_fct__<domain>__<entity>` | `id_fct__weather__knmi_measurement` |
-| Foreign key to a dimension | `id_dim__<domain>__<entity>` | `id_dim__common__calendar` |
-| Boolean | `is_<condition>` / `has_<thing>` | `is_holiday`, `is_weekend` |
-| Timestamp | `<event>_at` | `observed_at` |
-| Date | `<event>_date` | `first_date_of_month` |
-| Measure with a unit | `<measure>_<unit>` | `temperature_celsius`, `wind_speed_ms`, `precipitation_mm` |
-| dlt bookkeeping | `_dlt_<name>` | `_dlt_load_id` |
-
-The full per-layer naming rules live on the [naming page](naming.md).
+Surrogate keys, foreign keys, booleans, timestamps, measures with their unit: the patterns are on
+[Naming](naming.md#columns), next to the model, test and tag names of every layer. sqlfluff does
+not check them.
 
 ## Running the linter
 
@@ -233,17 +230,18 @@ The full per-layer naming rules live on the [naming page](naming.md).
 
     ```bash
     cd dbt/dbt_example
-    uv run sqlfluff lint models
-    uv run sqlfluff fix models
+    uv run sqlfluff lint models --config ../.sqlfluff
+    uv run sqlfluff fix models --config ../.sqlfluff
     ```
 
 !!! info "Run it from inside a project, with the packages installed"
     The dbt templater takes `dbt_project.yml` from the working directory and `profiles.yml` from
     `DBT_PROFILES_DIR` (the justfile and `.envrc` point it at `dbt/`), so run sqlfluff from a
-    project directory, which is what `just sqlfluff` does; sqlfluff finds the shared
-    `dbt/.sqlfluff` by walking up from there. It also needs the dbt packages: `just init`
-    installs them, `just dbt-all deps` repeats it. A "dbt templater error" almost always means
-    one of those two.
+    project directory, which is what `just sqlfluff` does. The recipe also passes the shared
+    config with `--config`, because sqlfluff searches upwards for one only as far as your home
+    directory: a checkout on another drive than your profile finds nothing and fails on the
+    missing dialect. It needs the dbt packages too: `just init` installs them and
+    `just dbt-all deps` repeats it. A "dbt templater error" almost always means one of those two.
 
 Enforcement happens twice more after your editor:
 
@@ -256,5 +254,5 @@ Enforcement happens twice more after your editor:
 
 - [dbt style guide](dbt-style-guide.md): model design, layers, tests (this page is formatting only)
 - [Naming](naming.md): model and column naming per layer
-- [Adding dbt models](../build/adding-dbt-models.md)
-- [AI agent guide: SQL](sql-style.md)
+- [Adding a dbt model](../build/adding-dbt-models.md)
+- [For AI agents](ai-agents.md): what to run after changing what

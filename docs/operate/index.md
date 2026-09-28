@@ -2,78 +2,38 @@
 icon: material/shield-account
 ---
 
-# Administration
+# Operate
 
-Pages for **platform administrators**: the people who own the Snowflake account and turn the
-mesh described in `terraform/config/` into databases, schemas, roles and warehouses. Engineers
-never need any of this; they get their access from you and then follow
-[Getting started](../start/index.md).
+For whoever holds the Snowflake account. You turn the mesh described in `terraform/config/` into
+databases, schemas, roles and warehouses, and you decide who may assume what. Engineers need none
+of it: they get their access from you and then follow [Start](../start/index.md).
 
-## What you own
+- [Snowflake provisioning](snowflake-provisioning.md): the runbook. The one-time account
+  bootstrap, the YAML configuration, provider versions, securing the Terraform user, and how to
+  tear it all down again.
+- [Onboarding](onboarding.md): a person or a service user, from a file under
+  `terraform/config/users/` to a working key pair.
+- [Snowflake trial account](snowflake-trial-account-setup.md): a fresh account where you hold
+  `ACCOUNTADMIN`, bootstrapped and provisioned by `just setup`. The quickest way to watch the
+  whole thing run before you commit to it.
 
-| Concern | Where it lives | Runbook |
-|---------|----------------|---------|
-| The one-time account bootstrap: account parameters (UTC, ISO weeks and formats, security defaults), `TERRAFORM_USER` with `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, `WH_PLATFORM_PROVISIONING`; the trial defaults `COMPUTE_WH`, `SNOWFLAKE_LEARNING_*` and `SNOWFLAKE_SAMPLE_DATA` dropped | `terraform/modules/snowflake/account_settings.sql` (the account parameters) and `init.sql` (the rest), run once as `ACCOUNTADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
-| The mesh: organisation, teams, projects, environments, layers, roles, computes | one YAML file per object under `terraform/config/` | [Snowflake provisioning](snowflake-provisioning.md), [Concepts](../understand/index.md) |
-| Who may assume which project role, and the personal schemas that come with the engineer role in development | `terraform/config/users/<name>.yaml` | [Onboarding](onboarding.md) |
-| Key registration for people who cannot set their own key, and for service users | `ALTER USER ... SET RSA_PUBLIC_KEY` | [Onboarding](onboarding.md) |
-| Account settings the tooling relies on: the Anaconda terms for Python models | Snowsight, as `ORGADMIN` | [Snowflake provisioning](snowflake-provisioning.md) |
-| Terraform state | local `terraform.tfstate` until you move it to a remote backend | [Snowflake provisioning](snowflake-provisioning.md) |
-| A test drive on a fresh account: sign-up, MFA, `just setup` | a Snowflake trial | [Snowflake Trial Account setup](snowflake-trial-account-setup.md) |
-
-## How provisioning works
-
-```mermaid
-flowchart LR
-    YAML["terraform/config/<br/>organisations, teams, projects,<br/>environments, layers, roles,<br/>computes, users"]
-    VALIDATE["just tf-validate-config<br/>JSON schemas + cross references"]
-    TF["just tf plan / apply<br/>as TERRAFORM_USER<br/>(SYSADMIN, SECURITYADMIN, USERADMIN)"]
-    subgraph sf["Snowflake, per project and environment"]
-        DB["DB_&lt;PROJECT&gt;_&lt;ENV&gt;"]
-        SCH["schemas _SRC, _STG, ...<br/>personal DBT_&lt;NAME&gt;_SRC, ... in dev"]
-        RL["roles RL_&lt;PROJECT&gt;_&lt;ENV&gt;__&lt;PURPOSE&gt;"]
-        WH["warehouses WH_&lt;PROJECT&gt;_&lt;ENV&gt;"]
-        GR["grants: role x layer,<br/>role x warehouse, role x user"]
-    end
-    YAML --> VALIDATE --> TF --> DB & SCH & RL & WH & GR
-```
-
-Everything is derived from the YAML. A new project is a copy of
-`terraform/config/projects/example.yaml` with its own `code`, which must equal the file name; a
-new engineer is a file under `terraform/config/users/`. `just tf plan` shows exactly what
-changes before you apply.
+Everything is derived from the YAML: a new project is a copy of
+`terraform/config/projects/example.yaml` with its own `code`, a new engineer is one more file
+under `terraform/config/users/`, and `just tf plan` shows exactly what that becomes before you
+apply. Tools: Terraform 1.5 or newer, and the same `just` and uv setup engineers use, since the
+YAML validation runs from the repo's virtual environment. `just tf init` pulls the Snowflake
+provider at the version pinned in the committed `terraform/.terraform.lock.hcl`. The commands
+are listed in [Commands](../reference/commands.md).
 
 ## Before the first engineer starts
 
-- [ ] `account_settings.sql` (if you want its account parameters) and `init.sql` have run as `ACCOUNTADMIN`, the latter with the public key of `TERRAFORM_USER` pasted in (`just setup` does this for you on a fresh account, asking about the account parameters first; by hand, `just sf keygen terraform` creates the pair and prints the key body)
+- [ ] `init.sql` has run as `ACCOUNTADMIN` with the public key of `TERRAFORM_USER` pasted in, and `account_settings.sql` too if you want its account parameters (`just setup` does both on a fresh account; by hand, `just sf keygen terraform` makes the pair and prints the key body)
 - [ ] `TERRAFORM_USER` has a network policy and an encrypted key ([Securing the Terraform user](snowflake-provisioning.md#securing-the-terraform-user))
-- [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` (see [Environment variables](../reference/environment-variables.md))
+- [ ] The `TF_VAR_SNOWFLAKE_*` block is in your `.env` ([Environment variables](../reference/environment-variables.md))
 - [ ] `just tf init`, `just tf-validate-config` and `just tf plan` run clean, then `just tf apply`
-- [ ] `just tf output database_names` lists `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` (or your own project's databases)
+- [ ] `just tf output database_names` lists your project's databases, `DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD` out of the box
 - [ ] An `ORGADMIN` accepted the Anaconda terms, or `int__common__holiday` is disabled in the project
-- [ ] Every engineer has a `terraform/config/users/<name>.yaml` with the `engineer` role in `development`, applied: the apply creates their personal schemas, which their first dlt load and dbt run need
+- [ ] Every engineer has a `terraform/config/users/<name>.yaml` with the `engineer` role in `development`, applied: that apply creates the personal schemas their first load and build need
 - [ ] Every engineer knows the account identifier, their login, `RL_<PROJECT>_DEV__ENG`, `DB_<PROJECT>_DEV` and `WH_<PROJECT>_DEV`
-- [ ] You know whether users may set their own `RSA_PUBLIC_KEY`; if not, plan to register keys for them
+- [ ] You know whether your account lets users set their own `RSA_PUBLIC_KEY`; if not, plan to register keys for them ([Onboarding](onboarding.md#key-registration-fallback))
 - [ ] State lives in a remote backend if more than one administrator applies
-
-## Tools you need
-
-Terraform 1.5 or newer; `just tf init` pulls the Snowflake provider (`snowflakedb/snowflake`
-2.x) at the version pinned in the committed `terraform/.terraform.lock.hcl`. On top of that,
-the same `just` and uv setup engineers use (`just init`): the YAML
-validation runs from the repo's virtual environment. It is also a pre-commit hook and a CI job,
-so a broken configuration never reaches `main`.
-
-## Terraform commands
-
-| Command | What it does |
-|---------|--------------|
-| `just tf init` | Initialize providers in `terraform/` |
-| `just tf-validate-config` | Validate every YAML file under `terraform/config/` against its JSON schema and the cross references |
-| `just tf plan` | Show what would change |
-| `just tf apply` | Apply it |
-| `just tf output database_names` | The databases Terraform manages |
-| `just tf output -json user_role_grants` | Which roles each login holds |
-| `just tf output -json personal_schemas` | The personal schemas of each login |
-| `just tf output -json initial_passwords` | One-time passwords of persons created with `create: true` |
-| `just tf clean` | Remove every object the Terraform state tracks, databases and their data included, after you type the account name; the `init.sql` objects stay. `just tf destroy` refuses, because the databases carry `prevent_destroy` ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |

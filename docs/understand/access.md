@@ -96,9 +96,9 @@ privileges:
     temporary: {dev: full, tst: full, all: read}
 ```
 
-The `personal` block of a role names a tier the same way (`access: full`): the role gets that
-tier's privileges directly on the personal schemas of every user holding it, since those
-schemas are per person and an access role per person would only add roles. See
+The `personal` block names a tier the same way (`access: full`), but those privileges land
+directly on the personal schemas of every user holding the role: the schemas are per person,
+and an access role per person would only add roles to look at. See
 [Role](role.md#privileges-per-layer-and-environment) for what each shipped role holds.
 
 ## In Snowflake
@@ -110,11 +110,11 @@ AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>      AR_EXAMPLE_PRD__MRT__READ, AR_EXAMPLE
 ```
 
 with the tier's privileges (plus the layer's extras) on `DB_<PROJECT>_<ENV>._<LAYER>`, and
-grants it to the project roles that name it. All four exist for every layer, whether a role
-uses them or not: the example project, with two environments and eight layers, gets 64. A
-tier nobody names, such as `view`, is a role with privileges and no grantee, ready for a grant
-by hand or for a role added later. Changing a role's tier moves one grant; changing a tier's
-privileges changes every access role of that tier at once.
+grants it to the project roles that name it ([Naming](../reference/naming.md)). All four exist
+for every layer, whether a role uses them or not: the example project, with two environments
+and eight layers, gets 64. A tier nobody names, such as `view`, is a role with privileges and
+no grantee, ready for a grant by hand or for a role added later. Changing a role's tier moves
+one grant; changing a tier's privileges changes every access role of that tier at once.
 
 ```mermaid
 graph LR
@@ -138,12 +138,11 @@ not need a tier.
 ## No secondary roles needed
 
 A project role reaches its access roles through Snowflake's role hierarchy, so a session with
-one primary role (`SNOWFLAKE_ROLE` in `.env`, or `USE ROLE RL_EXAMPLE_DEV__ENG`) holds every
-privilege of the access roles under it. Secondary roles are a different mechanism: they activate
-*all roles granted to the user* in one session, next to the primary role. The hierarchy makes
-that unnecessary here, and it would work against the model: with secondary roles on, a person
-who holds `RL_EXAMPLE_DEV__ENG` and `RL_EXAMPLE_PRD__ENG` has both in every session, whichever
-one they picked.
+one primary role (`SNOWFLAKE_ROLE` in `.env`) holds every privilege of the access roles under
+it. Secondary roles are a different mechanism: they activate *all roles granted to the user* in
+one session. That is unnecessary here, and it works against the model, since a person holding
+both `RL_EXAMPLE_DEV__ENG` and `RL_EXAMPLE_PRD__ENG` would have production in every session
+whichever role they picked.
 
 Since Snowflake's 2024_08 behavior change bundle (BCR-1692) a new user gets
 `DEFAULT_SECONDARY_ROLES = ('ALL')`, so that is the default in a current account unless an

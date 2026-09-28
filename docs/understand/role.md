@@ -8,15 +8,11 @@ A Role defines who or what may perform which actions. Roles are the mechanism fo
 least-privilege access and separation of duties. A Role grants capabilities; [Layers](layer.md)
 define semantics. Access to a layer is a grant on a role, never a property of the layer.
 
-Principles from the platform model, all of which the starter keeps:
-
-- A Role is scoped to **Project × Environment**. `RL_EXAMPLE_DEV__ENG` and
-  `RL_EXAMPLE_PRD__ENG` are two roles with different grants.
-- A Role is assumed by either a **person** or a **system**; a **hybrid** role may be assumed
-  by both, never concurrently.
-- A Role grants the minimum privileges for its responsibility.
-- Human access to production is read-only by default.
-- Inheritance is shallow and explicit.
+Principles from the platform model, all of which the starter keeps: a Role is scoped to
+**Project × Environment**, so `RL_EXAMPLE_DEV__ENG` and `RL_EXAMPLE_PRD__ENG` are two roles
+with different grants; it is assumed by either a **person** or a **system**, and a **hybrid**
+role by both but never concurrently; it grants the minimum privileges for its responsibility;
+human access to production is read-only by default; and inheritance is shallow and explicit.
 
 ## Two axes
 
@@ -79,12 +75,9 @@ tier's privileges on them directly. The engineer role uses it in `dev` with `ful
 
 ## Privileges per layer and environment
 
-The tier each of the four roles holds per layer, as defined in the YAML. What a tier means is
-on the [Access](access.md) page: `read` queries, `edit` also changes data in existing tables,
-`full` also creates objects. On the temporary layer `read` and `edit` include `CREATE TABLE`
-and `CREATE VIEW` ("scratch": the role owns what it creates there, without write on the tables
-of other roles); on the source layer every tier from `read` up includes `READ` and `WRITE` on
-stages and usage of file formats.
+The tier each of the four roles holds per layer, as defined in the YAML. What a tier means, and
+what the source and temporary layers add to it, is on the [Access](access.md) page: `read`
+queries, `edit` also changes data in existing tables, `full` also creates objects.
 
 === "engineer (ENG)"
 
@@ -193,12 +186,11 @@ Which role a tool runs as is not decided in Terraform but in `.env`:
 ## In Snowflake
 
 Every project role becomes an account role `RL_<PROJECT>_<ENV>__<PURPOSE>` (the `code`
-uppercased) with a database grant, one access role grant per listed layer, one warehouse grant
-per listed compute and the inheritance grants above, and is itself granted to `SYSADMIN`
-(Snowflake's recommended hierarchy). The privileges on the layer schemas sit on the access
-roles `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` it inherits ([Access](access.md)); the project
-role itself holds only the database and warehouse grants. `SECURITYADMIN` owns all roles and
-issues every grant. A platform role would be named `RL_PLATFORM__<PURPOSE>`; none is created by
-the starter.
+uppercased, see [Naming](../reference/naming.md)) with a database grant, one access role grant
+per listed layer, one warehouse grant per listed compute and the inheritance grants above, and
+is itself granted to `SYSADMIN`, Snowflake's recommended hierarchy. The privileges on the layer
+schemas sit on the access roles it inherits ([Access](access.md)); the project role itself
+holds only the database and warehouse grants. `SECURITYADMIN` owns all roles and issues every
+grant. A platform role would be named `RL_PLATFORM__<PURPOSE>`; the starter creates none.
 
 Next: [Access](access.md).

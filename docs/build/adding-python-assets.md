@@ -5,10 +5,10 @@ icon: material/language-python
 # Adding Python assets
 
 Reach for a plain Python asset when neither [dlt](adding-dlt-loads.md) (getting data in) nor
-[dbt](adding-dbt-models.md) (transforming it in Snowflake) fits: calling a service, producing a
-report, checking something and recording the result. There is no Python asset in the repo yet,
-so this page is the pattern to follow, not a description of existing code. The shape below
-constructs with the installed packages; the asset itself is an example.
+[dbt](adding-dbt-models.md) (transforming it inside Snowflake) fits: calling a service, producing
+a report, checking something and recording the result. The repo has no Python asset yet, so this
+page is a pattern to copy rather than a tour of existing code. The scaffolding around it is real;
+the asset itself is invented.
 
 ## When Python, when not
 
@@ -20,10 +20,10 @@ constructs with the installed packages; the asset itself is an example.
 
 ## Where the code goes
 
-In the code location that owns the concern, as a module next to `definitions.py`. The two
-existing locations build their assets from component trees (`dlt_pipelines/` and the
-location's `defs/` package); a module outside those trees is not picked up automatically, which
-is what you want: you merge it in explicitly.
+In the code location that owns the concern, as a module next to `definitions.py`. Both existing
+locations build their assets from component trees (`dlt_pipelines/` and the location's `defs/`
+package); a module outside those trees is not picked up automatically, which is what you want here
+since you merge it in explicitly.
 
 ```
 src/orchestrator/locations/dbt/dbt_example/
@@ -38,10 +38,10 @@ instead; see the end of this page.
 
 ## Writing the asset
 
-The example depends on the staged KNMI model and records its row count and latest observation
-as asset metadata. It opens its own connection with `SnowflakeSettings.from_env().connect()`;
-the repo has no Dagster resources yet, and one connection per asset is simpler than a resource
-dict until several assets share one. Every signature gets full annotations.
+The example depends on the staged KNMI model and records its row count and latest observation as
+asset metadata. It opens its own connection with `SnowflakeSettings.from_env().connect()`: the
+repo has no Dagster resources yet, and one connection per asset is simpler than a resource dict
+until several assets share one. Every signature gets full annotations.
 
 ```python title="src/orchestrator/locations/dbt/dbt_example/assets.py (new file)"
 """Python assets of the dbt_example location."""
@@ -73,16 +73,15 @@ def knmi_freshness_report(context: AssetExecutionContext) -> MaterializeResult:
 Points worth copying:
 
 `deps=[AssetKey([...])]`
-:   Upstream assets by key, not by import. dbt model keys follow the file path, so the staged
-    model is `AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])`;
-    a dlt asset would be
-    `AssetKey(["dlt", "ingest", "knmi", "climate_hourly"])`. Keys resolve across code
-    locations, so a dependency on an asset in another location works the same way.
+:   Upstream assets by key, not by import. dbt model keys follow the file path, so the staged model
+    is `AssetKey(["dbt_example", "models", "02_stg", "knmi", "stg__knmi__climate_hourly"])`; a dlt
+    asset would be `AssetKey(["dlt", "ingest", "knmi", "climate_hourly"])`. Keys resolve across
+    code locations, so a dependency on an asset in another location works the same way.
 
 `schema_for_layer("stg")`
-:   Never spell a layer schema by hand. `SnowflakeSettings.schema_for_layer()` returns `_STG` in
-    the shared environments and `<SNOWFLAKE_SCHEMA>_STG` in dev, the same rule dbt and dlt use.
-    The database is already the connection's default (`SNOWFLAKE_DATABASE`).
+:   Never spell a layer schema by hand. `SnowflakeSettings.schema_for_layer()` returns the right
+    one per environment, the same rule dbt and dlt follow. The database is already the
+    connection's default.
 
 `SnowflakeSettings.from_env().connect()`
 :   The same `.env` settings as dbt and dlt, opened inside the asset body so the location still
@@ -90,20 +89,19 @@ Points worth copying:
     context manager so it closes.
 
 `MaterializeResult(metadata=...)`
-:   Metadata shows up in the UI on every materialization. Return `None` when there is nothing
-    to record.
+:   Metadata shows up in the UI on every materialization. Return `None` when there is nothing to
+    record.
 
 `key_prefix`, `group_name` and `kinds`
 :   Keys follow the location: `key_prefix=["<location>", "python"]` makes this asset
-    `dbt_example/python/knmi_freshness_report`, next to the dbt keys of the same location, and the
-    group is the key without its last segment, `dbt_example/python`, the same rule dbt models use
-    (`dbt_example/models/02_stg/knmi`) and dlt loads use (`dlt/ingest/<source>`). That is what nests
-    it in the asset catalog. `kinds` become the little tool icons.
+    `dbt_example/python/knmi_freshness_report`, next to the dbt keys of the same location. The
+    group is the key without its last segment, the same rule dbt models and dlt loads follow, and
+    that is what nests it in the asset catalog. `kinds` become the little tool icons.
 
 ## Merging it into the location
 
-`definitions.py` currently returns `build_dbt_defs(...)` directly. Merge your assets into it
-with `Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs,
+`definitions.py` currently returns `build_dbt_defs(...)` directly. Merge your assets into it with
+`Definitions.merge`, the same call `build_dbt_defs` and the dlt location use for their jobs,
 schedules and sensors:
 
 ```python title="src/orchestrator/locations/dbt/dbt_example/definitions.py (with the asset merged)"
@@ -121,13 +119,16 @@ defs = Definitions.merge(
 )
 ```
 
-Nothing connects at import time, so the location still loads without a `.env` (CI and
-`just validate` rely on that); the connection opens when the asset runs. Once several assets
-share a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's
-`resources` dict; until then the inline `connect()` is the pattern.
+`build_dbt_defs()` loads that component tree with `ComponentTree.from_module`, which is how both
+existing locations do it; never reach for `load_from_defs_folder` in a `definitions.py`.
 
-Because `job__<project>__build_all` selects `AssetSelection.all()`, the new asset joins that
-job as well.
+Nothing connects at import time, so the location still loads without a `.env` (CI and
+`just validate` rely on that); the connection opens when the asset runs. Once several assets share
+a connection, promote it to a `dagster_snowflake.SnowflakeResource` in the location's `resources`
+dict; until then the inline `connect()` is the pattern.
+
+Because `job__<project>__build_all` selects `AssetSelection.all()`, the new asset joins that job
+as well.
 
 ## Validate and run
 
@@ -140,8 +141,8 @@ just start                                                         # materialize
 ```
 
 Unit tests stay offline: put the logic that is worth testing (parsing, calculations) in plain
-functions and test those under `tests/`; leave the Snowflake round trip to a manual
-materialization. See [Testing](testing.md).
+functions and test those under `tests/`, and leave the Snowflake round trip to a manual
+materialization. The rest of the loop is on [Testing](testing.md).
 
 ## A new code location
 
@@ -170,7 +171,7 @@ If the asset is its own concern, give it its own location rather than growing `d
 
 3. `just validate`, then `just start`.
 
-Locations never import each other. Anything the new location needs from `dlt` or a dbt
-location it names by asset key in `deps`; shared code lives under `orchestrator.resources` or
+Locations never import each other. Anything the new location needs from `dlt` or a dbt location it
+names by asset key in `deps`; shared code lives under `orchestrator.resources` or
 `orchestrator.utils`, never inside another location's package. Details on
 [Orchestration](../understand/orchestration.md).

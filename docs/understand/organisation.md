@@ -11,26 +11,18 @@ standards are governed.
 
 ## What it is, what it is not
 
-An Organisation **is**:
+An Organisation is the root container for every Team, Project and platform component, the unit
+at which compliance, auditing and billing are enforced, and the owner of shared platform
+funding and standards. It is not a data domain, a mesh node, a delivery unit, a substitute for
+Projects or Teams, or a way of structuring analytical logic.
 
-- the root container for every Team, Project and platform component
-- the unit at which compliance, auditing and billing are enforced
-- the owner of shared platform funding and standards
-
-An Organisation **is not**:
-
-- a data domain or a mesh node
-- a delivery or execution unit
-- a substitute for Projects or Teams
-- a way of structuring analytical logic
-
-Most setups have exactly one Organisation. A second one only appears when strong separation is
-required, such as separate legal entities or external tenants. Teams, Projects and Environments
-always belong to exactly one Organisation.
+Most setups have exactly one. A second one only appears when strong separation is required,
+such as separate legal entities or external tenants. Teams, Projects and Environments always
+belong to exactly one Organisation.
 
 ## In this repo
 
-One file, `terraform/config/organisations/example.yaml`:
+One file under `terraform/config/organisations/`:
 
 ```yaml title="terraform/config/organisations/example.yaml"
 code: "EXAMPLE"
@@ -52,11 +44,12 @@ implementation of this boundary: one account, one Organisation. It is identified
 | Engineers, in `.env` | `SNOWFLAKE_ACCOUNT` (written by `just sf setup`) |
 | Administrators, for the Terraform provider | `TF_VAR_SNOWFLAKE_ORGANIZATION` and `TF_VAR_SNOWFLAKE_ACCOUNT` |
 
-The bootstrap objects that let Terraform manage the account (`TERRAFORM_USER`, which holds the
-system roles `SYSADMIN`, `SECURITYADMIN` and `USERADMIN`, and `WH_PLATFORM_PROVISIONING`) are
-created once by `terraform/modules/snowflake/init.sql`, run as
-`ACCOUNTADMIN`, which also sets the account-wide parameters (UTC, ISO weeks and formats, security
-and timeout defaults). They belong to the Organisation level, not to any Project. See
-[Snowflake provisioning](../operate/snowflake-provisioning.md).
+The objects that let Terraform manage the account (`TERRAFORM_USER` with the system roles, and
+the warehouse `WH_PLATFORM_PROVISIONING`) are created once by
+`terraform/modules/snowflake/init.sql`, run as `ACCOUNTADMIN`, which also sets the account-wide
+parameters: UTC, ISO weeks and formats, and the security and timeout defaults. They belong to
+the Organisation level, not to any Project. See
+[Snowflake provisioning](../operate/snowflake-provisioning.md) and
+[Naming](../reference/naming.md).
 
 Next: [Team](team.md).

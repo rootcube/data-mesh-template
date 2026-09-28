@@ -143,38 +143,16 @@ gh api -X PUT repos/rootcube/data-mesh-template/rulesets/<id> --input .github/ru
 
 ## What runs when
 
-Pre-commit, on every commit, from `.pre-commit-config.yaml`:
+Pre-commit, on every commit, from `.pre-commit-config.yaml`: the hygiene hooks, ruff, ty,
+`dbt parse` on both parsers, sqlfluff per project, `just validate`, the Terraform checks and the
+docs fence check. The hook table and the four details that catch people out are on
+[Testing](../build/testing.md#pre-commit-hooks). `just pre-commit` runs every hook on every
+file, which is the quickest way to find out what CI will say.
 
-| Hook | Fires on | What it does |
-|---|---|---|
-| `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-added-large-files`, `check-merge-conflict`, `detect-private-key` | everything | The standard hygiene checks; `detect-private-key` keeps a `.p8` out of the repo |
-| `ruff format`, `ruff check --fix` | Python files | Format and lint |
-| `ty check` | Python files | Type check the whole project |
-| `dbt parse` (all projects, `dummy` target) | anything under `dbt/` | Every project must parse without Snowflake credentials |
-| `sqlfluff lint` | `dbt/dbt_example/models/**/*.sql` | The SQL rules; lint only, so run `just fmt` first |
-| `dagster definitions validate` | `src/`, `dlt_pipelines/` | Every code location must load |
-| `terraform fmt` | `.tf` files | Needs the `terraform` binary, so administrators in practice |
-| `validate_configs.py` | `terraform/config/**` | The YAML schemas and cross-references, sub-folders included: a project's `code` equals its file name, users name existing projects, roles and environments, roles and layers name existing access tiers, and stage or file format privileges appear only in the extras of `input` layers, never in a tier (`just tf-validate-config`) |
-
-`just pre-commit` runs every hook on every file, which is the quickest way to find out what CI
-will say.
-
-CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`. On a pull request a
-`changes` job first lists the touched paths and each job below runs only when its inputs changed
-(see [Testing](../build/testing.md#what-ci-runs)); a push to `main` runs them all:
-
-| Job | Runs |
-|---|---|
-| `python` | `ruff format --check`, `ruff check`, `ty check`, `pytest` |
-| `dbt-and-dagster` | `dbt deps` + `dbt parse` in every project (`dummy` target), `sqlfluff lint models`, `dagster definitions validate` |
-| `terraform` | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
-| `docs` | `zensical build --strict` (a broken link fails the build) |
-| `setup` | On Linux, macOS and Windows: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
-
-`just check` runs the first two locally plus the YAML validation of the third;
-`just docs build --strict` covers the docs. The `setup` matrix is not a required check in the
-`main` ruleset: it is the fresh-machine test of the setup path, and a runner hiccup on one OS
-should not block a pull request. Treat a red leg as a bug in that recipe all the same.
+CI, on every pull request and push to `main`, from `.github/workflows/ci.yml`: the same checks as
+jobs, plus a three-OS run of the fresh-machine setup path. On a pull request only the jobs whose
+inputs changed run; a push to `main` runs them all. The job table, the path filters and what
+`just check` covers locally are on [Testing](../build/testing.md#what-ci-runs).
 
 release-please, on every push to `main`, from `.github/workflows/release-please.yml`: the release
 pull request, and on its merge the tag and the GitHub release. It is not a check on your pull
@@ -192,12 +170,5 @@ own. Security updates for vulnerable Python packages arrive separately as soon a
 matches; they are a repository setting (**Settings > Advanced Security > Dependabot security
 updates**). dbt packages and pre-commit hooks are not covered; bump those by hand.
 
-## Rules recap
-
-- Humans commit; agents stop at `just fmt` / `just test` / `just validate`.
-- Branch from `main`, keep branches short-lived, merge through a pull request; `main` accepts
-  nothing else.
-- Conventional commits, one topic per pull request; release-please turns them into releases.
-- Never bypass pre-commit hooks.
-- Small, reviewable diffs. Update the docs page in the same pull request when behavior documented
-  under `docs/` changes.
+Every workflow pins its actions to a full commit SHA with a trailing `# vX.Y.Z` comment, which
+Dependabot keeps up to date. Review those pull requests like any other; CI runs on them.

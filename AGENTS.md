@@ -21,7 +21,7 @@ Instructions for AI agents working in this repository. Read this file completely
 - **Verify before claiming.** Check that files, functions, and paths actually exist. Do not invent code.
 - **Minimal changes.** Do what is asked, nothing more. No drive-by refactors, no unsolicited docstrings, no "while I'm here" improvements.
 - **Follow existing patterns.** Assets, resources, models and tests all have established shapes here. Use them.
-- **Run the checks.** `just fmt`, `just typecheck`, `just test`, `just validate` before presenting work. The skill pages under `docs/ai-agents/` list technology-specific validation.
+- **Run the checks.** `just fmt`, `just typecheck`, `just test`, `just validate` before presenting work. [For AI agents](docs/reference/ai-agents.md) lists what to run after changing what.
 - **One thing at a time.** Do not bundle unrelated changes. Keep diffs small and reviewable.
 - **Never commit or push.** Do not run `git commit`, `git push`, or create branches. Humans do all git writes. Read-only git commands (`git status`, `git diff`, `git log`) are fine.
 - **Type hint everything.** Every function signature gets full annotations, parameters and return type.
@@ -45,18 +45,19 @@ in **Environments** (dev, tst, acc, prd), and each Project × Environment has **
 **Roles** (grants) and **Computes** (warehouses). One dbt project and one Dagster code location
 per Project; `dbt_common` is shared. The starter ships one project, `example`.
 
-## Skill references
+## Where the rules live
 
-Per-technology guides live in the docs site under `docs/ai-agents/` (single source of truth; they
-link to the convention pages under `docs/conventions/` instead of restating them):
+The docs site holds them; this file summarizes and never contradicts it. Start at
+[For AI agents](docs/reference/ai-agents.md): the entry points, the validation loop, what to run
+after changing what, and the pitfalls. Then the page for what you are touching:
 
-- [Dagster](docs/understand/orchestration.md): code locations, components, assets, jobs, resources
-- [dbt](docs/understand/transformation.md): projects, layers, models, macros, `dbt_common`
 - [dlt](docs/understand/ingestion.md): sources, pipelines, the Snowflake destination, the Dagster component
-- [Snowflake](docs/understand/snowflake.md): the platform model in Snowflake, key-pair auth, naming, Terraform
-- [Python](docs/reference/python-style.md): style, type hints, tests, dependencies
-- [SQL](docs/reference/sql-style.md): formatting, sqlfluff rules, Jinja patterns
-- [Standards](docs/reference/ai-agents.md): pre-commit, CI, the validation loop
+- [dbt](docs/understand/transformation.md): projects, layers, models, macros, `dbt_common`
+- [Dagster](docs/understand/orchestration.md): code locations, components, assets, jobs, resources
+- [Snowflake](docs/understand/snowflake.md): the platform model in Snowflake, key-pair auth, provisioning
+- [Python style](docs/reference/python-style.md), [SQL style](docs/reference/sql-style.md): formatting, typing, the sqlfluff rules
+- [dbt style guide](docs/reference/dbt-style-guide.md), [Naming](docs/reference/naming.md): model design, and every name in the repo
+- [Git workflow](docs/reference/git-workflow.md): pre-commit, CI, releases, humans-only git
 
 ## Architecture
 
@@ -75,7 +76,7 @@ the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
 `dbt_common.generate_schema_name` implement that rule; dbt source YAML repeats it from the dbt
 `target` (`target.name`, `target.schema`). A blank prefix in dev falls back to the placeholder `DBT`,
 which has no schemas, so runs fail instead of writing into the shared layer schemas.
-Detail: [Architecture](docs/understand/index.md), [Concepts](docs/understand/index.md).
+Detail: [Understand](docs/understand/index.md).
 
 ## Directory structure
 
@@ -129,7 +130,7 @@ architecture), update the affected page in the same change set and verify with
 
 ## Code conventions
 
-Full rules: [Conventions](docs/reference/index.md). The hard musts:
+Full rules: [Reference](docs/reference/index.md). The hard musts:
 
 - **Python:** ruff (line length 120, rules E F I UP B), ty for types. Type-hint everything, `X | None` not `Optional[X]`. See [Python style](docs/reference/python-style.md).
 - **SQL (dbt):** sqlfluff (Snowflake dialect), leading commas, 2-space indent, uppercase keywords, lowercase identifiers, `CAST()` not `::`, `LEFT JOIN` never `RIGHT JOIN`, CTEs (`cte_` prefix) over subqueries. See [SQL style](docs/reference/sql-style.md) and the [dbt style guide](docs/reference/dbt-style-guide.md).

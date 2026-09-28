@@ -5,16 +5,15 @@ icon: material/folder-plus
 # Adding a project
 
 A project is a node in the mesh: one team owns it, it exists in environments, and each
-project × environment is its own Snowflake database with layer schemas, roles and warehouses.
-In the repository a project is one dbt project under `dbt/` and one Dagster code location; every
-project shares the `dbt_common` package, the `dlt` location and the tooling. The starter ships
-`example`; this page adds a second one end to end. Background: [Project](../understand/project.md),
-[Transformation](../understand/transformation.md), [Orchestration](../understand/orchestration.md).
+project × environment is its own Snowflake database with layer schemas, roles and warehouses. In
+the repository that is one dbt project under `dbt/` and one Dagster code location; the
+`dbt_common` package, the `dlt` location and the tooling are shared. The starter ships `example`,
+and this page adds a second one end to end. Background: [Project](../understand/project.md).
 
-Two personas are involved. A **platform administrator** provisions Snowflake with Terraform
-(steps 1 and 2); an **engineer** does the rest. Throughout, `<project>` is the lowercase code
-from the YAML (`energy` in the examples), `<PROJECT>` the same in uppercase inside Snowflake
-names (`DB_ENERGY_DEV`), and `dbt_<project>` the dbt project and code location (`dbt_energy`).
+Two people are involved. A **platform administrator** provisions Snowflake with Terraform
+(steps 1 and 2); an **engineer** does the rest. Throughout, `<project>` is the lowercase code from
+the YAML (`energy` in the examples), `<PROJECT>` the same in uppercase inside Snowflake names
+(`DB_ENERGY_DEV`), and `dbt_<project>` the dbt project and code location (`dbt_energy`).
 
 ## 1. Describe the project (administrator)
 
@@ -57,9 +56,9 @@ roles:
 
 Every list entry is a file name under `terraform/config/` (`environments/development.yaml`,
 `layers/source.yaml`, `computes/default.yaml`, `roles/engineer.yaml`); `"*"` means every enabled
-one. `team` is a file under `teams/`. `code` is lowercase, 2 to 20 characters, letters, digits
-and underscores, and becomes the `<PROJECT>` part of every Snowflake name. It must equal the file
-name (`energy` in `energy.yaml`): Terraform names the objects after the file name, and
+one. `team` is a file under `teams/`. `code` is lowercase, 2 to 20 characters, letters, digits and
+underscores, and becomes the `<PROJECT>` part of every Snowflake name. It must equal the file name
+(`energy` in `energy.yaml`): Terraform names the objects after the file name, and
 `just tf-validate-config` rejects a `code` that differs.
 
 Validate the YAML (schemas plus cross-references), then plan and apply:
@@ -70,18 +69,11 @@ just tf plan
 just tf apply
 ```
 
-The plan lists what one project becomes:
-
-| Concept | Snowflake object | For `energy` |
-|---|---|---|
-| Project × Environment | database `DB_<PROJECT>_<ENV>` | `DB_ENERGY_DEV`, `DB_ENERGY_PRD` |
-| Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
-| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` | `RL_ENERGY_DEV__ENG`, `RL_ENERGY_DEV__ANL`, `RL_ENERGY_PRD__ING`, `RL_ENERGY_PRD__TFM` |
-| Compute | warehouse `WH_<PROJECT>_<ENV>` | `WH_ENERGY_DEV`, `WH_ENERGY_PRD` |
-
-`just tf-validate-config` is also a pre-commit hook and a CI step, so the YAML is checked on
-every pull request; only `plan` and `apply` need the Terraform service user. Details:
-[Snowflake provisioning](../operate/snowflake-provisioning.md).
+The plan lists what that one file becomes: a database per environment, its layer schemas, the
+project roles and the warehouses, all named after the code. The full mapping is in
+[Snowflake provisioning](../operate/snowflake-provisioning.md). `just tf-validate-config` is also
+a pre-commit hook and a CI step, so the YAML is checked on every pull request; only `plan` and
+`apply` need the Terraform service user.
 
 ## 2. Give people the engineer role (administrator)
 
@@ -103,15 +95,14 @@ roles:
       - development
 ```
 
-That grants `RL_ENERGY_DEV__ENG` and creates the engineer's personal schemas in
-`DB_ENERGY_DEV` (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...), with the same prefix as in
-every other project. See [Onboarding](../operate/onboarding.md).
+That grants `RL_ENERGY_DEV__ENG` and creates the engineer's personal schemas in `DB_ENERGY_DEV`,
+with the same prefix as in every other project. See [Onboarding](../operate/onboarding.md).
 
 ## 3. Copy the dbt project (engineer)
 
-Copy `dbt/dbt_example` to `dbt/dbt_<project>`. The git-ignored `target/`, `packages/` and
-`logs/` folders do not need to come along. `.sqlfluff` and `.sqlfluffignore` live one level up in
-`dbt/` and already apply to every project. Then edit `dbt_project.yml`:
+Copy `dbt/dbt_example` to `dbt/dbt_<project>`. The git-ignored `target/`, `packages/` and `logs/`
+folders can stay behind. `.sqlfluff` and `.sqlfluffignore` live one level up in `dbt/` and already
+apply to every project. Then edit `dbt_project.yml`:
 
 ```yaml title="dbt/dbt_energy/dbt_project.yml (the parts that change)"
 name: "dbt_energy"
@@ -165,30 +156,30 @@ The `name`
     `dim__common__calendar` get distinct asset keys (`<project>/packages/dbt_common/...`) but
     write the same table into the one database `.env` points at. Disable the layer folders, not
     the package: the `on-run-end` hooks are operation nodes that read their config from the
-    `models:` block, so a package-level `models: dbt_common: +enabled: false` disables them too
-    and the project silently stops uploading its run metadata to `_MTD`. With the folder-level
-    disable the macros, the dispatch overrides and the `on-run-start` / `on-run-end` hooks keep
-    working. Two nodes stay enabled: `stg__seed__unknown` and the seed it reads, `seed_unknown`.
-    Every dimension ends with a `UNION ALL` on `stg__seed__unknown` for its unknown member, so a
-    project without it cannot follow the mart pattern; this project materializes those two small
-    tables itself, same content as in `dbt_example`, under its own asset keys. Seeds are a
-    separate config tree, which is why they need a second `dbt_common:` block. The copied
-    `+meta: {holiday_country: NL}` under `dbt_common: 03_int: common: int__common__holiday:` goes
-    with the rest of that block: it only matters in the project that builds the models, and there
-    it is a literal meta config, not a var, so `--vars` does not change it.
+    `models:` block, so a package-level `models: dbt_common: +enabled: false` disables them too and
+    the project silently stops uploading its run metadata to `_MTD`. With the folder-level disable
+    the macros, the dispatch overrides and the hooks keep working. Two nodes stay enabled:
+    `stg__seed__unknown` and the seed it reads, `seed_unknown`. Every dimension ends with a
+    `UNION ALL` on `stg__seed__unknown` for its unknown member, so a project without it cannot
+    follow the mart pattern; this project materializes those two small tables itself, same content
+    as in `dbt_example`, under its own asset keys. Seeds are a separate config tree, which is why
+    they need a second `dbt_common:` block. The copied `+meta: {holiday_country: NL}` under
+    `dbt_common: 03_int: common: int__common__holiday:` goes with the rest of that block: it only
+    matters in the project that builds the models, and there it is a literal meta config, not a
+    var, so `--vars` does not change it.
 
 The dispatch block stays
 :   Without `search_order: ["dbt_common", "dbt"]` the project falls back to dbt's own
-    `generate_schema_name`, which in the shared environments builds into `_TMP_STG` (the
-    profile's default schema plus the layer) instead of the provisioned `_STG`.
+    `generate_schema_name`, which in the shared environments builds into `_TMP_STG` (the profile's
+    default schema plus the layer) instead of the provisioned `_STG`.
 
 `packages.yml` is the same file in every project: the local `../dbt_common` plus `dbt_utils`.
-Asset keys carry the project name (`dbt_energy/models/...`), so a model name only has to be
-unique within its project.
+Asset keys carry the project name (`dbt_energy/models/...`), so a model name only has to be unique
+within its project.
 
 Then strip the example content. The KNMI weather chain runs from the source through all four
-layers into an exposure, so removing only the source and its staging model leaves the rest of the
-chain pointing at a model that is gone and the project stops parsing
+layers into an exposure, so removing only the source and its staging model leaves the rest
+pointing at a model that is gone and the project stops parsing
 (`Model 'model.dbt_energy.int__weather__knmi_measurement' ... depends on a node named
 'stg__knmi__climate_hourly' which was not found`). Remove all of it:
 
@@ -216,8 +207,8 @@ just dbt-all deps
 ```
 
 `scripts/dbt_all.py` finds every `dbt/*/dbt_project.yml` except `dbt_common`, so from now on
-`just init`, the pre-commit parse hook and CI's parse step include the new project without
-further changes.
+`just init`, the pre-commit parse hook and CI's parse step include the new project without any
+further change.
 
 ## 4. Copy the Dagster location (engineer)
 
@@ -268,9 +259,8 @@ SNOWFLAKE_WAREHOUSE=WH_ENERGY_DEV
 SNOWFLAKE_DATABASE=DB_ENERGY_DEV
 ```
 
-`SNOWFLAKE_SCHEMA` (your personal prefix) and the key pair stay as they are: the same key works
-in every project you hold a role in. `just sf check` confirms the context and prints the
-layer schemas (`DBT_<USERNAME>_SRC, DBT_<USERNAME>_STG, ...`).
+`SNOWFLAKE_SCHEMA` and the key pair stay as they are: the same key works in every project you hold
+a role in. `just sf check` confirms the context and prints the layer schemas.
 
 Then:
 
@@ -286,20 +276,19 @@ The `project=` override works for every recipe that runs in the project folder:
 `just project=dbt_energy fmt`. Without it, `just dbt` targets `dbt_example`.
 
 Everything `just start` runs uses the database in your `.env`, so work on one project at a time
-and switch `.env` to move. The locations of other projects still load (parsing never connects).
-Switching means restarting: `just` loads `.env` into the `dagster dev` process, and code servers
-and runs inherit that one copy, so a running instance keeps using the old database even after a
-*Reload* on the code location. Run `just stop && just start`.
+and switch `.env` to move. The locations of other projects still load, since parsing never
+connects. Switching means restarting: `just` loads `.env` into the `dagster dev` process, and code
+servers and runs inherit that one copy, so a running instance keeps using the old database even
+after a *Reload* on the code location. Run `just stop && just start`.
 
 ## Sharing data between projects
 
-With the `dbt_common` mart models disabled, `ref('dim__common__calendar')` does not resolve in
-the new project, and the tables `dbt_example` builds live in `DB_EXAMPLE_<ENV>`, not in yours.
-That is the point of the mesh: a project publishes through its `_EXP` layer and other projects
-read that contract (the `import` layer under `terraform/config/layers/` exists for received
-contracts). The starter provisions no cross-project grants, so reading another project's `_EXP`
-is an administrator's decision in `terraform/config/roles/`. See
-[Layer](../understand/layer.md) and [Layers in practice](../understand/layer.md).
+With the `dbt_common` mart models disabled, `ref('dim__common__calendar')` does not resolve in the
+new project, and the tables `dbt_example` builds live in `DB_EXAMPLE_<ENV>`, not in yours. That is
+the point of the mesh: a project publishes through its `_EXP` layer and other projects read that
+contract (the `import` layer under `terraform/config/layers/` exists for received contracts). The
+starter provisions no cross-project grants, so reading another project's `_EXP` is an
+administrator's decision in `terraform/config/roles/`. See [Layer](../understand/layer.md).
 
 ## What stays per project
 
@@ -307,30 +296,23 @@ Two checks are wired to `dbt_example` by path and need an extra line for the new
 want the same coverage:
 
 - The `sqlfluff-lint` hook in `.pre-commit-config.yaml` runs `just sqlfluff lint models` for
-  `dbt/dbt_example` only (a second entry would run `just project=dbt_<project> sqlfluff lint models`),
-  and the sqlfluff step in `.github/workflows/ci.yml` does `cd dbt/dbt_example`.
+  `dbt/dbt_example` only (a second entry would run
+  `just project=dbt_<project> sqlfluff lint models`), and the sqlfluff step in
+  `.github/workflows/ci.yml` does `cd dbt/dbt_example`.
 - `just fmt` and `just lint` run sqlfluff in the project selected by `project=`; the default is
   `dbt_example`.
 
 The dbt parse hook and CI's parse step already cover every project through `dbt_all.py`, and
 `dagster definitions validate -w workspace.yaml` loads every location.
 
-## Checklist
+## Before you hand it over
 
-Administrator:
+`just project=dbt_<project> dbt build`, `just validate` and `just check` all pass, and four things
+the steps above are easy to half-finish:
 
-- [ ] `terraform/config/projects/<project>.yaml` with `code: "<project>"`, equal to the file name; `just tf-validate-config` passes
-- [ ] `.github/CODEOWNERS` has a block for the project (its dbt project, Dagster location, dlt sources and project file) owned by its team, see [Code owners](../reference/git-workflow.md#code-owners)
-- [ ] `just tf apply` created `DB_<PROJECT>_<ENV>`, the layer schemas, the roles and the warehouse
-- [ ] Engineers hold `RL_<PROJECT>_DEV__ENG` through `terraform/config/users/`, applied, so their personal schemas exist in `DB_<PROJECT>_DEV`
-
-Engineer:
-
-- [ ] `dbt/dbt_<project>/dbt_project.yml`: `name`, the `models:` and `seeds:` keys, the `dbt_common` layer folders disabled (not the package) with `stg__seed__unknown` and `seed_unknown` kept, dispatch block kept
-- [ ] The example content is gone: `sources/src_knmi.yml`, `exposures/`, the weather models in all four layers, `models/02_stg/seed/` and the `seed_knmi_*` seeds
-- [ ] `packages.yml` unchanged (`../dbt_common` + `dbt_utils`); `just dbt-all deps` ran
-- [ ] `src/orchestrator/locations/dbt/dbt_<project>/definitions.py` and `defs/dbt/defs.yaml` point at the new project
-- [ ] `workspace.yaml` lists `dbt_<project>`
-- [ ] `.env` points at `DB_<PROJECT>_DEV`, `RL_<PROJECT>_DEV__ENG`, `WH_<PROJECT>_DEV`
-- [ ] `just project=dbt_<project> dbt build`, `just validate` and `just check` pass
-- [ ] Model names do not collide with other projects
+- `.github/CODEOWNERS` has a block for the project (its dbt project, Dagster location, dlt sources
+  and project file) owned by its team, see [Code owners](../reference/git-workflow.md#code-owners).
+- The `dbt_common` layer folders are disabled, not the package, with `stg__seed__unknown` and
+  `seed_unknown` still enabled.
+- Every trace of the example content is gone, not just the source and its staging model.
+- No model name collides with one in another project.

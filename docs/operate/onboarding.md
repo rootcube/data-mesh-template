@@ -4,8 +4,8 @@ icon: material/account-plus
 
 # Onboarding
 
-How a person or a service user gets access to a project, end to end. Users are YAML files under
-`terraform/config/users/`; Terraform grants them project roles. A person then registers a key
+How a person or a service user gets access to a project, end to end. A user is a YAML file under
+`terraform/config/users/` and Terraform grants it project roles. A person then registers a key
 pair for themselves with `just sf setup`; for a service user you register it.
 
 ## A person
@@ -56,9 +56,9 @@ just tf plan
 just tf apply
 ```
 
-`just tf output -json user_role_grants` shows the roles per login,
-`just tf output -json personal_schemas` the personal schemas the apply created (step 5). For
-created persons, hand out the password from `just tf output -json initial_passwords`; Snowflake
+`just tf output -json user_role_grants` shows the roles per login, and
+`just tf output -json personal_schemas` the personal schemas the apply created (step 4). For a
+created person, hand out the password from `just tf output -json initial_passwords`; Snowflake
 forces a change at the first login.
 
 !!! note "Defaults on the user"
@@ -79,28 +79,11 @@ just sf check
 just start
 ```
 
-`just sf setup` logs in once (browser SSO, or `--auth password`), writes an RSA key pair
-to `~/.snowflake/keys/`, registers the public key on the person's own user with
-`ALTER USER ... SET RSA_PUBLIC_KEY` (it compares fingerprints first: a slot that already holds
-the key is left alone, another key there is replaced only when the person confirms), verifies
-the key-pair login and writes `.env`. The engineer
-side of this is [Snowflake authentication](../start/snowflake-auth.md).
+`just sf setup` logs in once, registers a key pair on the person's own user, verifies it and
+writes their `.env`. Their side of it, step by step and including what lands in `.env`:
+[Snowflake authentication](../start/snowflake-auth.md).
 
-### 4. What ends up in their `.env`
-
-```dotenv
-ENVIRONMENT=dev
-SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
-SNOWFLAKE_USER=USERNAME@EXAMPLE.COM
-SNOWFLAKE_PRIVATE_KEY_PATH=/Users/username/.snowflake/keys/myorg-myaccount__username_example.com.p8
-SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
-SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG
-SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV
-SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV
-SNOWFLAKE_SCHEMA=DBT_USERNAME
-```
-
-### 5. Personal schemas in development
+### 4. Personal schemas in development
 
 The engineer role has a `personal` block in `terraform/config/roles/engineer.yaml`
 (`environments: [dev]`). For every user who holds it there, the apply in step 2 creates one

@@ -46,7 +46,7 @@ just start       # Dagster UI on http://localhost:3000
    [trial](https://signup.snowflake.com/) is enough): it installs Terraform if missing, creates the
    Terraform service user, provisions the `example` project, registers your key pair and writes
    `.env`. It asks for the organization, account name, user and password. Step by step:
-   [Snowflake Trial Account setup](docs/operate/snowflake-trial-account-setup.md).
+   [Snowflake trial account](docs/operate/snowflake-trial-account-setup.md).
 2. **Provisioned**, an administrator ran Terraform and granted you a project role: one interactive
    login, your key pair registered on your user, `.env` filled in. Same as `just sf setup`.
 
@@ -84,15 +84,15 @@ works in personal schemas (`DBT_<USERNAME>_SRC` with its own stage, `DBT_<USERNA
 
 ## For platform administrators
 
-`terraform/README.md` (also in the docs under *Administration*) walks through the one-time
+`terraform/README.md` (also in the docs under *Operate*) walks through the one-time
 Snowflake bootstrap (`just setup` on a fresh account, or by hand), the YAML configuration under
 `terraform/config`, and onboarding people. Every `just tf plan` shows exactly what changes.
 
 ## Working with AI agents
 
 `AGENTS.md` is the canonical instruction set (`CLAUDE.md` imports it with a single `@AGENTS.md`
-line); the docs section
-*AI agents* carries the per-technology guides and standards.
+line); the docs page [For AI agents](docs/reference/ai-agents.md) is the entry point into the
+per-technology pages under *Understand* and *Reference*.
 
 ## Contributing
 

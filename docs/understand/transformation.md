@@ -7,8 +7,8 @@ icon: material/database-cog
 All transformation is dbt on Snowflake. Under `dbt/` you find one shared `profiles.yml`, a
 package called `dbt_common` and one project called `dbt_example`. The layout is built for more:
 every Project of the mesh gets its own dbt project next to `dbt_example`, all installing the
-same `dbt_common`. Style and naming live in the [dbt style guide](../reference/dbt-style-guide.md);
-this page covers the structure.
+same `dbt_common`. How the models themselves are written is the
+[dbt style guide](../reference/dbt-style-guide.md); this page is the structure around them.
 
 ```
 dbt/
@@ -50,8 +50,9 @@ Every Snowflake target reads exactly the same variable names, so switching envir
 different `.env`, not a different profile. The `dummy` target is what lets `just check`, the
 pre-commit hooks and a fresh CI runner parse every project without a Snowflake account. It is
 DuckDB rather than fake Snowflake values because sqlfluff's dbt templater needs a working
-adapter connection to populate dbt's relation cache. The `on-run-end` metadata upload checks
-for it and skips itself.
+adapter connection to populate dbt's relation cache. The metadata upload checks for it and
+skips itself, and `macros/dbt_artifacts/database_specific_helpers/default_fallbacks.sql`
+provides `default__` variants of the Snowflake-only macros so dispatch still resolves on DuckDB.
 
 ## dbt_common: the shared package
 
@@ -61,25 +62,24 @@ for it and skips itself.
 --8<-- "dbt/dbt_example/packages.yml"
 ```
 
-`dbt_common` itself declares no packages (`packages: []`); a consuming project lists `dbt_utils`
-and anything else it needs directly. Packages install into `packages/` in each project
-(`packages-install-path`), git-ignored. `just init` runs `dbt deps` everywhere through
-`scripts/dbt_all.py`; after a change to `packages.yml`, run `just dbt-all deps`.
+It declares no packages of its own (`packages: []`); a consuming project lists `dbt_utils` and
+anything else it needs directly. Packages install into a git-ignored `packages/` in each project
+(`packages-install-path`). `just init` runs `dbt deps` everywhere through `scripts/dbt_all.py`;
+after a change to `packages.yml`, run `just dbt-all deps`.
 
-It contributes four things.
+It contributes four things: macros, generic tests, seeds and the common models.
 
 ### Macros
 
 | Macro | What it does |
 |-------|--------------|
-| `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` (and `dummy`); no `+schema` means `target.schema`. Overrides dbt's default |
+| `generate_schema_name` | The platform's schema rule: `_<LAYER>` in shared environments, `<target.schema>_<LAYER>` in `dev` and `dummy`; no `+schema` means `target.schema`. Overrides dbt's default |
 | `set_query_tag` | Tags every Snowflake query with `dbt_invocation_id:<id>`, so a run is one filter in the query history |
-| `log_run_info` | The banner at the start of a run: invocation id, target, organization, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history |
-| `refresh_stages` | `ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` (`_SRC.ST_DEFAULT`, your personal `<PREFIX>_SRC.ST_DEFAULT` in `dev`) at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
-| `log_run_summary` | The summary at the end: models, tests and seeds by status, failed and warned tests, failed models, the five slowest models, total runtime |
+| `log_run_info`, `log_run_summary` | The banner at the start of a run (invocation id, target, account, database, warehouse, threads, user, plus Snowsight links to the catalog and the query history) and the summary at the end (counts by status, failed and warned tests, the five slowest models, total runtime) |
+| `refresh_stages` | `ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` at the start of `run` and `build`: the directory table of the dlt load stage, which internal stages never refresh by themselves; skipped on `dummy` |
 | `upload_results` and `macros/dbt_artifacts/` | The run-metadata upload into the metadata layer (vendored from `dbt_artifacts` v2.10.0, Snowflake only, self-creating tables) |
 | `utc_now`, `utc_today` | `SYSDATE()`-based timestamps that ignore the session timezone |
-| `search_optimization`, `format_duration`, `terminal_colors` | Helpers: a post-hook that adds search optimization to a table, `HH:MM:SS` formatting, ANSI colours for the run banners (off unless the dbt var `terminal_colors` is `true`) |
+| `search_optimization`, `format_duration`, `terminal_colors` | Helpers: a post-hook that adds search optimization to a table (`EQUALITY(*), SUBSTRING(*)` by default, nothing for views), `HH:MM:SS` formatting, ANSI colours for the run banners (off unless the dbt var `terminal_colors` is `true`) |
 
 The first two override dbt's own macros. That only works when the consuming project puts
 `dbt_common` before `dbt` in its dispatch order:
@@ -91,64 +91,30 @@ dispatch:
 ```
 
 Forget that block in a new project and dbt falls back to its own `generate_schema_name`, which
-yields `<target.schema>_<custom>` in every environment: right by accident in `dev`, but
-`_TMP_STG` instead of `_STG` in the shared environments.
+yields `<target.schema>_<custom>` in every environment: right by accident in `dev`, and
+`_TMP_STG` instead of `_STG` everywhere else.
 
 ### Generic tests
 
-Four tests under `dbt/dbt_common/tests/generic/`, called as `dbt_common.<test>` from a
-model's `_conf/` YAML:
-
-| Test | Level | Passes when |
-|------|-------|-------------|
-| `has_data` | model | The model has at least one row (`store_failures` is off for this one) |
-| `rows_expected` | model | `COUNT(*)` equals the given `value` |
-| `not_empty` | column | No row has an empty string (or `NULL`) in the column |
-| `not_negative` | column | No value is below zero |
-
-`stg__knmi__climate_hourly` uses `has_data` and `not_negative` next to dbt's `not_null` and
-`dbt_utils.unique_combination_of_columns`.
+Four tests under `dbt/dbt_common/tests/generic/`, called as `dbt_common.<test>` from a model's
+`_conf/` YAML: `has_data` (the model has at least one row, with `store_failures` off for this
+one), `rows_expected` (`COUNT(*)` equals a given `value`), `not_empty` (no empty string or
+`NULL` in a column) and `not_negative` (no value below zero).
 
 ### Seeds and common models
 
-Four seeds (`seed_environment`, `seed_month`, `seed_weekday`, `seed_unknown`), their typed
-`stg__seed__*` models, the `int__common__*` chain and three dimensions
-(`dim__common__calendar`, `dim__common__time`, `dim__common__environment`). The whole chain
-is drawn on [Layers in practice](layer.md). Each project
-that installs `dbt_common` builds its own copy; in Dagster they show up in groups under
-`<project>/packages/dbt_common/`, one per key directory
-(`.../models/02_stg/seed`, `.../models/03_int/common`, `.../models/04_mrt/common`, `.../seeds`).
+`dbt_common` ships four seeds, their typed `stg__seed__*` models, the `int__common__*` chain
+and three dimensions. Its seeds are `+full_refresh: true`, so a seeded table always matches the
+CSV it came from. The
+whole chain is drawn on [Layer](layer.md#the-common-chain-from-dbt_common); each project that
+installs `dbt_common` could build its own copy, but exactly one does, because two copies write
+the same tables into the one database `.env` points at. `dbt_example` is that one; the opt-out
+for every other project is in the
+[dbt style guide](../reference/dbt-style-guide.md).
 
-!!! warning "Exactly one project builds them"
-    Two projects building `dbt_common` models get distinct asset keys (the key carries the
-    project), but they write the same table into the one database `.env` points at.
-    `dbt_example` builds them (`dbt_common: +enabled: true` in its `dbt_project.yml`). Every
-    other project disables them per layer folder and, if it needs a shared dimension, reads it
-    as a source. See [Adding a project](../build/adding-projects.md).
+## The hooks and the metadata layer
 
-`int__common__holiday` is a Python model that runs as Snowpark inside Snowflake and imports
-the `holidays` package from the Anaconda channel. The country is the `holiday_country` meta
-config (`NL` by default), a literal the consuming project sets in its own `dbt_project.yml`
-(under `+meta` because dbt v2 rejects custom keys elsewhere):
-
-```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
-models:
-  dbt_common:
-    03_int:
-      common:
-        int__common__holiday:
-          +meta:
-            holiday_country: NL
-```
-
-It is not a var: `var()` in a `dbt_project.yml` is rendered before the project's `vars:` load,
-so `--vars` does not change it. An administrator accepts the Anaconda
-terms once per account, or you disable the model
-([Snowflake provisioning](../operate/snowflake-provisioning.md)).
-
-### The hooks and the metadata layer
-
-Two hooks bracket every run. `dbt_example` opens with the run-info banner:
+Two hooks bracket every run. `dbt_example` opens with the run-info banner and the stage refresh:
 
 ```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
 on-run-start:
@@ -167,29 +133,24 @@ on-run-end:
 ```
 
 `upload_results` resolves the metadata schema through `generate_schema_name('mtd', none)`, so
-it writes to `_MTD` in the shared environments and to `<PREFIX>_MTD` in `dev`, both provisioned
-by Terraform. It first creates the `pre__dbt__*` tables if they do not exist, then inserts one row
-per model, test, seed, execution and so on for this invocation. On `dbt source freshness`
-runs (`job__<project>__source_freshness`, hourly; see
-[Orchestration](orchestration.md#schedules-and-sensors)) it uploads only the freshness results
-and the invocation, not the graph. Nothing else has to run first, and a monitoring project could
-later read those tables as sources.
+it lands in the provisioned `_MTD` (your personal one in `dev`). It creates the `pre__dbt__*`
+tables if they do not exist, twelve of them (`invocation`, `model`, `model_execution`, `test`,
+`test_execution`, `seed`, `seed_execution`, `source`, `source_freshness`, `snapshot`,
+`snapshot_execution`, `exposure`), and inserts the rows of this invocation. A
+`dbt source freshness` run uploads only the freshness results and the invocation, not the
+graph. Nothing has to run first, and a monitoring project could read those tables as sources.
 
 ## dbt_example: the first project
 
-`dbt_project.yml` says what a project looks like:
+`dbt_project.yml` says what a project looks like: `model-paths: ["models", "sources",
+"exposures"]`, one block per layer folder with its `+schema` and `layer=<name>` tag, seeds to
+`ref`, `data_tests: +store_failures: true` with `+schema: tmp`, `dbt_common: +enabled: true`,
+and the dispatch and hook blocks above.
 
-- `model-paths: ["models", "sources", "exposures"]`: models per layer folder, source YAML in
-  `sources/`, exposure YAML in `exposures/`.
-- The layer block: `02_stg`, `03_int` and `04_mrt` as `table`, `05_exp` as `view`, each with its
-  `+schema` (`stg`, `int`, `mrt`, `exp`) and `layer=<name>` tag. Seeds go to `ref`.
-- `data_tests: +store_failures: true` with `+schema: tmp`.
-- `dbt_common: +enabled: true`.
-- The dispatch block and the `on-run-start` hook shown above.
-
-Today it holds one source (`src_knmi.yml`), two seeds (`seed_knmi_station`, `seed_knmi_measurement_type`)
-and the `weather` chain from `stg__knmi__climate_hourly` through `int__weather__knmi_measurement`,
-`dim__weather__knmi_station`, `dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement` to
+Today it holds one source (`src_knmi.yml`), two seeds (`seed_knmi_station`,
+`seed_knmi_measurement_type`) and the `weather` chain from `stg__knmi__climate_hourly` through
+`int__weather__knmi_measurement`, `dim__weather__knmi_station`,
+`dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement` to
 `exp__weather__station_weather`, whose consumer is the `weather_dashboard` exposure.
 
 Run it from the project folder, which is what `just dbt` does:
@@ -202,28 +163,20 @@ just project=dbt_other dbt build                 # another project under dbt/
 just dbt-all parse --target dummy                # every project
 ```
 
-## How Dagster loads a project
-
-Each dbt project is one Dagster code location. The location's `defs/dbt/defs.yaml` declares a
-`DbtProjectComponent` with the project and profiles directories; `prepare_project_cli_args:
-["parse", "--quiet"]` re-parses the project on every code-location load, so the asset graph
-always matches the models on disk. Model asset keys follow the file path
-(`dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, the same in every environment); sources take
-their key from `config.meta.dagster.asset_key`; the group is the key without its last segment
-(`dbt_example/models/02_stg/knmi`). Details on
-[Orchestration](orchestration.md#the-dbt-locations).
-
 ## One project per mesh node
 
-The point of the layout is that adding a Project is copying a folder, not redesigning
-anything: `dbt/dbt_<project>` with its own `dbt_project.yml`, the same `packages.yml`, a matching
-Dagster location, and a `terraform/config/projects/<project>.yaml` for its database.
+The point of the layout is that adding a Project is copying a folder, not redesigning anything:
+`dbt/dbt_<project>` with its own `dbt_project.yml`, the same `packages.yml`, a matching Dagster
+location, and a `terraform/config/projects/<project>.yaml` for its database.
 `scripts/dbt_all.py` picks the new project up automatically, so `just init`, the pre-commit
 parse hook and CI cover it from the first commit. The steps are on
 [Adding a project](../build/adding-projects.md).
 
+Each dbt project is one Dagster code location, which re-parses the project on every load so the
+asset graph matches the models on disk: [Orchestration](orchestration.md#the-dbt-locations).
+
 ## Related pages
 
-- [Layers in practice](layer.md): the schemas and the reference rule
+- [Layer](layer.md): the schemas the models build into
 - [Adding a dbt model](../build/adding-dbt-models.md): a new model, its `_conf` YAML and tests
 - [SQL style](../reference/sql-style.md): what sqlfluff enforces

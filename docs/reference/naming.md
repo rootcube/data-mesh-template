@@ -167,13 +167,9 @@ environment:
 | dlt load files | `<stage>/dlt/ingest/<source>/<pipeline>__<load id>/<source>__<entity>.<file id>.<retry>.jsonl`, the pipeline being `ingest_<source>` | `_SRC.ST_DEFAULT/dlt/ingest/knmi/`, `DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/` |
 | Provisioning (bootstrap) | `TERRAFORM_USER`, `WH_PLATFORM_PROVISIONING` | same |
 
-An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
-`SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV`) and the personal
-prefix `SNOWFLAKE_SCHEMA=DBT_<USERNAME>`. `just sf setup` proposes `DBT_` plus the first part
-of your login, or the `schema_prefix` of your user file: the prefix Terraform provisioned your
-schemas with.
-
-Schemas inside a project database:
+An engineer's `.env` holds the dev triple of one project (`SNOWFLAKE_DATABASE`,
+`SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`) and the personal prefix `SNOWFLAKE_SCHEMA`, which
+`just sf setup` fills in. Schemas inside a project database:
 
 | Schema | Written by | Contents |
 |---|---|---|
@@ -184,14 +180,15 @@ Schemas inside a project database:
 | `_MTD` | `dbt_common` on-run-end hook | Run metadata (`pre__dbt__*`) |
 
 In `dev` the same set exists per engineer under the personal prefix (`DBT_USERNAME_SRC`,
-`DBT_USERNAME_STG`, ...), provisioned by Terraform per engineer; a model without `+schema` would
-land in the prefix itself (`DBT_USERNAME`), which is not provisioned.
-`SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name` implement the rule;
-source YAML repeats it from the dbt `target`.
+`DBT_USERNAME_STG`, ...). Which schema a layer resolves to in which environment:
+[How the values become schema names](environment-variables.md#how-the-values-become-schema-names).
 
 Snowflake folds unquoted identifiers to uppercase, so `knmi__climate_hourly` and
-`KNMI__CLIMATE_HOURLY` are the same table. The connection settings are the `SNOWFLAKE_*`
-variables in `.env`; see [environment variables](environment-variables.md) and
+`KNMI__CLIMATE_HOURLY` are the same table. Qualify with the schema, not the database: your
+session already sits in the project database, so `dbt_username_stg.stg__knmi__climate_hourly`
+is enough in `dev`, where fully qualified would be
+`DB_EXAMPLE_DEV.DBT_USERNAME_STG.STG__KNMI__CLIMATE_HOURLY`. The connection settings are the
+`SNOWFLAKE_*` variables in `.env`; see [environment variables](environment-variables.md) and
 [Snowflake](../understand/snowflake.md).
 
 ## Terraform configuration

@@ -40,27 +40,18 @@ disabled: false
 required: true
 ```
 
-The `type` groups layers by how data moves through a Project:
+The `type` says how data moves through a Project. **Input** is where data enters the boundary:
+`src` is what the Project collects itself, `imp` what it receives from another Project's `exp`,
+`ref` curated lookup data. **Processing** cleans, integrates and models it (`prp`, `stg`,
+`int`, `mrt`). **Output** is where data leaves as a contract: `exp` for other Projects and
+downstream systems, `app` for applications that need read and write access. **Operational**
+covers the bookkeeping that is not a modelling step: `mtd` for run metadata, `tmp` for
+short-lived work that nothing may depend on.
 
-input
-:   Data enters the Project boundary. `src` is what the Project collects itself, `imp` is
-    what it passively receives from another Project's `exp`, `ref` is curated lookup data.
-
-processing
-:   Data is cleaned, integrated and modelled: `prp`, `stg`, `int`, `mrt`.
-
-output
-:   Data leaves the Project as a contract: `exp` for other Projects and downstream systems,
-    `app` for applications that need read and write access.
-
-operational
-:   Bookkeeping that is not a modelling step: `mtd` for run metadata, `tmp` for short-lived
-    work that nothing may depend on.
-
-`metadata` is one of the starter's additions to the platform model. `application`, `import`
-and `preparation` ship disabled because no role grants anything on them yet: a project that
-lists one gets a validator warning and no schema until an administrator adds an access tier
-under `terraform/config/roles/` and flips the flag.
+`metadata` is one of the starter's additions to the platform model. `application`, `import` and
+`preparation` ship disabled because no role grants anything on them yet: a project that lists
+one gets a validator warning and no schema until an administrator adds an access tier under
+`terraform/config/roles/` and flips the flag.
 
 ## How data flows
 
@@ -86,294 +77,104 @@ graph LR
     STG --> INT --> MRT --> EXP
 ```
 
-Cross-project sharing always runs from one Project's `exp` into another Project's `imp`. A
-Project must never read another Project's non-expose layers.
+A model references only the layer directly below it, which is what keeps the graph readable.
+The dbt side of that rule, with the materialization and naming conventions per layer, is the
+[dbt style guide](../reference/dbt-style-guide.md). Cross-project sharing always runs from one
+Project's `exp` into another Project's `imp`; a Project never reads another Project's
+non-expose layers.
 
-## Layer by layer
+## What each layer holds here
 
 `src`, Source
-:   Raw data as the source system returned it, no business logic, not for direct
-    consumption. Here: the tables dlt loads, `<source>__<entity>` such as
-    `knmi__climate_hourly`.
+:   Raw data as the source system returned it, no business logic, not for direct consumption:
+    the tables dlt loads as `<source>__<entity>`, such as `knmi__climate_hourly`, with dlt's
+    own bookkeeping columns and state tables next to them. Renames, casts and fixes are
+    staging's job. See [Ingestion](ingestion.md).
 
 `imp`, Import
 :   Data products received from other Projects, read-only, reshaped downstream. Distinct from
     `src` so that cross-project dependencies stay explicit. Not used by the example project.
 
 `ref`, Reference
-:   Small, stable, curated datasets: code lists, calendars, mappings. Here: dbt seeds.
+:   Small, stable, curated datasets: code lists, calendars, mappings. Here: the dbt seeds, each
+    with a typed `stg__seed__<name>` model that downstream models reference instead of the
+    untyped seed.
 
 `prp`, Preparation
 :   An optional cleansing step before staging. Enabled, but not used by the example project.
 
 `stg`, Staging
-:   The first transformed layer: typing, renaming, deduplication, unit conversion, one model
-    per source table, no joins. Here: `stg__knmi__climate_hourly`.
+:   The first transformed layer: typing, renaming, deduplication, unit conversion. One model
+    per source table, no joins. `stg__knmi__climate_hourly` is the whole pattern: `t` in tenths
+    of a degree becomes `temperature_celsius`, KNMI's hour `1..24` becomes an `observed_at`
+    timestamp, `-1` for "less than 0.05 mm" becomes `0.05`.
 
 `int`, Integration
-:   Reusable, joined and enriched datasets that are not yet facts or dimensions. Organised by
-    domain, not by source. Here: the common calendar chain from `dbt_common` and the `weather`
+:   Reusable, joined and enriched datasets that are not yet facts or dimensions, organised by
+    domain rather than by source. Here: the common chain from `dbt_common` and the `weather`
     models of `dbt_example`.
 
 `mrt`, Mart
-:   Modelled, analytics-ready data: dimensions, facts, bridges, aggregates. Here:
-    `dim__common__calendar`, `dim__common__time`, `dim__common__environment`, and the weather star
-    `dim__weather__knmi_station`, `dim__weather__knmi_measurement_type`, `fct__weather__knmi_measurement`.
+:   The dimensional model: `dim__`, `fct__`, `brg__` and `agg__`. Here the weather star
+    (`dim__weather__knmi_station`, `dim__weather__knmi_measurement_type`,
+    `fct__weather__knmi_measurement`) next to the common dimensions below.
 
 `exp`, Expose
-:   The publication boundary. Whatever is here is a contract; the owning Team keeps it
-    backward compatible. Here: `exp__weather__station_weather`, read by the `weather_dashboard`
-    exposure.
+:   The publication boundary. Whatever is here is a contract, and the owning Team keeps it
+    backward compatible. Here: `exp__weather__station_weather`, a view that joins the star back
+    into one flat row per station, hour and measurement type, with the `weather_dashboard`
+    exposure as its declared consumer so lineage runs past the last model.
 
 `app`, Application
-:   Operational datasets for applications with CRUD access, separate from the analytical
-    path. Disabled in the starter.
+:   Operational datasets for applications with CRUD access, separate from the analytical path.
+    Disabled in the starter.
 
 `mtd`, Metadata
-:   Run metadata written by the tooling. Here: the `pre__dbt__*` tables that `dbt_common`
-    fills after every dbt run.
+:   Run metadata written by the tooling: the `pre__dbt__*` tables that the `dbt_common`
+    `on-run-end` hook fills after every dbt run. See [Transformation](transformation.md).
 
 `tmp`, Temporary
-:   Ephemeral datasets with no guarantees and no dependants. Here: stored dbt test failures,
-    plus whatever an analyst or engineer creates and drops.
+:   Ephemeral datasets with no guarantees and no dependants: stored dbt test failures, dlt's
+    `merge` staging tables, and whatever an analyst or engineer creates and drops.
 
-## In Snowflake
-
-Every layer a project lists becomes one schema per project database, named `_<LAYER>` with
-the code uppercased: `DB_EXAMPLE_DEV._SRC`, `DB_EXAMPLE_DEV._STG`, ... ,
-`DB_EXAMPLE_PRD._TMP`. The leading underscore marks a provisioned layer schema.
-
-In `dev`, engineers work in personal copies of the same layers, `<SNOWFLAKE_SCHEMA>_<LAYER>`
-(`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ...), which Terraform creates per engineer from the
-engineer role's `personal` block (`terraform/personal.tf`). The mapping is in
-`SnowflakeSettings.schema_for_layer()` and `dbt_common.generate_schema_name`; see
-[Environment](environment.md#development-is-special).
-
-Roles name an [access tier](access.md) per layer and per environment (`privileges.layers` in
-`roles/*.yaml`: `view`, `read`, `edit` or `full`). Each layer × tier is an access role
-`AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` with the tier's privileges on the `_<LAYER>` schema
-and on all current and future tables and views in it, and the project role inherits the one it
-names.
-A layer can add privileges to a tier under `privileges` in its own file (the source layer's
-stages, the temporary layer's scratch tables). A layer with no tier for a role is invisible to
-that role.
-
-## In the repo
-
-| Layer | Written by | Where |
-|-------|-----------|-------|
-| `src` | dlt | `dlt_pipelines/pipelines/ingest/<source>/`, dataset from `source_dataset()` |
-| `ref` | `dbt seed` | `seeds/` with `+schema: ref` |
-| `stg`, `int`, `mrt`, `exp` | dbt models | `models/02_stg`, `03_int`, `04_mrt`, `05_exp` with `+schema: stg`, `int`, `mrt`, `exp` |
-| `mtd` | `dbt_common` `on-run-end` hook | `macros/dbt_artifacts/`, tables created on first use |
-| `tmp` | dbt data tests | `data_tests: +store_failures: true`, `+schema: tmp` |
-
-What belongs in each layer, the materializations and the reference-only-the-layer-below rule
-are on [Layers in practice](layer.md).
-
-Next: [Role](role.md), then [Access](access.md).
-
-<!-- MERGE-ME: everything below came verbatim from docs/architecture/layers.md; fold it into this page and delete this marker -->
-
----
-icon: material/layers-triple
----
-
-# Layers in practice
-
-[Layer](layer.md) explains what the layers mean. This page is the schema-level cut
-through this repo: which layer holds what, which folder writes it, how it materializes, how
-the schema gets its name, and the one rule that keeps the graph readable. The dbt projects
-themselves are on [Transformation](transformation.md).
-
-## The map
-
-All of this sits inside the project database, `DB_EXAMPLE_<ENV>`.
-
-| Layer | Written by | Folder | `+schema` | Schema (shared) | Schema (`dev`) | Materialization | Name pattern |
-|-------|-----------|--------|-----------|-----------------|----------------|-----------------|--------------|
-| Source | dlt | `dlt_pipelines/pipelines/ingest/<source>/` | (dataset) | `_SRC` | `<PREFIX>_SRC` | table, `merge` on the primary key | `<source>__<entity>` (`knmi__climate_hourly`) |
-| Reference | `dbt seed` | `seeds/` | `ref` | `_REF` | `<PREFIX>_REF` | seed table | `seed_<name>` |
-| Staging | dbt | `models/02_stg/` | `stg` | `_STG` | `<PREFIX>_STG` | table | `stg__<source>__<entity>` |
-| Integration | dbt | `models/03_int/` | `int` | `_INT` | `<PREFIX>_INT` | table | `int__<domain>__<entity>` |
-| Mart | dbt | `models/04_mrt/` | `mrt` | `_MRT` | `<PREFIX>_MRT` | table | `dim__`, `fct__`, `brg__`, `agg__` |
-| Expose | dbt | `models/05_exp/` | `exp` | `_EXP` | `<PREFIX>_EXP` | view | `exp__<domain>__<entity>` |
-| Metadata | `dbt_common` `on-run-end` hook | none | `mtd` (in the macro) | `_MTD` | `<PREFIX>_MTD` | tables created on demand | `pre__dbt__<dataset>` |
-| Temporary | dbt data tests | none | `tmp` | `_TMP` | `<PREFIX>_TMP` | `store_failures` tables | test names |
-
-`<PREFIX>` is `SNOWFLAKE_SCHEMA` from `.env`, `DBT_<USERNAME>` by convention (`DBT_USERNAME`), the
-prefix of the personal schemas Terraform provisions for you (`terraform/personal.tf`).
-Materializations come from `dbt/dbt_example/dbt_project.yml` (`dbt_common` builds `03_int`
-as `view` by default, with the date, calendar, time and holiday models overriding to
-`table`); a model can override its folder default with `config(materialized=...)`.
-
-Every layer folder tags its models (`layer=stg`, `layer=int`, `layer=mrt`, `layer=exp`), so a
-whole layer selects in one go:
+Every layer folder tags its models, so a whole layer selects at once:
 
 ```bash
 just dbt ls --select tag:layer=stg
-just dbt build --select stg__knmi__climate_hourly+
 ```
 
-## The schema naming rule
+## Who writes what
 
-A layer's schema depends on the environment. The rule lives in
-`dbt/dbt_common/macros/generate_schema_name.sql` for dbt and in
-`SnowflakeSettings.schema_for_layer()` for dlt and Dagster, and both say the same thing:
+| Layer | Written by | From |
+|-------|-----------|------|
+| `src` | dlt | `dlt_pipelines/pipelines/ingest/<source>/`, into the dataset `source_dataset()` returns |
+| `ref` | `dbt seed` | `seeds/` |
+| `stg`, `int`, `mrt`, `exp` | dbt models | `models/02_stg`, `03_int`, `04_mrt`, `05_exp` |
+| `mtd` | the `dbt_common` `on-run-end` hook | `macros/dbt_artifacts/`, tables created on first use |
+| `tmp` | dbt data tests, dlt | `+store_failures: true`; dlt's `merge` staging tables |
 
-| Target | `target.schema` | `+schema` | Result |
-|--------|-----------------|-----------|--------|
-| `dev` | `DBT_USERNAME` | `stg` | `DBT_USERNAME_STG` |
-| `dev` | `DBT_USERNAME` | (none) | `DBT_USERNAME` |
-| `prd` | `_TMP` | `stg` | `_STG` |
-| `prd` | `_TMP` | (none) | `_TMP` |
+## In Snowflake
 
-In the shared environments (`tst`, `acc`, `prd`) a layer's schema is `_<LAYER>`, provisioned by
-Terraform. In `dev` every engineer works in personal schemas, `<target.schema>_<LAYER>`, which
-Terraform provisions per engineer, so several people share one development database without
-stepping on each other.
-The `dummy` target counts as personal too. The macro only takes effect because
-`dbt/dbt_example/dbt_project.yml` puts `dbt_common` first in the dispatch order:
+Every layer a project lists becomes one schema per project database, named `_<LAYER>` with the
+code uppercased: `DB_EXAMPLE_DEV._SRC`, ..., `DB_EXAMPLE_PRD._TMP`. The leading underscore
+marks a provisioned layer schema. In `dev` engineers work in personal copies of the same
+layers, `<SNOWFLAKE_SCHEMA>_<LAYER>`, which Terraform provisions per engineer; every tool
+implements that one rule, and
+[Environment variables](../reference/environment-variables.md) has the details.
 
-```yaml title="dbt/dbt_example/dbt_project.yml (excerpt)"
-dispatch:
-  - macro_namespace: dbt
-    search_order: ["dbt_common", "dbt"]
-```
+Roles name an [access tier](access.md) per layer and per environment (`privileges.layers` in
+`roles/*.yaml`: `view`, `read`, `edit` or `full`). Each layer × tier is an access role
+`AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding the tier's privileges on the `_<LAYER>` schema
+and on all current and future tables and views in it, and the project role inherits the one it
+names. A layer can add privileges to a tier under `privileges` in its own file: the source
+layer's stages, the temporary layer's scratch tables. A layer with no tier for a role is
+invisible to that role.
 
-Models without any `+schema` land in `target.schema`: your prefix in `dev`, and `_TMP` in the
-shared environments (the `profiles.yml` fallback when `SNOWFLAKE_SCHEMA` is unset). Nothing
-should end up there; in `dev` Terraform does not provision the bare prefix, so such a model fails.
-A blank `SNOWFLAKE_SCHEMA` falls back to the placeholder prefix `DBT` in `dev` (`DBT_STG`, which
-nobody has, so the run fails loudly) and to `_TMP` elsewhere.
+## The common chain from dbt_common
 
-Source YAML cannot call macros, so `dbt/dbt_example/sources/src_knmi.yml` spells the rule out
-from the same dbt `target`:
-
-```yaml title="dbt/dbt_example/sources/src_knmi.yml (excerpt)"
-schema: "{{ ((target.schema | trim | upper) or 'DBT') ~ '_SRC' if target.name | trim | lower in ['dev', 'dummy'] else '_SRC' }}"
-```
-
-Keep the two in step when you touch either.
-
-## The reference rule
-
-A model references only the layer directly below it. Staging reads sources and seeds;
-integration reads staging (and other integration models); mart reads integration; expose reads
-mart.
-
-```mermaid
-flowchart LR
-    SRC["_SRC (dlt)"] -- "source()" --> STG
-    REF["_REF (seeds)"] -- "ref()" --> STG
-    STG --> INT
-    INT --> INT
-    INT --> MRT
-    MRT --> EXP
-```
-
-| Layer | May reference |
-|-------|---------------|
-| STG | `source()` tables in `_SRC`, seeds in `_REF` |
-| INT | `stg__` models, other `int__` models |
-| MRT | `int__` models; dimensions for a fact's foreign keys; `stg__seed__unknown` for the unknown member |
-| EXP | mart models |
-
-!!! warning "Tempted to skip a layer?"
-    - An INT model wants a raw column: add it to the staging model first. Staging is cheap and
-      it keeps the cast boundary in one place.
-    - Two models repeat the same CTE: make it its own model in the right layer.
-    - An EXP view is growing business rules: push them down to INT or MRT. EXP selects,
-      filters and joins a star back together; it does not compute new truth.
-
-    The rule is checked in review, not by a tool, so it is worth internalizing.
-
-## Layer by layer
-
-### Source: what dlt landed
-
-One table per dlt resource, named `<source>__<entity>`, columns exactly as the API returned
-them (lowercased by dlt) plus dlt's own bookkeeping columns such as `_dlt_load_id`. dlt keeps
-its state tables in the same schema, which is how pipeline state comes back when you delete
-`.dlt/data/`.
-
-dbt never writes here. It reads the tables through a `src_<source>.yml` in
-`dbt/dbt_example/sources/`, which names the table with `identifier: knmi__climate_hourly` and
-pins the Dagster asset key of the dlt asset. See [Ingestion](ingestion.md).
-
-What does not belong: renames, casts, fixes. Those are staging's job.
-
-### Reference: seeds
-
-CSV files under `seeds/`, loaded by `dbt seed` (part of `dbt build`). `dbt_common` ships four:
-`seed_environment`, `seed_month`, `seed_weekday` and `seed_unknown` (the unknown-member rows
-with ids `-1`, `-2`, `-3`); `dbt_example` ships `seed_knmi_station` (the KNMI stations the pipeline
-ingests) and `seed_knmi_measurement_type` (the KNMI variables it carries). `dbt_common` seeds use
-`+full_refresh: true`, so the table always matches the file. Seeds arrive untyped, which is why each one has a typed `stg__seed__<name>`
-model in `02_stg/seed/`; downstream models reference the staging model, not the seed.
-
-### Staging: typed and renamed
-
-One model per source table. Cast every column, give it a business name, convert units, keep
-the grain. `stg__knmi__climate_hourly` is the whole pattern: `t` in tenths of a degree becomes
-`temperature_celsius`, KNMI's hour `1..24` becomes an `observed_at` timestamp, `-1` for "less
-than 0.05 mm" becomes `0.05`.
-
-Materialized as `table`. No joins, no business logic, read only by INT.
-
-### Integration: business logic
-
-Organized by domain, not by source. Joins, enrichment, derived measures, reusable building
-blocks. `dbt_example` has the `weather` domain: `int__weather__knmi_measurement` unpivots the hourly
-staging row into one row per station, hour and measurement type, and `int__weather__knmi_station`
-and `int__weather__knmi_measurement_type` carry the seeded stations and KNMI variables. The
-[Adding a dbt model](../build/adding-dbt-models.md) walkthrough adds a daily one.
-`dbt_common` contributes the common chain described below.
-
-Materialized as `table` in `dbt_example`. Read by MRT and other INT models.
-
-### Mart: the dimensional model
-
-Dimensions (`dim__`), facts (`fct__`), bridges (`brg__`) and aggregates (`agg__`). The
-`dbt_common` dimensions show the house pattern: a surrogate key named `id_<model>` as the first
-column (`id_dim__common__calendar` is the `YYYYMMDD` integer), and a `UNION ALL` with
-`stg__seed__unknown` so every fact can point at an unknown member instead of a `NULL`.
-`dbt_example` follows it in `models/04_mrt/weather/`: `dim__weather__knmi_station`,
-`dim__weather__knmi_measurement_type` and `fct__weather__knmi_measurement`, one row per station, hour and
-measurement type, keyed to both weather dimensions and to `dim__common__calendar` and
-`dim__common__time`.
-
-Materialized as `table`. Consumer-specific shaping belongs one layer up.
-
-### Expose: the contract
-
-Views that give a named consumer, or another project, the flat shape it wants. This is the
-publication boundary of the project: other projects read `_EXP` and nothing else.
-`dbt_example` publishes `exp__weather__station_weather`, the observation star joined back into
-one flat row per station, hour and measurement type, and declares its consumer as the dbt
-exposure `weather_dashboard` (`exposures/weather_dashboard.yml`), so the lineage runs past the
-last model. Materialized as `view`, so they are always current.
-
-### Metadata and Temporary: bookkeeping
-
-Neither is a modeling layer, but both show up after a `dbt build`.
-
-`_MTD` holds run metadata. `dbt_common`'s `on-run-end` hook calls `upload_results(results)`
-after every `run`, `build`, `test`, `seed` and `freshness` invocation; it creates the
-`pre__dbt__*` tables on first use: `invocation`, `model`,
-`model_execution`, `test`, `test_execution`, `seed`, `seed_execution`, `source`,
-`source_freshness`, `snapshot`, `snapshot_execution` and `exposure`. The `dummy` target never
-connects, so it skips the upload.
-
-`_TMP` holds stored test failures: `dbt_example` sets `+store_failures: true` with
-`+schema: tmp` for all data tests, so a failing test leaves a table you can query. The
-`has_data` test opts out (`store_failures=false`), because its failure row is a constant.
-
-## The common dimensions from dbt_common
-
-`dbt_common` is installed as a package and its models build as part of `dbt_example`, in the
-same layers, in Dagster groups under `dbt_example/packages/dbt_common/` (one per key directory:
-`models/02_stg/seed`, `models/03_int/common`, `models/04_mrt/common`, `seeds`):
+`dbt_common` ships the dimensions every project needs and nobody wants to write twice. Its
+models build as part of the project that installs it, in the same layers, grouped in Dagster
+under `<project>/packages/dbt_common/`:
 
 ```mermaid
 flowchart LR
@@ -410,20 +211,21 @@ flowchart LR
     T --> DT
 ```
 
-`int__common__date` generates a window of ten calendar years back and ten forward around the
-current year; `int__common__calendar` decorates it with ISO weeks, month and weekday labels
-and the public holidays of the country in the `holiday_country` meta config (`NL` by default;
-a literal the consuming project sets in its `dbt_project.yml` under
-`models: dbt_common: 03_int: common: int__common__holiday:`, not a var); `int__common__time` is
-one row per second of the day.
-`int__common__holiday` is a Python (Snowpark) model that imports the `holidays` package from
-the Snowflake Anaconda channel, which an `ORGADMIN` has to accept once per account. If that is
-not possible, disable the model in `dbt/dbt_example/dbt_project.yml` as shown in
-[Snowflake provisioning](../operate/snowflake-provisioning.md).
+`int__common__date` generates one row per day from a fixed first year (2000) to ten years past
+the current one, both `+meta` configs of the installing project; the first year is a literal on
+purpose, because a start that slides with the clock silently drops its oldest year every
+January. `int__common__calendar` decorates those days with ISO weeks, month and weekday labels
+and the public holidays that `int__common__holiday` computes, and `int__common__time` is one
+row per second of the day.
+
+`stg__seed__unknown` is the reason a fact can always point somewhere: its rows `-1`, `-2` and
+`-3` are the empty, unknown and not-applicable members that every dimension unions in.
 
 ## Related pages
 
-- [Layer](layer.md): the concept, all eleven layers and their types
-- [Transformation](transformation.md): the projects, the profile, the hooks
+- [Role](role.md) and [Access](access.md): who may read or write a layer
+- [dbt style guide](../reference/dbt-style-guide.md): what may reference what, materializations,
+  what each layer's models look like
 - [Adding a dbt model](../build/adding-dbt-models.md): where a new model goes, step by step
-- [Naming](../reference/naming.md) and the [dbt style guide](../reference/dbt-style-guide.md): the rules the layers encode
+
+Next: [Role](role.md).

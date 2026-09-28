@@ -9,8 +9,8 @@ repository works; this page is the short version with links.
 - Open an issue for anything larger than a small fix, so the approach can be discussed first. The
   [bug report](.github/ISSUE_TEMPLATE/bug_report.yml) and
   [feature request](.github/ISSUE_TEMPLATE/feature_request.yml) forms ask for what a report needs.
-- Run the project once: [Getting started](docs/start/index.md). A free Snowflake trial
-  is enough, see [Snowflake Trial Account setup](docs/operate/snowflake-trial-account-setup.md).
+- Run the project once: [Start](docs/start/index.md). A free Snowflake trial
+  is enough, see [Snowflake trial account](docs/operate/snowflake-trial-account-setup.md).
 
 ## Making a change
 
@@ -18,7 +18,7 @@ repository works; this page is the short version with links.
    `fix/knmi-hour-24-rollover`).
 2. Follow the conventions: [Python style](docs/reference/python-style.md),
    [SQL style](docs/reference/sql-style.md), the [dbt style guide](docs/reference/dbt-style-guide.md)
-   and [Naming](docs/reference/naming.md). The guides under `docs/development/` show how to add a
+   and [Naming](docs/reference/naming.md). The guides under `docs/build/` show how to add a
    dlt load, a dbt model or a project.
 3. Run the checks before you push. They are the same ones CI runs:
 
