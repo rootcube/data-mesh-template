@@ -117,13 +117,7 @@ Imports are ordered stdlib, third-party, local, each group separated by a blank 
 rules enforce it). No wildcard imports.
 
 ```python title="dlt_pipelines/pipelines/ingest/knmi/source.py"
-import logging
-from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
-
-from dlt.sources.helpers import requests as dlt_requests
-
-from dlt_pipelines.pipelines.ingest.knmi.constants import CHUNK_DAYS, DAYS_BACK, KNMI_UURGEGEVENS_URL, STATIONS
+--8<-- "dlt_pipelines/pipelines/ingest/knmi/source.py:9:21"
 ```
 
 ## Docstrings
@@ -172,7 +166,7 @@ class SnowflakeSettings:
   Windows); fail loudly everywhere else.
 - Utility modules log through the `logging` module; Dagster assets use `context.log`.
 
-```python title="dlt_pipelines/pipelines/ingest/knmi/source.py"
+```python title="dlt_pipelines/pipelines/ingest/knmi/source.py (excerpt)"
 LOGGER = logging.getLogger(__name__)
 
 LOGGER.info("KNMI hourly: fetching %s..%s for stations %s", chunk_start, chunk_end, stations)

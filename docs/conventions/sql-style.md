@@ -94,9 +94,9 @@ Also enabled: no unused CTEs (ST03), no `CASE` nested in `ELSE` (ST04), no `CASE
 expression replaces (ST02), no special characters or unnecessary quoting in identifiers (RF05,
 RF06), consistent `ASC`/`DESC` in `ORDER BY` (AM03), the same column count on both sides of a set
 operator (AM07), and a final `SELECT` whose column count sqlfluff can determine (AM04), so list
-columns explicitly at the end. The layout rules (LT01, LT02, LT04, LT06 to LT13) handle spacing,
-indentation, comma position, one set operator per line, and a single newline at the end of the
-file.
+columns explicitly at the end. The layout rules (LT01, LT02, LT04, LT06 to LT08, LT10 to LT13)
+handle spacing, indentation, comma position, one set operator per line, and a single newline at
+the end of the file.
 
 ## Good vs bad
 

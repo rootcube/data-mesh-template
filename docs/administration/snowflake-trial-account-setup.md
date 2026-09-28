@@ -57,7 +57,7 @@ when it is missing (through tfenv on Homebrew, winget on Windows).
 ## 4. Bootstrap
 
 ```bash
-git clone git@github.com:rootcube/data-mesh-template.git && cd data-mesh-template
+git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
 just setup
 ```
 

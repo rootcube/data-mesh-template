@@ -190,7 +190,8 @@ flowchart LR
     ENV -- "env_var()" --> DBT["dbt/profiles.yml"]
 ```
 
-Every connection identifies itself with the application name `DATA_MESH_STARTER`, and dbt runs
+Connections through the Snowflake connector (`connect()` and `scripts/snowflake.py`) identify
+themselves with the application name `DATA_MESH_STARTER`; dbt and dlt bring their own. dbt runs
 tag their queries with `dbt_invocation_id:<id>`, so the Snowsight query history filters cleanly.
 
 ## Checking your connection
