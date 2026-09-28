@@ -91,3 +91,13 @@ repos:
         language: system
         files: ^terraform/config/.*\.(yaml|json)$
         pass_filenames: false
+
+  # Docs: a code fence titled with a repository path has to quote that file verbatim.
+  - repo: local
+    hooks:
+      - id: check-doc-fences
+        name: check titled code fences against their source files
+        entry: uv run python scripts/check_doc_fences.py
+        language: system
+        files: ^docs/.*\.md$
+        pass_filenames: false

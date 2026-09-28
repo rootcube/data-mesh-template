@@ -21,7 +21,7 @@ names (`DB_ENERGY_DEV`), and `dbt_<project>` the dbt project and code location (
 Copy `terraform/config/projects/example.yaml` to `terraform/config/projects/<project>.yaml` and
 give it its own `code`, `name` and `desc`:
 
-```yaml title="terraform/config/projects/energy.yaml"
+```yaml title="terraform/config/projects/energy.yaml (new file)"
 # yaml-language-server: $schema=../_validation/schemas/project.schema.json
 # Project: Energy
 # ===============
@@ -88,7 +88,7 @@ every pull request; only `plan` and `apply` need the Terraform service user. Det
 Users assume project roles. Add the project to each engineer's file under
 `terraform/config/users/` and apply again:
 
-```yaml title="terraform/config/users/username.yaml"
+```yaml title="terraform/config/users/username.yaml (example)"
 login: "username@example.com"
 name: "Username"
 create: false
@@ -224,7 +224,7 @@ further changes.
 Copy `src/orchestrator/locations/dbt/dbt_example` to
 `src/orchestrator/locations/dbt/dbt_<project>`. Two files change.
 
-```python title="src/orchestrator/locations/dbt/dbt_energy/definitions.py"
+```python title="src/orchestrator/locations/dbt/dbt_energy/definitions.py (new file)"
 """Dagster code location for the dbt_energy project (see locations/dbt/shared.py)."""
 
 from orchestrator.locations.dbt.dbt_energy import defs as _defs_module
@@ -233,7 +233,7 @@ from orchestrator.locations.dbt.shared import build_dbt_defs
 defs = build_dbt_defs("dbt_energy", _defs_module)
 ```
 
-```yaml title="src/orchestrator/locations/dbt/dbt_energy/defs/dbt/defs.yaml"
+```yaml title="src/orchestrator/locations/dbt/dbt_energy/defs/dbt/defs.yaml (new file)"
 type: orchestrator.locations.dbt.shared.DataMeshDbtProjectComponent
 
 attributes:
