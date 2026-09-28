@@ -16,7 +16,7 @@ taken verbatim from dlt 1.30.0 (`dlt/destinations/impl/snowflake/snowflake.py`).
 dlt below the next minor for that reason: diff the two methods before raising the cap
 (tests/test_dlt_pipelines.py pins the statements the copy runs). Its `REMOVE` branch is dlt's own and
 stays dormant unless `keep_staged_files` is turned off: the platform keeps the load files in the
-stage as a landing archive, see docs/architecture/ingestion.md.
+stage as a landing archive, see docs/understand/ingestion.md.
 """
 
 from typing import Any, cast

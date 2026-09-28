@@ -333,7 +333,7 @@ def discover_context(
     elif role is None:
         warn(
             "No project role (RL_<PROJECT>_<ENV>__<PURPOSE>) is granted to you yet, so role, warehouse and "
-            "database stay empty. An administrator has to grant you one (docs/administration/onboarding.md); "
+            "database stay empty. An administrator has to grant you one (docs/operate/onboarding.md); "
             "then run `just sf context`."
         )
         chosen = dataclasses.replace(settings, role="", warehouse="", database="")

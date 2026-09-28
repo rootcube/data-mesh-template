@@ -46,13 +46,13 @@ from `SNOWFLAKE_SCHEMA`).
 | `dev` | empty | `DBT_SRC` | `DBT_STG` | `DBT` |
 | `prd` | empty | `_SRC` | `_STG` | `_TMP` |
 
-In `dev`, set the prefix (`just sf setup` does); the second row is what happens when it is
-empty: dlt, Dagster and dbt all fall back to the placeholder prefix `DBT`, nobody has `DBT_*`
-schemas, so the load or the run fails loudly instead of writing into the shared `_<LAYER>`
-schemas. The last column is not provisioned in `dev` either, so every model needs a layer. The
-rule is
-`SnowflakeSettings.schema_for_layer()` for dlt and Dagster and
-`dbt_common.generate_schema_name` for dbt.
+This table is the rule; the other pages link here rather than repeat it. In `dev` the prefix has
+to be set, which `just sf setup` does. The second row is what happens when it is not: dlt,
+Dagster and dbt all fall back to the placeholder `DBT`, nobody has `DBT_*` schemas, and the run
+fails loudly instead of writing into the shared `_<LAYER>` ones. The last column is not
+provisioned in `dev` either, so every model needs its layer. In code the rule is
+`SnowflakeSettings.schema_for_layer()` for dlt and Dagster, `dbt_common.generate_schema_name`
+for dbt, and the `schema` expression in every `sources/src_<source>.yml` for dbt sources.
 
 ## dbt and dlt
 

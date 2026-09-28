@@ -21,7 +21,7 @@ Instructions for AI agents working in this repository. Read this file completely
 - **Verify before claiming.** Check that files, functions, and paths actually exist. Do not invent code.
 - **Minimal changes.** Do what is asked, nothing more. No drive-by refactors, no unsolicited docstrings, no "while I'm here" improvements.
 - **Follow existing patterns.** Assets, resources, models and tests all have established shapes here. Use them.
-- **Run the checks.** `just fmt`, `just typecheck`, `just test`, `just validate` before presenting work. The skill pages under `docs/ai-agents/` list technology-specific validation.
+- **Run the checks.** `just fmt`, `just typecheck`, `just test`, `just validate` before presenting work. [For AI agents](docs/reference/ai-agents.md) lists what to run after changing what.
 - **One thing at a time.** Do not bundle unrelated changes. Keep diffs small and reviewable.
 - **Never commit or push.** Do not run `git commit`, `git push`, or create branches. Humans do all git writes. Read-only git commands (`git status`, `git diff`, `git log`) are fine.
 - **Type hint everything.** Every function signature gets full annotations, parameters and return type.
@@ -45,18 +45,19 @@ in **Environments** (dev, tst, acc, prd), and each Project × Environment has **
 **Roles** (grants) and **Computes** (warehouses). One dbt project and one Dagster code location
 per Project; `dbt_common` is shared. The starter ships one project, `example`.
 
-## Skill references
+## Where the rules live
 
-Per-technology guides live in the docs site under `docs/ai-agents/` (single source of truth; they
-link to the convention pages under `docs/conventions/` instead of restating them):
+The docs site holds them; this file summarizes and never contradicts it. Start at
+[For AI agents](docs/reference/ai-agents.md): the entry points, the validation loop, what to run
+after changing what, and the pitfalls. Then the page for what you are touching:
 
-- [Dagster](docs/ai-agents/dagster.md): code locations, components, assets, jobs, resources
-- [dbt](docs/ai-agents/dbt.md): projects, layers, models, macros, `dbt_common`
-- [dlt](docs/ai-agents/dlt.md): sources, pipelines, the Snowflake destination, the Dagster component
-- [Snowflake](docs/ai-agents/snowflake.md): the platform model in Snowflake, key-pair auth, naming, Terraform
-- [Python](docs/ai-agents/python.md): style, type hints, tests, dependencies
-- [SQL](docs/ai-agents/sql.md): formatting, sqlfluff rules, Jinja patterns
-- [Standards](docs/ai-agents/standards.md): pre-commit, CI, the validation loop
+- [dlt](docs/understand/ingestion.md): sources, pipelines, the Snowflake destination, the Dagster component
+- [dbt](docs/understand/transformation.md): projects, layers, models, macros, `dbt_common`
+- [Dagster](docs/understand/orchestration.md): code locations, components, assets, jobs, resources
+- [Snowflake](docs/understand/snowflake.md): the platform model in Snowflake, key-pair auth, provisioning
+- [Python style](docs/reference/python-style.md), [SQL style](docs/reference/sql-style.md): formatting, typing, the sqlfluff rules
+- [dbt style guide](docs/reference/dbt-style-guide.md), [Naming](docs/reference/naming.md): model design, and every name in the repo
+- [Git workflow](docs/reference/git-workflow.md): pre-commit, CI, releases, humans-only git
 
 ## Architecture
 
@@ -75,7 +76,7 @@ the provisioned `_<LAYER>` schemas. `SnowflakeSettings.schema_for_layer()` and
 `dbt_common.generate_schema_name` implement that rule; dbt source YAML repeats it from the dbt
 `target` (`target.name`, `target.schema`). A blank prefix in dev falls back to the placeholder `DBT`,
 which has no schemas, so runs fail instead of writing into the shared layer schemas.
-Detail: [Architecture](docs/architecture/index.md), [Concepts](docs/concepts/index.md).
+Detail: [Understand](docs/understand/index.md).
 
 ## Directory structure
 
@@ -129,21 +130,21 @@ architecture), update the affected page in the same change set and verify with
 
 ## Code conventions
 
-Full rules: [Conventions](docs/conventions/index.md). The hard musts:
+Full rules: [Reference](docs/reference/index.md). The hard musts:
 
-- **Python:** ruff (line length 120, rules E F I UP B), ty for types. Type-hint everything, `X | None` not `Optional[X]`. See [Python style](docs/conventions/python-style.md).
-- **SQL (dbt):** sqlfluff (Snowflake dialect), leading commas, 2-space indent, uppercase keywords, lowercase identifiers, `CAST()` not `::`, `LEFT JOIN` never `RIGHT JOIN`, CTEs (`cte_` prefix) over subqueries. See [SQL style](docs/conventions/sql-style.md) and the [dbt style guide](docs/conventions/dbt-style-guide.md).
-- **Naming:** `stg__<source>__<entity>`, `int__<domain>__<entity>`, `(dim|fct|brg|agg)__<domain>__<entity>`, `exp__<domain>__<entity>`; seeds `seed_<name>`; sources `src_<source>.yml`; dlt tables `<source>__<entity>` in `_SRC`. See [Naming](docs/conventions/naming.md).
+- **Python:** ruff (line length 120, rules E F I UP B), ty for types. Type-hint everything, `X | None` not `Optional[X]`. See [Python style](docs/reference/python-style.md).
+- **SQL (dbt):** sqlfluff (Snowflake dialect), leading commas, 2-space indent, uppercase keywords, lowercase identifiers, `CAST()` not `::`, `LEFT JOIN` never `RIGHT JOIN`, CTEs (`cte_` prefix) over subqueries. See [SQL style](docs/reference/sql-style.md) and the [dbt style guide](docs/reference/dbt-style-guide.md).
+- **Naming:** `stg__<source>__<entity>`, `int__<domain>__<entity>`, `(dim|fct|brg|agg)__<domain>__<entity>`, `exp__<domain>__<entity>`; seeds `seed_<name>`; sources `src_<source>.yml`; dlt tables `<source>__<entity>` in `_SRC`. See [Naming](docs/reference/naming.md).
 - **Secrets:** never in files. `SNOWFLAKE_*` come from `.env`, written by `just sf setup`.
-- **Commits:** [conventional commits](docs/conventions/git-workflow.md#commit-messages); release-please derives the version, `CHANGELOG.md` and the GitHub release from them, so never bump the version by hand.
+- **Commits:** [conventional commits](docs/reference/git-workflow.md#commit-messages); release-please derives the version, `CHANGELOG.md` and the GitHub release from them, so never bump the version by hand.
 
 ## Adding things
 
-- **dlt load** ([guide](docs/development/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project (schema line, `identifier`, `meta.dagster.asset_key`, `freshness` and `loaded_at_field`) and a staging model.
-- **dbt model** ([guide](docs/development/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
-- **project** ([guide](docs/development/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
-- **Python asset** ([guide](docs/development/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
-- **Job, schedule, sensor**: named `<kind>__<location>__<name>` and always derived, never written per instance: the dlt location makes `job__dlt__ingest_<source>` and its daily schedule per source folder, every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`. Do not add one-off jobs in a location's `definitions.py`; extend the factory. Docs describe these as patterns (`<source>`, `<project>`), not as lists of instances. See [Orchestration](docs/architecture/orchestration.md#jobs).
+- **dlt load** ([guide](docs/build/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project (schema line, `identifier`, `meta.dagster.asset_key`, `freshness` and `loaded_at_field`) and a staging model.
+- **dbt model** ([guide](docs/build/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
+- **project** ([guide](docs/build/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
+- **Python asset** ([guide](docs/build/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
+- **Job, schedule, sensor**: named `<kind>__<location>__<name>` and always derived, never written per instance: the dlt location makes `job__dlt__ingest_<source>` and its daily schedule per source folder, every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`. Do not add one-off jobs in a location's `definitions.py`; extend the factory. Docs describe these as patterns (`<source>`, `<project>`), not as lists of instances. See [Orchestration](docs/understand/orchestration.md#jobs).
 
 ## Critical rules
 

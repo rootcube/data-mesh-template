@@ -92,63 +92,57 @@ markdown_extensions:
 plugins:
   - search
 
+# Snippets included with --8<-- are not pages of their own.
+exclude_docs: |
+  includes/
+
 nav:
   - Home: index.md
-  - Getting started:
-      - getting-started/index.md
-      - Prerequisites: getting-started/prerequisites.md
-      - Installation: getting-started/installation.md
-      - Snowflake authentication: getting-started/snowflake-auth.md
-      - First run: getting-started/first-run.md
-      - Troubleshooting: getting-started/troubleshooting.md
-      - Making it yours: getting-started/adopting.md
-  - Concepts:
-      - concepts/index.md
-      - Organisation: concepts/organisation.md
-      - Team: concepts/team.md
-      - Project: concepts/project.md
-      - Environment: concepts/environment.md
-      - Layer: concepts/layer.md
-      - Role: concepts/role.md
-      - Access: concepts/access.md
-      - Compute: concepts/compute.md
-  - Architecture:
-      - architecture/index.md
-      - Layers in practice: architecture/layers.md
-      - Ingestion (dlt): architecture/ingestion.md
-      - Transformation (dbt): architecture/transformation.md
-      - Orchestration (Dagster): architecture/orchestration.md
-      - Snowflake: architecture/snowflake.md
-  - Development:
-      - development/index.md
-      - Adding a dlt load: development/adding-dlt-loads.md
-      - Adding a dbt model: development/adding-dbt-models.md
-      - Adding a project: development/adding-projects.md
-      - Adding Python assets: development/adding-python-assets.md
-      - Testing: development/testing.md
-  - Conventions:
-      - conventions/index.md
-      - Python style: conventions/python-style.md
-      - SQL style: conventions/sql-style.md
-      - dbt style guide: conventions/dbt-style-guide.md
-      - Naming: conventions/naming.md
-      - Git workflow: conventions/git-workflow.md
-  - AI agents:
-      - ai-agents/index.md
-      - Standards: ai-agents/standards.md
-      - Dagster: ai-agents/dagster.md
-      - dbt: ai-agents/dbt.md
-      - dlt: ai-agents/dlt.md
-      - Snowflake: ai-agents/snowflake.md
-      - Python: ai-agents/python.md
-      - SQL: ai-agents/sql.md
-  - Administration:
-      - administration/index.md
-      - Snowflake provisioning: administration/snowflake-provisioning.md
-      - Onboarding: administration/onboarding.md
-      - Snowflake Trial Account setup: administration/snowflake-trial-account-setup.md
+  - Start:
+      - start/index.md
+      - Prerequisites: start/prerequisites.md
+      - Installation: start/installation.md
+      - Snowflake authentication: start/snowflake-auth.md
+      - First run: start/first-run.md
+      - Troubleshooting: start/troubleshooting.md
+      - Making it yours: start/adopting.md
+  - Build:
+      - build/index.md
+      - Adding a dlt load: build/adding-dlt-loads.md
+      - Adding a dbt model: build/adding-dbt-models.md
+      - Adding a project: build/adding-projects.md
+      - Adding Python assets: build/adding-python-assets.md
+      - Testing: build/testing.md
+  - Operate:
+      - operate/index.md
+      - Snowflake provisioning: operate/snowflake-provisioning.md
+      - Onboarding: operate/onboarding.md
+      - Snowflake trial account: operate/snowflake-trial-account-setup.md
+  - Understand:
+      - understand/index.md
+      - The platform model:
+          - Organisation: understand/organisation.md
+          - Team: understand/team.md
+          - Project: understand/project.md
+          - Environment: understand/environment.md
+          - Layer: understand/layer.md
+          - Role: understand/role.md
+          - Access: understand/access.md
+          - Compute: understand/compute.md
+      - How it fits together:
+          - Ingestion (dlt): understand/ingestion.md
+          - Transformation (dbt): understand/transformation.md
+          - Orchestration (Dagster): understand/orchestration.md
+          - Snowflake: understand/snowflake.md
   - Reference:
       - reference/index.md
+      - Conventions:
+          - Python style: reference/python-style.md
+          - SQL style: reference/sql-style.md
+          - dbt style guide: reference/dbt-style-guide.md
+          - Naming: reference/naming.md
+          - Git workflow: reference/git-workflow.md
       - Commands: reference/commands.md
       - Environment variables: reference/environment-variables.md
       - Glossary: reference/glossary.md
+      - For AI agents: reference/ai-agents.md

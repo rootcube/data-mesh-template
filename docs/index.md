@@ -7,18 +7,27 @@ hide:
 
 # Data Mesh Platform Starter
 
-A runnable starter for a **data mesh platform on Snowflake**. Dagster orchestrates, dlt ingests,
-dbt transforms, Terraform provisions. It implements the conceptual model of
-[rootcube/platform](https://github.com/rootcube/platform): an **organisation** has **teams**, a
-team owns **projects**, a project exists in **environments**, and every project and environment
-pair gets its **layers** (schemas), **roles** (grants) and **computes** (warehouses) in Snowflake.
-One small repository that runs on a laptop and grows into a mesh of projects.
+A runnable starter for a data mesh platform on Snowflake: Dagster orchestrates, dlt ingests, dbt
+transforms, Terraform provisions. It ships one finished project, from a public weather API through
+the layer schemas to a published view, so the whole shape is in front of you before you write a
+line of your own.
 
-[:material-rocket-launch: Get started](getting-started/index.md){ .md-button .md-button--primary }
-[:material-shape-outline: Concepts](concepts/index.md){ .md-button }
-[:material-shield-account: Administration](administration/index.md){ .md-button }
+Trying it costs a free [Snowflake trial](https://signup.snowflake.com/) (30 days, no card) and an
+afternoon. Everything else runs on your laptop. The example loads Dutch weather observations,
+which have the twin virtues of being free and never quite the same twice.
 
----
+## From clone to a running UI
+
+```bash
+git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
+just init        # uv, the virtual environment, .env and the dbt packages
+just setup       # one question: a fresh Snowflake account, or one an administrator provisioned
+just start       # Dagster on http://localhost:3000
+```
+
+`just setup` runs `just init` itself, so on a fresh clone you can go straight to it. On a trial
+account it also bootstraps Snowflake and provisions the example project, which takes about fifteen
+minutes: [Snowflake trial account](operate/snowflake-trial-account-setup.md) walks through it.
 
 ```mermaid
 flowchart LR
@@ -38,115 +47,46 @@ flowchart LR
     DAGSTER -.orchestrates.- DLT & DBT
 ```
 
-In development every engineer gets personal copies of those schemas (`DBT_<USERNAME>_SRC`,
-`DBT_<USERNAME>_STG`, ...) inside the shared `DB_EXAMPLE_DEV`, provisioned by Terraform along
-with their role. The other environments use the provisioned `_<LAYER>` schemas.
+Every engineer builds into personal schemas (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...) of
+the shared development database, so a laptop never writes where production reads.
 
-## Two kinds of readers
-
-**Engineers** work in the repository: they add dlt loads, dbt models and Python assets and run
-them through Dagster. Start at [Getting started](getting-started/index.md).
-
-**Platform administrators** run Terraform: they bootstrap the Snowflake account, describe the
-mesh in YAML and onboard people. Start at [Administration](administration/index.md).
+## Where to go
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch:{ .lg .middle } **Getting started**
+-   :material-rocket-launch:{ .lg .middle } **[Start](start/index.md)**
 
     ---
 
-    Four commands from a fresh clone to a running Dagster UI: install, one-time Snowflake
-    login with key-pair setup, check, start.
+    Get it running: prerequisites, `just init`, key-pair authentication, your first load and
+    build. Plus troubleshooting, and how to make the starter your own platform.
 
-    [:octicons-arrow-right-24: Quickstart](getting-started/index.md)
-
--   :material-shape-outline:{ .lg .middle } **Concepts**
+-   :material-hammer-wrench:{ .lg .middle } **[Build](build/index.md)**
 
     ---
 
-    Organisation, team, project, environment, layer, role and compute: the model behind every
-    name in Snowflake and every folder in the repo.
+    Add a dlt load, a dbt model, a Python asset, or a whole new project to the mesh, and test
+    the result.
 
-    [:octicons-arrow-right-24: The model](concepts/index.md)
-
--   :material-sitemap:{ .lg .middle } **Architecture**
+-   :material-shield-account:{ .lg .middle } **[Operate](operate/index.md)**
 
     ---
 
-    How the dlt pipelines, the layered dbt projects and the Dagster code locations fit
-    together, and what the model looks like in Snowflake.
+    For whoever holds the Snowflake account: provision it from YAML with Terraform, onboard
+    people and service users, or spin up a trial account to try the lot.
 
-    [:octicons-arrow-right-24: Overview](architecture/index.md)
-
--   :material-hammer-wrench:{ .lg .middle } **Development**
+-   :material-shape-outline:{ .lg .middle } **[Understand](understand/index.md)**
 
     ---
 
-    Task-oriented guides: add a dlt load, a dbt model, a whole project, or a Python asset, and
-    test your work.
+    The platform model (organisation, team, project, environment, layer, role, access, compute)
+    and how dlt, dbt, Dagster and Snowflake fit around it.
 
-    [:octicons-arrow-right-24: How-tos](development/index.md)
-
--   :material-ruler-square:{ .lg .middle } **Conventions**
+-   :material-book-open-variant:{ .lg .middle } **[Reference](reference/index.md)**
 
     ---
 
-    Python and SQL style, the dbt style guide, naming, git workflow. The same rules a
-    production platform uses.
-
-    [:octicons-arrow-right-24: House rules](conventions/index.md)
-
--   :material-robot:{ .lg .middle } **AI agents**
-
-    ---
-
-    Working on this repo with coding agents: the instruction set in `AGENTS.md` plus
-    per-technology guides and standards.
-
-    [:octicons-arrow-right-24: Agent guide](ai-agents/index.md)
-
--   :material-shield-account:{ .lg .middle } **Administration**
-
-    ---
-
-    Bootstrap the Snowflake account, turn YAML into databases, schemas, roles and warehouses
-    with Terraform, and onboard people and service users.
-
-    [:octicons-arrow-right-24: Runbooks](administration/index.md)
-
--   :material-book-open-variant:{ .lg .middle } **Reference**
-
-    ---
-
-    Every `just` command, every environment variable, and a glossary of concept and tool
-    terms.
-
-    [:octicons-arrow-right-24: Look it up](reference/index.md)
+    Python, SQL and dbt conventions, naming, git workflow, every `just` command, every
+    environment variable, a glossary, and a page written for AI agents.
 
 </div>
-
-## The platform at a glance
-
-| Component | Role | Where |
-|-----------|------|-------|
-| [Dagster](https://docs.dagster.io/) | Orchestrates everything: one code location for dlt, one per dbt project | `src/orchestrator/locations/`, `workspace.yaml` |
-| [dlt](https://dlthub.com/docs) | Ingests sources into the source layer as `<source>__<entity>` tables | `dlt_pipelines/` |
-| [dbt](https://docs.getdbt.com/) | Transforms inside Snowflake through `_STG`, `_INT`, `_MRT`, `_EXP` | `dbt/` (`dbt_common` package + one project per Project) |
-| [Terraform](https://developer.hashicorp.com/terraform) | Provisions databases, schemas, roles and warehouses from YAML (administrators) | `terraform/` |
-| [Snowflake](https://docs.snowflake.com/) | One database per project and environment: `DB_<PROJECT>_<ENV>` | the account your administrator provisions |
-
-The starter ships one organisation (`example`), one team (`platform`) and one project
-(`example`) with the environments development and production. Terraform turns that into
-`DB_EXAMPLE_DEV` and `DB_EXAMPLE_PRD`, the roles `RL_EXAMPLE_<ENV>__ENG`, `__ANL`, `__ING` and
-`__TFM`, and the warehouses `WH_EXAMPLE_DEV` and `WH_EXAMPLE_PRD`.
-
-!!! tip "In a hurry?"
-    ```bash
-    git clone https://github.com/rootcube/data-mesh-template.git && cd data-mesh-template
-    just setup       # init, then one question: fresh account (bootstrap + provisioning) or provisioned (key pair)
-    just start       # Dagster UI on http://localhost:3000
-    ```
-
-    Step by step: [Snowflake Trial Account setup](administration/snowflake-trial-account-setup.md)
-    for a fresh account, [Getting started](getting-started/index.md) for a provisioned platform.

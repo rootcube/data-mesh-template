@@ -30,7 +30,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just sf setup --slot 2` | Register into `RSA_PUBLIC_KEY_2` (key rotation) |
 | `just sf setup --account <org>-<account> --user <login> --yes` | Skip the prompts and keep every default |
 | `just sf check` | Connect with the key pair and print your context plus the layer schemas |
-| `just sf query "SELECT 1"` | Run one statement (`--limit 50` rows by default) |
+| `just sf query "SELECT 1"` | Run one statement and print the rows; at most 50 of them unless you pass `--limit` |
 | `just sf keygen <name>` | Key pair only, no login (service users, the Terraform user), printed for `ALTER USER ... SET RSA_PUBLIC_KEY`; `--force` replaces an existing pair and keeps it as `.p8.bak` and `.pub.bak` (Snowflake still holds its public key until you register the new one), `--passphrase` encrypts the private key |
 
 ## Dagster
@@ -39,9 +39,9 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just start` | `dagster dev -w workspace.yaml` on <http://localhost:3000>, foreground; runs `just stop` first so a forgotten instance never doubles the daemon |
 | `just port=3001 start` | Same on another port |
-| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers), then anything else still listening on the port |
+| `just stop` | Stop the `dagster dev` instance on the Dagster port (webserver, daemon, code servers); another program on the port is reported, not killed |
 | `just dagster <args>` | The Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions` or `just dagster job list -m orchestrator.locations.dlt.definitions` |
-| `just validate` | Load every code location like `start` does, without the UI |
+| `just validate` | Load every code location like `start` does, without the UI, then check that the dlt and dbt asset keys still match |
 
 ## dlt
 
@@ -64,7 +64,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` (refused while the databases carry `prevent_destroy`; see [State and teardown](../administration/snowflake-provisioning.md#state-and-teardown)) |
+| `just tf <cmd> <args>` | Terraform in `terraform/`: `just tf init`, `just tf plan`, `just tf apply`, `just tf destroy` (refused while the databases carry `prevent_destroy`; see [State and teardown](../operate/snowflake-provisioning.md#state-and-teardown)) |
 | `just tf clean` | Remove every object this checkout's Terraform state tracks, databases and their data included. It lists them and asks you to type the account name, has Terraform destroy the rest, drops the databases as `TERRAFORM_USER` and removes them from the state last, then names what stays: the `init.sql` objects (`TERRAFORM_USER` with its system roles and key, `WH_PLATFORM_PROVISIONING`) and the account parameters, with the SQL to drop or unset them. `just tf apply` provisions everything again. A state that tracks nothing is reported as an error, not as success: the account may still be provisioned, and `just sf bootstrap --existing sync` adopts it |
 | `just tf output -json initial_passwords` | One-time passwords of persons Terraform created |
 | `just tf output -json user_role_grants` | Roles per login |
@@ -76,7 +76,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | Command | What it does |
 |---------|--------------|
 | `just docs` | Serve this site on <http://localhost:8000> |
-| `just docs build --strict` | Build `site/` and fail on broken links (what CI runs) |
+| `just docs build --strict` | Build `site/` and fail on a broken link or anchor. CI runs `scripts/check_doc_fences.py` first, as `just check` does |
 
 ## Quality
 
@@ -86,14 +86,13 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just lint` | ruff and sqlfluff, no changes |
 | `just typecheck` | ty |
 | `just test` | pytest (offline) |
-| `just check` | lint + typecheck + test, then `dbt parse` in every project with the dummy target, Dagster definitions validate and the Terraform config validation |
+| `just check` | lint + typecheck + test, then `dbt parse` in every project with the dummy target (on both parsers), `just validate`, the Terraform config validation, the docs fence check and `just docs build --strict` |
 | `just pre-commit` | Run all pre-commit hooks on all files |
 | `just pre-commit-install` | Install the git hook |
 
-`just check` mirrors the CI workflow (`.github/workflows/ci.yml`): the jobs there are Python
-(ruff, ty, pytest), dbt parse + Dagster definitions, Terraform fmt + validate + config
-validation, the docs build, and the fresh-machine setup (`just init` through `just start`) on
-Linux, macOS and Windows.
+`just check` is everything CI runs apart from the Terraform CLI steps and the fresh-machine
+`setup` matrix. The hooks and jobs one by one:
+[What runs when](git-workflow.md#what-runs-when).
 
 ## Variables
 

@@ -9,16 +9,16 @@ repository works; this page is the short version with links.
 - Open an issue for anything larger than a small fix, so the approach can be discussed first. The
   [bug report](.github/ISSUE_TEMPLATE/bug_report.yml) and
   [feature request](.github/ISSUE_TEMPLATE/feature_request.yml) forms ask for what a report needs.
-- Run the project once: [Getting started](docs/getting-started/index.md). A free Snowflake trial
-  is enough, see [Snowflake Trial Account setup](docs/administration/snowflake-trial-account-setup.md).
+- Run the project once: [Start](docs/start/index.md). A free Snowflake trial
+  is enough, see [Snowflake trial account](docs/operate/snowflake-trial-account-setup.md).
 
 ## Making a change
 
 1. Branch from `main`, named `<type>/<short-topic>` (`feat/knmi-daily-aggregate`,
    `fix/knmi-hour-24-rollover`).
-2. Follow the conventions: [Python style](docs/conventions/python-style.md),
-   [SQL style](docs/conventions/sql-style.md), the [dbt style guide](docs/conventions/dbt-style-guide.md)
-   and [Naming](docs/conventions/naming.md). The guides under `docs/development/` show how to add a
+2. Follow the conventions: [Python style](docs/reference/python-style.md),
+   [SQL style](docs/reference/sql-style.md), the [dbt style guide](docs/reference/dbt-style-guide.md)
+   and [Naming](docs/reference/naming.md). The guides under `docs/build/` show how to add a
    dlt load, a dbt model or a project.
 3. Run the checks before you push. They are the same ones CI runs:
 
@@ -30,14 +30,14 @@ repository works; this page is the short version with links.
 
     `just pre-commit-install` makes git run them on every commit.
 
-4. Write [conventional commits](docs/conventions/git-workflow.md#commit-messages): `feat:`,
+4. Write [conventional commits](docs/reference/git-workflow.md#commit-messages): `feat:`,
    `fix:`, `docs:`, `chore:`, ... release-please turns them into the changelog and the version,
    so never bump the version by hand.
 5. Open a pull request against `main`, one topic per pull request, and fill in the
    [template](.github/pull_request_template.md) it starts you with. Give it a conventional commit
    title: `main` squashes, so the title is the commit that lands. CI must be green and every
    review thread resolved before it can be merged; see
-   [Git workflow](docs/conventions/git-workflow.md).
+   [Git workflow](docs/reference/git-workflow.md).
 
 ## What to keep in mind
 

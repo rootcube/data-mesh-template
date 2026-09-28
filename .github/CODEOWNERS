@@ -1,6 +1,6 @@
 # CODEOWNERS: who reviews what. GitHub requests these reviewers on every pull request that
 # touches a matching path. Their approval is required only once the `main` ruleset says so
-# (`require_code_owner_review` in .github/rulesets/main.json); see docs/conventions/git-workflow.md.
+# (`require_code_owner_review` in .github/rulesets/main.json); see docs/reference/git-workflow.md.
 # Later rules override earlier ones. Teams are @<org>/<team> and need write access to the
 # repository; a copy of this starter renames them to its own.
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners

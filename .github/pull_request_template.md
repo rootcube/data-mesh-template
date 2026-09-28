@@ -4,7 +4,7 @@
 
 ## Checklist
 
-- [ ] The title is a [conventional commit](https://github.com/rootcube/data-mesh-template/blob/main/docs/conventions/git-workflow.md#commit-messages)
+- [ ] The title is a [conventional commit](https://github.com/rootcube/data-mesh-template/blob/main/docs/reference/git-workflow.md#commit-messages)
       subject
       (`feat:`, `fix:`, `docs:`, `chore:`, ...). `main` squashes, so the title is the commit that
       lands and the line release-please puts in the changelog.
