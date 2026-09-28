@@ -22,12 +22,10 @@
 
 SELECT
   day
-, CAST(DATEADD('day', DAY, '1900-01-01') AS DATE)     AS date
-, CAST(DATEADD('day', DAY, '1900-01-01') AS DATETIME) AS date_time
+, CAST({{ dbt.dateadd('day', 'day', "CAST('1900-01-01' AS DATE)") }} AS DATE)     AS date
+, CAST({{ dbt.dateadd('day', 'day', "CAST('1900-01-01' AS DATE)") }} AS DATETIME) AS date_time
 
--- One row per day from {{ first_date }} to {{ last_date }}: the generator is sized to the window,
--- so nothing needs filtering. ROW_NUMBER over SEQ4 because SEQ4 alone may skip values. `day` is
--- the offset from 1900-01-01 (uppercase DAY because sqlfluff reads the second DATEADD argument
--- as a date part).
+-- One row per day from {{ first_date }} to {{ last_date }}: the integer series is sized to the
+-- window, so nothing needs filtering. `day` is the offset from 1900-01-01.
 FROM
-  (SELECT ROW_NUMBER() OVER (ORDER BY SEQ4()) - 1 + {{ first_day }} AS day FROM TABLE(GENERATOR(ROWCOUNT => {{ day_count }})))
+  (SELECT n + {{ first_day }} AS day FROM {{ dbt_common.integer_series(day_count) }})

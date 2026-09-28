@@ -1,4 +1,4 @@
-"""dlt pipeline: KNMI hourly weather observations -> Snowflake source layer (knmi__climate_hourly).
+"""dlt pipeline: KNMI hourly weather observations -> the source layer (knmi__climate_hourly).
 
 Every source lands in the project's source layer (`_SRC`, or your personal `<PREFIX>_SRC` in dev)
 as `<source>__<entity>`. `merge` with a primary key keeps the table free of duplicates when the
@@ -10,7 +10,7 @@ from collections.abc import Iterator
 import dlt
 
 from dlt_pipelines.pipelines.ingest.knmi.source import fetch_hourly_observations
-from dlt_pipelines.utils.destination import pipeline_name, snowflake_destination, source_dataset
+from dlt_pipelines.utils.destination import destination, pipeline_name, source_dataset
 
 SOURCE = "knmi"
 ENTITY = "climate_hourly"
@@ -41,6 +41,6 @@ source = knmi_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=pipeline_name(SOURCE),
-    destination=snowflake_destination(SOURCE),
+    destination=destination(SOURCE),
     dataset_name=source_dataset(),
 )

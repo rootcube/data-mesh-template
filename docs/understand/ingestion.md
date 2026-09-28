@@ -71,7 +71,7 @@ source = knmi_source()
 
 pipeline = dlt.pipeline(
     pipeline_name=pipeline_name(SOURCE),
-    destination=snowflake_destination(SOURCE),
+    destination=destination(SOURCE),
     dataset_name=source_dataset(),
 )
 ```
@@ -119,7 +119,8 @@ That maps to `pipeline.run(source, refresh="drop_sources")` in `dlt_pipelines/__
 
 ## The destination and the dataset
 
-Every pipeline gets its destination and its dataset from two functions:
+Every pipeline gets its destination and its dataset from two functions. `destination()` returns
+Snowflake, or the DuckDB file of the `local` environment when `SnowflakeSettings.is_local`:
 
 ```python title="dlt_pipelines/utils/destination.py"
 --8<-- "dlt_pipelines/utils/destination.py"
@@ -128,10 +129,11 @@ Every pipeline gets its destination and its dataset from two functions:
 `SnowflakeSettings.from_env()` reads the `SNOWFLAKE_*` variables and `ENVIRONMENT` from `.env`,
 `dlt_credentials()` translates them into what dlt's Snowflake destination expects, and
 `schema_for_layer("src")` applies the platform's schema rule: the shared `_SRC`, or your
-personal source schema in `dev` ([Environment variables](../reference/environment-variables.md)).
-Credentials are only validated when a pipeline runs, so importing the pipelines, which Dagster
-does on every code-location load, works without a `.env`; unset variables are logged as a
-warning while the destination is built, because dlt's own error would name its field names
+personal source schema in `dev` and `local`
+([Environment variables](../reference/environment-variables.md)). Credentials are only validated
+when a Snowflake pipeline runs, so importing the pipelines, which Dagster does on every
+code-location load, works without a `.env`; unset variables are logged as a warning while the
+destination is built, because dlt's own error would name its field names
 (`DESTINATION__SNOWFLAKE__CREDENTIALS__DATABASE`) rather than the platform's. The values are
 read at import, so a change in `.env` only reaches a running UI after `just stop` and
 `just start`.

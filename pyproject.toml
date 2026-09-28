@@ -43,6 +43,9 @@ dev = [
     "ty>=0.0.1",
     "jsonschema>=4.20",
     "dbt-duckdb>=1.9",
+    # The holiday Python model runs in this venv on the local target (Snowpark installs its own).
+    "pandas>=3.0",
+    "holidays>=0.105",
 ]
 # Documentation site: `just docs` runs Zensical with this group (it reads mkdocs.yml as is).
 docs = [

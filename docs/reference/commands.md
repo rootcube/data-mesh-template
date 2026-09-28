@@ -12,8 +12,8 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup`, an account provisioned from another checkout runs `just sf bootstrap --existing ask --account-settings skip`. It asks again for any answer that is not 1, 2 or 3 |
-| `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/` and `.dlt/data/`, `dbt deps` and `dbt parse` in every project |
+| `just setup` | `just init`, then one question: fresh account runs `just sf bootstrap` (installing Terraform first if missing), provisioned account runs `just sf setup`, an account provisioned from another checkout runs `just sf bootstrap --existing ask --account-settings skip`, local only (no Snowflake) runs `just sf local`. It asks again for any answer that is not 1, 2, 3 or 4 |
+| `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/`, `.dlt/data/` and `.duckdb/data/`, `dbt deps` and `dbt parse` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next, the local state folders and the installed packages of every dbt project, and one line per key `.env.example` sets that your `.env` misses (or the other way round) |
 | `just reset-local` | Delete the git-ignored local state (`.dagster/` except `dagster.yaml`, `.dlt/data/`, `src/orchestrator/defs/.local_defs_state/`, `dbt/*/target/`, `dbt/*/logs/`, `logs/`, `.cache/`), recreate `.dagster/` and `.dlt/data/`, then `dbt deps` and `dbt parse` in every project. Stop `just start` first |
 | `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `direnv`, or `all` (the default); `gh` is available too but optional, nothing in the repo needs it |
@@ -32,6 +32,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just sf check` | Connect with the key pair and print your context plus the layer schemas |
 | `just sf query "SELECT 1"` | Run one statement and print the rows; at most 50 of them unless you pass `--limit` |
 | `just sf keygen <name>` | Key pair only, no login (service users, the Terraform user), printed for `ALTER USER ... SET RSA_PUBLIC_KEY`; `--force` replaces an existing pair and keeps it as `.p8.bak` and `.pub.bak` (Snowflake still holds its public key until you register the new one), `--passphrase` encrypts the private key |
+| `just sf local` | No Snowflake account at all: writes `ENVIRONMENT=local` to `.env`, nothing else. dlt and dbt then build against the DuckDB file `DUCKDB_PATH` points at. Same as `just setup` option 4 |
 
 ## Dagster
 
@@ -57,7 +58,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 |---------|--------------|
 | `just dbt <args>` | dbt in `dbt/dbt_example`, e.g. `just dbt build`, `just dbt parse`, `just dbt source freshness` |
 | `just project=dbt_x dbt <args>` | Same, in another project under `dbt/` |
-| `just dbt-all <args>` | One dbt command in every project, e.g. `just dbt-all deps`, `just dbt-all parse --target dummy` |
+| `just dbt-all <args>` | One dbt command in every project, e.g. `just dbt-all deps`, `just dbt-all parse --target local` |
 | `just sqlfluff <args>` | sqlfluff from the project directory, e.g. `just sqlfluff lint models` |
 
 ## Terraform (platform administrators)
@@ -86,7 +87,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just lint` | ruff and sqlfluff, no changes |
 | `just typecheck` | ty |
 | `just test` | pytest (offline) |
-| `just check` | lint + typecheck + test, then `dbt parse` in every project with the dummy target (on both parsers), `just validate`, the Terraform config validation, the docs fence check and `just docs build --strict` |
+| `just check` | lint + typecheck + test, then `dbt parse` in every project with the local target (on both parsers), `just validate`, the Terraform config validation, the docs fence check and `just docs build --strict` |
 | `just pre-commit` | Run all pre-commit hooks on all files |
 | `just pre-commit-install` | Install the git hook |
 

@@ -13,7 +13,10 @@ def model(dbt: Any, _session: Any) -> pd.DataFrame:
     country = dbt.config.meta_get("holiday_country", "NL")
     country_holidays = holidays.country_holidays(country)
 
-    df = dbt.ref("int__common__date").select("DATE").to_pandas()
+    # Snowpark hands out a Snowpark DataFrame, the local DuckDB target a DuckDB relation.
+    dates = dbt.ref("int__common__date")
+    df = dates.select("DATE").to_pandas() if hasattr(dates, "to_pandas") else dates.select("date").df()
+    df.columns = ["DATE"]
     df["DATE"] = pd.to_datetime(df["DATE"])
 
     # The holiday name per date, None when the date is not a holiday

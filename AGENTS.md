@@ -91,7 +91,7 @@ src/orchestrator/                 # Dagster package
 ├── resources/snowflake.py        #   SnowflakeSettings.from_env(): the only reader of SNOWFLAKE_* and ENVIRONMENT
 └── utils/dotenv.py               #   .env editing used by scripts/snowflake.py
 dlt_pipelines/                    # dlt package: pipelines/ingest/<source>/{constants,source,pipelines}.py + defs.yaml
-dbt/                              # profiles.yml (shared profile `default`: dev, tst, acc, prd = Snowflake key pair, dummy = in-memory DuckDB)
+dbt/                              # profiles.yml (shared profile `default`: local = DuckDB file (in memory without DUCKDB_PATH), dev, tst, acc, prd = Snowflake key pair)
 ├── .sqlfluff                     #   shared lint config (run sqlfluff from inside a project)
 ├── dbt_common/                   #   package: macros (schema naming, query tag, run logging, metadata upload), generic dims/seeds, generic tests
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/, packages.yml (local dbt_common)
@@ -156,10 +156,10 @@ Full rules: [Reference](docs/reference/index.md). The hard musts:
 
 ## Common pitfalls
 
-- **`dbt deps` and `dbt parse` first.** The Dagster dbt locations read `target/manifest.json`; only `dagster dev` re-parses on load. `just dbt-all deps`, then `just dbt-all parse --target dummy` (`just init` and `just check` do both).
+- **`dbt deps` and `dbt parse` first.** The Dagster dbt locations read `target/manifest.json`; only `dagster dev` re-parses on load. `just dbt-all deps`, then `just dbt-all parse --target local` (`just init` and `just check` do both).
 - **Every dbt model needs its `_conf/<model>.yml`** with column descriptions, `data_type` and named tests.
 - **Do not reference across layers.** STG cannot ref INT, MRT cannot ref EXP.
 - **Two builders of `dbt_common`.** Every project that builds the `dbt_common` models writes the same tables into the one database `.env` points at. Only one project builds them; others disable `dbt_common` models.
 - **Source YAML cannot call macros.** The source layer schema is spelled out from `target` in `sources/*.yml` (`DBT_SRC` when the prefix is blank); keep it in step with `dbt_common.generate_schema_name`.
-- **Schedules and sensors are stopped in `dev` and `dummy`** (`SnowflakeSettings.is_personal`), running elsewhere. Do not change that default; switch them on in the UI to test.
+- **Schedules and sensors are stopped in `dev` and `local`** (`SnowflakeSettings.is_personal`), running elsewhere. Do not change that default; switch them on in the UI to test.
 - **Quoting in `.env`.** `just` and python-dotenv strip single quotes and read the value inside literally, so values with special characters go in single quotes; Docker `--env-file` keeps the quotes as part of the value.

@@ -1,7 +1,8 @@
-"""The Snowflake destination and dataset every ingest pipeline loads into."""
+"""The destination and dataset every ingest pipeline loads into: Snowflake, or the local DuckDB file."""
 
 import logging
 
+import dlt
 from dlt.common.destination import Destination
 
 from dlt_pipelines.utils.snowflake_stage import snowflake_named_folders
@@ -17,6 +18,31 @@ STAGE = "ST_DEFAULT"
 def pipeline_name(source: str) -> str:
     """`ingest_<source>`: the dlt pipeline of a source (its state under `.dlt/data/pipelines/`, its stage folders)."""
     return f"ingest_{source}"
+
+
+def destination(source: str) -> Destination:
+    """The destination of one source: the DuckDB file of the `local` environment, Snowflake everywhere else."""
+    settings = SnowflakeSettings.from_env()
+    if settings.is_local:
+        return duckdb_destination(settings)
+    return snowflake_destination(source)
+
+
+def duckdb_destination(settings: SnowflakeSettings) -> Destination:
+    """dlt's DuckDB destination on the file of the `local` environment (DUCKDB_PATH, set by the justfile and .envrc).
+
+    Without the path dlt would quietly write `<pipeline>.duckdb` into the working directory, so this
+    fails at import instead; the Snowflake branch below only warns, because a run without
+    credentials fails on its own.
+    """
+    if not settings.duckdb_path:
+        raise ValueError(
+            "ENVIRONMENT=local needs DUCKDB_PATH (the justfile and .envrc set it): run through `just` or direnv."
+        )
+    # dlt's default staging schema (`<dataset>_staging`) rather than the `_TMP` layer the Snowflake
+    # branch uses: nothing needs provisioning in a DuckDB file, and dbt creates `<PREFIX>_TMP` in
+    # uppercase for its test failures, which dlt's lowercase lookup then misses and fails to create.
+    return dlt.destinations.duckdb(credentials=settings.duckdb_path)
 
 
 def snowflake_destination(source: str) -> Destination:
@@ -61,7 +87,7 @@ def load_stage(settings: SnowflakeSettings, source: str) -> str:
 
 
 def source_dataset() -> str:
-    """The source-layer schema: `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (provisioned by Terraform).
+    """The source-layer schema: `_SRC`, or `<SNOWFLAKE_SCHEMA>_SRC` in dev (provisioned by Terraform) and local.
 
     Lowercase because dlt normalizes dataset names that way and warns otherwise; Snowflake resolves
     the unquoted identifier to the same `_SRC` / `<PREFIX>_SRC` schema dbt reads from.

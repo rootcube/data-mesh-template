@@ -26,15 +26,15 @@ models:
 
       - name: latitude
         description: Latitude in decimal degrees north.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: longitude
         description: Longitude in decimal degrees east.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: observed_at
         description: End of the observation hour (timestamp, no timezone).
-        data_type: timestamp_ntz
+        data_type: timestamp
 
       - name: measurement_type_code
         description: KNMI variable code (T, FH, RH, Q, U).
@@ -50,4 +50,4 @@ models:
 
       - name: measurement_value
         description: The measured value, in the unit of its measurement type.
-        data_type: number(10,2)
+        data_type: numeric(10,2)

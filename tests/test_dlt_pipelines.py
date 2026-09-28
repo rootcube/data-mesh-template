@@ -16,7 +16,7 @@ from dlt.common.schema import Schema
 from dlt.destinations.impl.snowflake.configuration import SnowflakeClientConfiguration
 from dlt.load.configuration import LoaderConfiguration
 
-from dlt_pipelines.utils.destination import load_stage, pipeline_name, snowflake_destination
+from dlt_pipelines.utils.destination import destination, load_stage, pipeline_name, snowflake_destination
 from dlt_pipelines.utils.snowflake_stage import NamedFolderClient, NamedFolderLoadJob, snowflake_named_folders
 from orchestrator.resources.snowflake import APPLICATION, SnowflakeSettings
 
@@ -114,6 +114,26 @@ def test_merge_staging_tables_go_to_the_temporary_layer(monkeypatch: pytest.Monk
     assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "dbt_username_tmp"
     monkeypatch.setenv("ENVIRONMENT", "prd")
     assert snowflake_destination("knmi").config_params["staging_dataset_name_layout"] == "_tmp"
+
+
+def test_the_local_environment_loads_into_the_duckdb_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "local")
+    monkeypatch.setenv("DUCKDB_PATH", "/repo/.duckdb/data/local.duckdb")
+    monkeypatch.delenv("SNOWFLAKE_SCHEMA", raising=False)
+    local = destination("knmi")
+    assert local.destination_type == dlt.destinations.duckdb().destination_type
+    assert local.config_params["credentials"] == "/repo/.duckdb/data/local.duckdb"
+    # dlt's default staging schema: the uppercase `<PREFIX>_TMP` dbt creates would collide with it.
+    assert "staging_dataset_name_layout" not in local.config_params
+    monkeypatch.setenv("ENVIRONMENT", "dev")
+    assert destination("knmi").destination_name == "snowflake"
+
+
+def test_the_local_environment_refuses_to_run_without_the_duckdb_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "local")
+    monkeypatch.delenv("DUCKDB_PATH", raising=False)
+    with pytest.raises(ValueError, match="DUCKDB_PATH"):
+        destination("knmi")
 
 
 def test_merge_staging_tables_are_emptied_after_each_load() -> None:

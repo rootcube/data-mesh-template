@@ -23,22 +23,22 @@ models:
 
       - name: observed_at
         description: End of the observation hour (timestamp, no timezone).
-        data_type: timestamp_ntz
+        data_type: timestamp
         data_tests:
           - not_null:
               name: stg__knmi__climate_hourly__observed_at__not_null
 
       - name: temperature_celsius
         description: Air temperature at 1.50 m.
-        data_type: number
+        data_type: numeric
 
       - name: wind_speed_ms
         description: Hourly mean wind speed in m/s.
-        data_type: number
+        data_type: numeric
 
       - name: precipitation_mm
         description: Hourly precipitation in mm.
-        data_type: number
+        data_type: numeric
         data_tests:
           - dbt_common.not_negative:
               name: stg__knmi__climate_hourly__precipitation_mm__not_negative

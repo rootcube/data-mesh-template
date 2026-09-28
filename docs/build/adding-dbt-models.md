@@ -179,8 +179,8 @@ just sqlfluff lint models
 just fmt
 ```
 
-sqlfluff uses the dbt templater with the `dummy` target (see `dbt/.sqlfluff`, shared by every
-project), so it renders `ref()` and `source()` without a connection.
+sqlfluff uses the dbt templater with the `local` target (see `dbt/.sqlfluff`, shared by every
+project), so it renders `ref()` and `source()` against the local DuckDB file, no Snowflake needed.
 
 ## From INT to a mart
 
@@ -212,7 +212,7 @@ that selection.
 
 `just validate` does not parse dbt. It reads the manifest the last `dbt parse` wrote, which
 `just init` and `just check` run for you; after editing models outside those, run
-`just dbt-all parse --target dummy` first.
+`just dbt-all parse --target local` first.
 
 ## Before you hand it over
 

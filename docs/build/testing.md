@@ -60,10 +60,9 @@ A model needs at least a uniqueness test on its grain, `not_null` on its keys an
 every test is named. Which generics you can call, and how to declare them:
 [Adding a dbt model](adding-dbt-models.md).
 
-`dbt parse --target dummy` is the no-connection check: it validates project config, YAML and
-`ref()`/`source()` wiring without touching Snowflake (the `dummy` target is an in-memory
-DuckDB). It does not run tests or compile SQL against real objects, so a passing parse is
-necessary, not sufficient.
+`dbt parse --target local` is the no-Snowflake check: it validates project config, YAML and
+`ref()`/`source()` wiring against the local DuckDB file, not against Snowflake. It does not run
+tests or build models against real objects, so a passing parse is necessary, not sufficient.
 
 ## `just validate`
 
@@ -74,7 +73,7 @@ just validate    # dagster definitions validate -w workspace.yaml, then scripts/
 Loads every code location in `workspace.yaml`, each in its own subprocess, catching import errors,
 a broken `defs.yaml`, translator and selection errors, and missing dbt packages. The dbt locations
 read the manifest the last `dbt parse` wrote (`just init` and `just check` run it; only
-`dagster dev` re-parses on load), so after editing models run `just dbt-all parse --target dummy`
+`dagster dev` re-parses on load), so after editing models run `just dbt-all parse --target local`
 before you trust the result. Run `just validate` after any change to `src/`, `dlt_pipelines/`,
 `dbt/` or `workspace.yaml`: if it fails, `just start` fails the same way.
 
@@ -103,7 +102,7 @@ just check
 2. `just typecheck`: `ty check` over `src/`, `dlt_pipelines/`, `scripts/`, `tests/` and
    `terraform/config/_validation/`
 3. `just test`: pytest
-4. `dbt parse --target dummy` in every project (`scripts/dbt_all.py`), as is and again with
+4. `dbt parse --target local` in every project (`scripts/dbt_all.py`), as is and again with
    `--use-v2-parser`, so the projects stay ready for dbt v2
 5. `just validate`: `dagster definitions validate -w workspace.yaml` and the asset key contract
    (`scripts/check_asset_keys.py`)
@@ -125,7 +124,7 @@ The hooks in `.pre-commit-config.yaml`:
 | `trailing-whitespace`, `end-of-file-fixer`, `check-yaml --unsafe`, `check-added-large-files`, `check-merge-conflict`, `detect-private-key` | pre-commit-hooks | all files |
 | `ruff-format`, `ruff-check --fix` | ruff | `*.py` |
 | `ty-check` | `ty check` (whole project) | any `*.py` change |
-| `dbt-parse` | `dbt parse --target dummy` in every project | `dbt/**/*.sql`, `.yml`, `.yaml`, `.csv`, `.py` |
+| `dbt-parse` | `dbt parse --target local` in every project | `dbt/**/*.sql`, `.yml`, `.yaml`, `.csv`, `.py` |
 | `dbt-parse-v2` | the same parse with `--use-v2-parser`, so the projects stay ready for dbt v2 | same files |
 | `sqlfluff-lint`, one hook per project | `sqlfluff lint models` in that project; lint only, so run `just fmt` first | that project's `models/**/*.sql` |
 | `dagster-validate` | `just validate` (definitions plus the asset key contract) | `src/**` and `dlt_pipelines/**` `.py`/`.yaml`, and the `sources/` YAML of every dbt project |
@@ -145,7 +144,7 @@ carries templates; `detect-private-key` keeps a `.p8` out of the repo, they live
 - **`dbt parse` needs the packages.** Without `just dbt-all deps` the dbt and Dagster hooks fail
   before your change is even looked at.
 - **`just pre-commit` runs with `.env` loaded**, so the dbt hooks use whatever `DBT_TARGET` says.
-  CI has no `.env` and sets `DBT_TARGET=dummy` explicitly.
+  CI has no `.env` and sets `DBT_TARGET=local` explicitly.
 
 !!! danger "Never bypass the hooks"
     `git commit --no-verify` is off-limits. Fix the issue; CI runs the same checks and fails
@@ -160,7 +159,7 @@ job that lists what the change touches, then six check jobs in parallel:
 |-----|-------|
 | Hygiene hooks | `uv sync --locked`, then `pre-commit run --all-files` for `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-added-large-files`, `check-merge-conflict` and `detect-private-key` |
 | Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
-| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target dummy`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in every project under `dbt/`, `dagster definitions validate -w workspace.yaml` and `check_asset_keys.py`, both with `DBT_TARGET=dummy` |
+| dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target local`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in every project under `dbt/`, `dagster definitions validate -w workspace.yaml` and `check_asset_keys.py`, all against the local DuckDB file (`DBT_TARGET=local`, `DUCKDB_PATH`) |
 | Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
 | Docs | `uv sync --locked --group docs`, `check_doc_fences.py`, `zensical build --strict` |
 | Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
@@ -184,7 +183,7 @@ ruleset yet; add its `Hygiene hooks` context to `.github/rulesets/main.json` to 
 Every job but `Setup` installs with `uv sync --locked`, so a stale `uv.lock` fails CI: after
 changing dependencies, run `uv lock` and commit `uv.lock`. `Setup` installs the way an engineer
 does, through `just init`. CI holds no Snowflake credentials at all, and everything it runs works
-with the `dummy` target and an empty `DAGSTER_HOME`. That constraint is why the `dummy` target
+with the `local` target and an empty `DAGSTER_HOME`. That constraint is why the `local` target
 exists and why dlt and the Dagster resource check credentials lazily.
 
 ## What runs when
@@ -195,7 +194,7 @@ exists and why dlt and the Dagster resource check credentials lazily.
 | ruff, ty | `just lint`, `just typecheck` | yes | yes |
 | pytest | `just test` | no | yes |
 | sqlfluff | `just lint` | yes (every project under `dbt/`) | yes |
-| dbt parse (dummy) | `just dbt-all parse --target dummy` | yes | yes |
+| dbt parse (local) | `just dbt-all parse --target local` | yes | yes |
 | Dagster definitions | `just validate` | yes | yes |
 | dlt/dbt asset keys | `just validate` | yes, in the same hook (so not on a `dbt/` edit) | yes |
 | Terraform YAML | `just tf-validate-config` | yes | yes |

@@ -265,7 +265,7 @@ a role in. `just sf check` confirms the context and prints the layer schemas.
 Then:
 
 ```bash
-just project=dbt_energy dbt parse --target dummy   # no connection, catches config mistakes
+just project=dbt_energy dbt parse --target local   # DuckDB, no Snowflake, catches config mistakes
 just project=dbt_energy dbt build                  # your personal schemas in DB_ENERGY_DEV
 just validate                                      # every location loads, the new one included
 just start                                         # one more location in the UI

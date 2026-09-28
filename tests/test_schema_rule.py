@@ -22,8 +22,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MACRO_FILE = REPO_ROOT / "dbt" / "dbt_common" / "macros" / "generate_schema_name.sql"
 SOURCE_FILE = REPO_ROOT / "dbt" / "dbt_example" / "sources" / "src_knmi.yml"
 
-# The dbt target names, which follow ENVIRONMENT (dbt/profiles.yml); dev and dummy are the personal ones.
-ENVIRONMENTS = ["dev", "dummy", "tst", "prd"]
+# The dbt target names, which follow ENVIRONMENT (dbt/profiles.yml); dev and local are the personal ones.
+ENVIRONMENTS = ["dev", "local", "tst", "prd"]
 # SNOWFLAKE_SCHEMA, blank and set: in dev it is the personal prefix, elsewhere it is ignored.
 PREFIXES = ["", "DBT_USERNAME"]
 # Every layer code the projects use (dbt_project.yml `+schema:`, plus src and mtd).
@@ -70,6 +70,6 @@ def test_source_yaml_resolves_the_source_layer_like_schema_for_layer(environment
 @pytest.mark.parametrize("environment", ENVIRONMENTS)
 def test_a_model_without_a_layer_stays_out_of_the_shared_layer_schemas(environment: str) -> None:
     # No `+schema:`, so the rule has no Python counterpart: the macro's own documented fallback.
-    personal = environment in ("dev", "dummy")
+    personal = environment in ("dev", "local")
     assert render_macro(None, environment, "") == ("DBT" if personal else "_TMP")
     assert render_macro(None, environment, "DBT_USERNAME") == "DBT_USERNAME"

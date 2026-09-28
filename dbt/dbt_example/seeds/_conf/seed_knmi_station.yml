@@ -12,9 +12,9 @@ seeds:
       column_types:
         station_code: integer
         station_name: varchar(50)
-        longitude: number(6,3)
-        latitude: number(6,3)
-        elevation_m: number(6,2)
+        longitude: numeric(6,3)
+        latitude: numeric(6,3)
+        elevation_m: numeric(6,2)
 
     columns:
       - name: station_code
@@ -41,12 +41,12 @@ seeds:
 
       - name: longitude
         description: Longitude in decimal degrees east.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: latitude
         description: Latitude in decimal degrees north.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: elevation_m
         description: Elevation of the station in metres above sea level.
-        data_type: number(6,2)
+        data_type: numeric(6,2)

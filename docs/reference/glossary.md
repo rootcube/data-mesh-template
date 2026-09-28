@@ -71,11 +71,10 @@ Dispatch (dbt) { #dispatch }
     project's `dbt_project.yml` makes `dbt_common`'s `generate_schema_name` and `set_query_tag`
     win over dbt's defaults.
 
-Dummy target (dbt) { #dummy-target }
-:   The `dummy` output in `dbt/profiles.yml`: an in-memory DuckDB, so dbt parses and compiles and
-    sqlfluff lints without Snowflake credentials. Used by `just check`, the pre-commit hooks and
-    CI (`DBT_TARGET=dummy`). It counts as a personal environment for schema naming, and every
-    hook that talks to Snowflake skips it.
+`DUCKDB_PATH` { #duckdb-path }
+:   The file behind the `local` dbt target and the local dlt destination:
+    `.duckdb/data/local.duckdb`, exported by the justfile and `.envrc`. Not in `.env`. See
+    [Local target](#local-target).
 
 Engineer { #engineer }
 :   One of the two personas. Works in the repository (dlt loads, dbt models, Python assets,
@@ -84,7 +83,8 @@ Engineer { #engineer }
 Environment { #environment }
 :   A stage a project exists in: `terraform/config/environments/<key>.yaml` with a short `code`
     (`dev`, `tst`, `acc`, `prd`, `sbx`). `ENVIRONMENT` in `.env` selects the one a checkout runs
-    as. See [Environment](../understand/environment.md).
+    as, or `local` (no Terraform environment, no Snowflake connection at all, see
+    [Local target](#local-target)). See [Environment](../understand/environment.md).
 
 Full refresh (dlt) { #full-refresh }
 :   `just dlt run <source> --full-refresh`: drop the source's tables and state in the
@@ -137,6 +137,13 @@ Load package, `_dlt_load_id` (dlt) { #load-package }
 :   One run of a pipeline produces one load package; its id is written to every row as
     `_dlt_load_id`, next to the row id `_dlt_id`.
 
+Local target (dbt) { #local-target }
+:   The `local` output in `dbt/profiles.yml`: a DuckDB file at `DUCKDB_PATH`
+    (`.duckdb/data/local.duckdb`), so dbt builds, tests, parses, compiles and sqlfluff lints
+    without Snowflake credentials. Used by `ENVIRONMENT=local` checkouts and by `just check`,
+    the pre-commit hooks and CI (`DBT_TARGET=local`). It counts as a personal environment for
+    schema naming, and every hook that talks to Snowflake skips it.
+
 Manifest (dbt) { #manifest }
 :   `target/manifest.json`, the parsed graph of a project, whose nodes a dbt code location turns
     into assets. `dagster dev` refreshes it with `dbt parse --quiet` on every load; every other
@@ -180,9 +187,9 @@ Primary key (dlt) { #primary-key }
     `station_code, date, hour`.
 
 Profile, target (dbt) { #profile-target }
-:   `dbt/profiles.yml` holds one profile, `default`, with the targets `dev`, `tst`, `acc`, `prd`
-    (Snowflake, key pair from `.env`) and `dummy` (DuckDB, never connects). The target follows
-    `ENVIRONMENT` unless `DBT_TARGET` overrides it; `DBT_PROFILES_DIR` points at `dbt/`.
+:   `dbt/profiles.yml` holds one profile, `default`, with the targets `local` (a DuckDB file, no
+    Snowflake) and `dev`, `tst`, `acc`, `prd` (Snowflake, key pair from `.env`). The target
+    follows `ENVIRONMENT` unless `DBT_TARGET` overrides it; `DBT_PROFILES_DIR` points at `dbt/`.
 
 Project { #project }
 :   A long-lived ownership boundary in the mesh, owned by one team: one dbt project, one Dagster

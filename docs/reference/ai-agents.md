@@ -59,8 +59,9 @@ so skipping a step only postpones the failure.
 
 `just dbt build`, `just dlt run` and every `just sf` recipe reach Snowflake and need a filled
 `.env` that only a human can create ([Snowflake authentication](../start/snowflake-auth.md)).
-Without one, uncomment `DBT_TARGET=dummy` in `.env` so dbt parses against the in-memory DuckDB,
-exactly as CI does.
+Without one, set `ENVIRONMENT=local` in `.env` (or run with `DBT_TARGET=local`): dlt and dbt then
+build against the local DuckDB file, exactly as CI does for `dbt parse`. See
+[Local only, no Snowflake](../start/installation.md#local-only-no-snowflake).
 
 ## On the administrator side
 
@@ -82,12 +83,12 @@ The mistakes that actually happen here. Check failures with a mundane cause are 
 
 | Pitfall | What to do |
 |---|---|
-| The dbt code locations read `target/manifest.json`, and only `dagster dev` re-parses on load | `just dbt-all deps`, then `just dbt-all parse --target dummy`; `just init` and `just check` do both |
+| The dbt code locations read `target/manifest.json`, and only `dagster dev` re-parses on load | `just dbt-all deps`, then `just dbt-all parse --target local`; `just init` and `just check` do both |
 | A model that references two layers down, or up | Only the layer directly below, see [Layer reference rules](dbt-style-guide.md#layer-reference-rules) |
 | A model without its `_conf/<model>.yml`, or with the YAML next to the SQL | [What every model needs](dbt-style-guide.md#every-model-needs) |
 | A second project building the `dbt_common` models, writing the same tables twice | Exactly one project builds them, see [dbt_common](dbt-style-guide.md#dbt_common) |
 | A model without a `+schema`, which lands in an unprovisioned schema | [How the values become schema names](environment-variables.md#how-the-values-become-schema-names) |
-| Schedules and sensors are stopped in `dev` and `dummy` and running elsewhere | Leave the default alone; switch one on in the UI to test it |
+| Schedules and sensors are stopped in `dev` and `local` and running elsewhere | Leave the default alone; switch one on in the UI to test it |
 | A one-off job, schedule or sensor written by hand in a `definitions.py` | They are derived per source and per project; extend the factory, see [Orchestration](../understand/orchestration.md) |
 | A `.env` value with special characters | Single quotes, see [Quoting](environment-variables.md) |
 

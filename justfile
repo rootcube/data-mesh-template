@@ -10,11 +10,13 @@
 set dotenv-load := true
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 
-# Local state lives inside the repo, so deleting .dagster/ (keep dagster.yaml) and .dlt/data/ resets everything.
+# Local state lives inside the repo, so deleting .dagster/ (keep dagster.yaml), .dlt/data/ and .duckdb/ resets everything.
 export DAGSTER_HOME     := justfile_directory() / ".dagster"
 export DLT_PROJECT_DIR  := justfile_directory()
 export DLT_DATA_DIR     := justfile_directory() / ".dlt" / "data"
 export DBT_PROFILES_DIR := justfile_directory() / "dbt"
+# The DuckDB file behind the `local` dbt target and the local dlt destination (ENVIRONMENT=local).
+export DUCKDB_PATH      := justfile_directory() / ".duckdb" / "data" / "local.duckdb"
 # The Snowflake connector's vendored requests warns about urllib3 on every command; nothing to fix here.
 export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests"
 # uv's installer puts it in ~/.local/bin; each recipe line is a fresh shell, so make it findable
@@ -71,9 +73,9 @@ _init:
     # An installed git hook also carries the venv path; refresh it in the same case.
     if [ -f .git/hooks/pre-commit ]; then uv run pre-commit install >/dev/null; fi
     if [ ! -f .env ]; then cp .env.example .env && echo "created .env from .env.example"; fi
-    mkdir -p .dagster .dlt/data
+    mkdir -p .dagster .dlt/data .duckdb/data
     uv run python scripts/dbt_all.py deps --quiet
-    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    uv run python scripts/dbt_all.py parse --target local --quiet
     if command -v direnv >/dev/null 2>&1; then direnv allow . >/dev/null 2>&1 || true; fi
 
 [windows]
@@ -84,9 +86,9 @@ _init:
     uv sync --all-groups
     if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
-    New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
+    New-Item -ItemType Directory -Force -Path .dagster, .dlt\data, .duckdb\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
-    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    uv run python scripts/dbt_all.py parse --target local --quiet
 
 # everything in one go: `just init`, then the wizard (fresh account -> bootstrap incl. Terraform install; provisioned -> key pair + .env)
 setup: _init
@@ -356,8 +358,8 @@ test:
 
 # what CI runs apart from the Terraform CLI checks: lint, typecheck, tests, dbt parse (dbt 1.x and the v2 parser), Dagster definitions, the config schemas, the docs build
 check: lint typecheck test
-    uv run python scripts/dbt_all.py parse --target dummy --quiet
-    uv run python scripts/dbt_all.py parse --target dummy --quiet --use-v2-parser
+    uv run python scripts/dbt_all.py parse --target local --quiet
+    uv run python scripts/dbt_all.py parse --target local --quiet --use-v2-parser
     just validate
     uv run python terraform/config/_validation/validate_configs.py
     uv run python scripts/check_doc_fences.py
@@ -375,28 +377,28 @@ pre-commit-install:
 
 [private]
 _dirs:
-    @uv run python -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('.dagster', '.dlt/data')]"
+    @uv run python -c "import pathlib; [pathlib.Path(p).mkdir(parents=True, exist_ok=True) for p in ('.dagster', '.dlt/data', '.duckdb/data')]"
 
 # --- Local state ------------------------------------------------------------
 
-# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+# delete the git-ignored local state (run history, dlt data, the local DuckDB file, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
 [unix]
 reset-local:
     #!/usr/bin/env bash
     set -euo pipefail
     if [ -d .dagster ]; then find .dagster -mindepth 1 -maxdepth 1 ! -name dagster.yaml -exec rm -rf {} +; fi
-    rm -rf .dlt/data src/orchestrator/defs/.local_defs_state dbt/*/target dbt/*/logs logs .cache
-    mkdir -p .dagster .dlt/data
+    rm -rf .dlt/data .duckdb src/orchestrator/defs/.local_defs_state dbt/*/target dbt/*/logs logs .cache
+    mkdir -p .dagster .dlt/data .duckdb/data
     uv run python scripts/dbt_all.py deps --quiet
-    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    uv run python scripts/dbt_all.py parse --target local --quiet
     echo "local state reset"
 
-# delete the git-ignored local state (run history, dlt data, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
+# delete the git-ignored local state (run history, dlt data, the local DuckDB file, component cache, dbt target/logs, docs cache), then dbt deps + parse; stop `just start` first
 [windows]
 reset-local:
     @Get-ChildItem .dagster -Exclude dagster.yaml -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
-    @Remove-Item -Path .dlt\data, src\orchestrator\defs\.local_defs_state, dbt\*\target, dbt\*\logs, logs, .cache -Recurse -Force -ErrorAction SilentlyContinue
-    @New-Item -ItemType Directory -Force -Path .dagster, .dlt\data | Out-Null
+    @Remove-Item -Path .dlt\data, .duckdb, src\orchestrator\defs\.local_defs_state, dbt\*\target, dbt\*\logs, logs, .cache -Recurse -Force -ErrorAction SilentlyContinue
+    @New-Item -ItemType Directory -Force -Path .dagster, .dlt\data, .duckdb\data | Out-Null
     uv run python scripts/dbt_all.py deps --quiet
-    uv run python scripts/dbt_all.py parse --target dummy --quiet
+    uv run python scripts/dbt_all.py parse --target local --quiet
     @Write-Host "local state reset"

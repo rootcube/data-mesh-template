@@ -38,15 +38,15 @@ models:
 
       - name: longitude
         description: Longitude in decimal degrees east.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: latitude
         description: Latitude in decimal degrees north.
-        data_type: number(6,3)
+        data_type: numeric(6,3)
 
       - name: elevation_m
         description: Elevation of the station in metres above sea level.
-        data_type: number(6,2)
+        data_type: numeric(6,2)
 
     constraints:
       - columns:

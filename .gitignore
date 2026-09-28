@@ -35,6 +35,9 @@ build/
 .dlt/*
 !.dlt/config.toml
 
+# --- DuckDB file of the local target (ENVIRONMENT=local) ---
+.duckdb/
+
 # --- dbt ---
 dbt/*/target/
 dbt/*/packages/

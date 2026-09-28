@@ -60,7 +60,7 @@ WITH cte_date_range AS (
   SELECT
     date                                                         AS date
   , date_time                                                    AS date_time
-  , CAST(TO_CHAR(date, 'YYYYMMDD') AS INTEGER)                   AS date_simple
+  , {{ dbt_common.date_simple('date') }}                         AS date_simple
 
   -- Calendar
   , CAST(DATE_PART('year', date) AS INTEGER)                     AS year
@@ -69,8 +69,8 @@ WITH cte_date_range AS (
   , CAST(DATE_PART('weekofyear', date) AS INTEGER)               AS week --> Follows the WEEK_OF_YEAR_POLICY session parameter; iso_week below does not
 
   -- ISO
-  , CAST(DATE_PART('yearofweekiso', date) AS INTEGER)            AS iso_year
-  , CAST(DATE_PART('weekiso', date) AS INTEGER)                  AS iso_week
+  , CAST({{ dbt_common.iso_year('date') }} AS INTEGER)           AS iso_year
+  , CAST({{ dbt_common.iso_week('date') }} AS INTEGER)           AS iso_week
 
   -- Days
   , CAST(DATE_PART('dayofyear', date) AS INTEGER)                AS day_of_year
@@ -88,95 +88,95 @@ SELECT
 , cal.date_simple
 
 -- Default Attributes
-, CAST(cal.year AS INTEGER)                                                                                                                                                                             AS year_nr
-, CAST(CASE WHEN cal.month < 4 THEN cal.year - 1 ELSE cal.year END AS INTEGER)                                                                                                                          AS base_year
-, CAST(cal.quarter AS INTEGER)                                                                                                                                                                          AS quarter_nr
-, CAST(cal.month AS INTEGER)                                                                                                                                                                            AS month_nr
-, CAST(cal.week AS INTEGER)                                                                                                                                                                             AS week_nr
-, CAST(cal.iso_year AS INTEGER)                                                                                                                                                                         AS iso_year_nr
-, CAST(cal.iso_week AS INTEGER)                                                                                                                                                                         AS iso_week_nr
+, CAST(cal.year AS INTEGER)                                                                                                                                                    AS year_nr
+, CAST(CASE WHEN cal.month < 4 THEN cal.year - 1 ELSE cal.year END AS INTEGER)                                                                                                 AS base_year
+, CAST(cal.quarter AS INTEGER)                                                                                                                                                 AS quarter_nr
+, CAST(cal.month AS INTEGER)                                                                                                                                                   AS month_nr
+, CAST(cal.week AS INTEGER)                                                                                                                                                    AS week_nr
+, CAST(cal.iso_year AS INTEGER)                                                                                                                                                AS iso_year_nr
+, CAST(cal.iso_week AS INTEGER)                                                                                                                                                AS iso_week_nr
 
 -- Combined Attributes
-, CAST(cal.year * 10000 + cal.quarter * 100 + cal.month AS INTEGER)                                                                                                                                     AS year_quarter_month_nr
-, CAST(cal.year * 100 + cal.quarter AS INTEGER)                                                                                                                                                         AS year_quarter_nr
-, CAST(cal.year * 100 + cal.month AS INTEGER)                                                                                                                                                           AS year_month_nr
-, CAST(cal.year * 100 + cal.week AS INTEGER)                                                                                                                                                            AS year_week_nr
-, CAST(cal.iso_year * 100 + cal.iso_week AS INTEGER)                                                                                                                                                    AS iso_year_week_nr
+, CAST(cal.year * 10000 + cal.quarter * 100 + cal.month AS INTEGER)                                                                                                            AS year_quarter_month_nr
+, CAST(cal.year * 100 + cal.quarter AS INTEGER)                                                                                                                                AS year_quarter_nr
+, CAST(cal.year * 100 + cal.month AS INTEGER)                                                                                                                                  AS year_month_nr
+, CAST(cal.year * 100 + cal.week AS INTEGER)                                                                                                                                   AS year_week_nr
+, CAST(cal.iso_year * 100 + cal.iso_week AS INTEGER)                                                                                                                           AS iso_year_week_nr
 
 -- Specific Days
-, CAST(cal.day_of_year AS INTEGER)                                                                                                                                                                      AS day_of_year_nr
-, CAST(cal.day_of_month AS INTEGER)                                                                                                                                                                     AS day_of_month_nr
-, CAST(cal.day_of_week AS INTEGER)                                                                                                                                                                      AS day_of_week_nr
-, CAST(ROW_NUMBER() OVER (PARTITION BY cal.iso_year ORDER BY cal.date ASC) AS INTEGER)                                                                                                                  AS iso_year_day_nr
+, CAST(cal.day_of_year AS INTEGER)                                                                                                                                             AS day_of_year_nr
+, CAST(cal.day_of_month AS INTEGER)                                                                                                                                            AS day_of_month_nr
+, CAST(cal.day_of_week AS INTEGER)                                                                                                                                             AS day_of_week_nr
+, CAST(ROW_NUMBER() OVER (PARTITION BY cal.iso_year ORDER BY cal.date ASC) AS INTEGER)                                                                                         AS iso_year_day_nr
 
 -- Codes and Descriptions
-, CAST(CONCAT('Y', LPAD(cal.year, 4, '')) AS VARCHAR(10))                                                                                                                                               AS year_code
-, CAST(CONCAT('Year ', cal.year) AS VARCHAR(10))                                                                                                                                                        AS year_name
+, CAST(CONCAT('Y', cal.year) AS VARCHAR(10))                                                                                                                                   AS year_code
+, CAST(CONCAT('Year ', cal.year) AS VARCHAR(10))                                                                                                                               AS year_name
 
-, CAST(CONCAT('Q', LPAD(cal.quarter, 1, '0')) AS VARCHAR(10))                                                                                                                                           AS quarter_code
-, CAST(CONCAT('Quarter ', cal.quarter) AS VARCHAR(10))                                                                                                                                                  AS quarter_name
+, CAST(CONCAT('Q', LPAD(CAST(cal.quarter AS VARCHAR), 1, '0')) AS VARCHAR(10))                                                                                                 AS quarter_code
+, CAST(CONCAT('Quarter ', cal.quarter) AS VARCHAR(10))                                                                                                                         AS quarter_name
 
-, CAST(CONCAT('M', LPAD(cal.month, 2, '0')) AS VARCHAR(10))                                                                                                                                             AS month_code
-, CAST(mlb.month_name AS VARCHAR(10))                                                                                                                                                                   AS month_name
-, CAST(mlb.month_abbr AS VARCHAR(10))                                                                                                                                                                   AS month_abbr
+, CAST(CONCAT('M', LPAD(CAST(cal.month AS VARCHAR), 2, '0')) AS VARCHAR(10))                                                                                                   AS month_code
+, CAST(mlb.month_name AS VARCHAR(10))                                                                                                                                          AS month_name
+, CAST(mlb.month_abbr AS VARCHAR(10))                                                                                                                                          AS month_abbr
 
-, CAST(CONCAT('W', LPAD(cal.week, 2, '0')) AS VARCHAR(10))                                                                                                                                              AS week_code
-, CAST(CONCAT('Week ', cal.week) AS VARCHAR(20))                                                                                                                                                        AS week_desc
+, CAST(CONCAT('W', LPAD(CAST(cal.week AS VARCHAR), 2, '0')) AS VARCHAR(10))                                                                                                    AS week_code
+, CAST(CONCAT('Week ', cal.week) AS VARCHAR(20))                                                                                                                               AS week_desc
 
-, CAST(CONCAT('Y', cal.iso_year) AS VARCHAR(10))                                                                                                                                                        AS iso_year_code
-, CAST(CONCAT('ISO Year ', cal.iso_year) AS VARCHAR(20))                                                                                                                                                AS iso_year_desc
-, CAST(CONCAT('W', LPAD(cal.iso_week, 2, '0')) AS VARCHAR(10))                                                                                                                                          AS iso_week_code
-, CAST(CONCAT('ISO Week ', cal.iso_week) AS VARCHAR(20))                                                                                                                                                AS iso_week_desc
+, CAST(CONCAT('Y', cal.iso_year) AS VARCHAR(10))                                                                                                                               AS iso_year_code
+, CAST(CONCAT('ISO Year ', cal.iso_year) AS VARCHAR(20))                                                                                                                       AS iso_year_desc
+, CAST(CONCAT('W', LPAD(CAST(cal.iso_week AS VARCHAR), 2, '0')) AS VARCHAR(10))                                                                                                AS iso_week_code
+, CAST(CONCAT('ISO Week ', cal.iso_week) AS VARCHAR(20))                                                                                                                       AS iso_week_desc
 
-, CAST(CONCAT('YD', LPAD(cal.day_of_year, 3, '0')) AS VARCHAR(10))                                                                                                                                      AS year_day_code
-, CAST(CONCAT('MD', LPAD(cal.day_of_month, 2, '0')) AS VARCHAR(10))                                                                                                                                     AS month_day_code
-, CAST(CONCAT('WD', LPAD(cal.day_of_week, 2, '0')) AS VARCHAR(10))                                                                                                                                      AS week_day_code
+, CAST(CONCAT('YD', LPAD(CAST(cal.day_of_year AS VARCHAR), 3, '0')) AS VARCHAR(10))                                                                                            AS year_day_code
+, CAST(CONCAT('MD', LPAD(CAST(cal.day_of_month AS VARCHAR), 2, '0')) AS VARCHAR(10))                                                                                           AS month_day_code
+, CAST(CONCAT('WD', LPAD(CAST(cal.day_of_week AS VARCHAR), 2, '0')) AS VARCHAR(10))                                                                                            AS week_day_code
 
-, CAST(dlb.day_name AS VARCHAR(10))                                                                                                                                                                     AS week_day_name
-, CAST(dlb.day_abbr AS VARCHAR(10))                                                                                                                                                                     AS week_day_abbr
+, CAST(dlb.day_name AS VARCHAR(10))                                                                                                                                            AS week_day_name
+, CAST(dlb.day_abbr AS VARCHAR(10))                                                                                                                                            AS week_day_abbr
 
 -- Indicators
-, CAST(CASE WHEN cal.date = CAST(DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                               AS is_first_day_of_year
-, CAST(CASE WHEN cal.date = CAST(DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                         AS is_first_day_of_quarter
-, CAST(CASE WHEN cal.date = CAST(DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                             AS is_first_day_of_month
-, CAST(CASE WHEN cal.day_of_week = 1 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                                                  AS is_first_day_of_week
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('year', NULLIF(cal.date, '9999-12-31')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                 AS is_first_day_of_year
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('quarter', NULLIF(cal.date, '9999-12-31')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                                              AS is_first_day_of_quarter
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('month', NULLIF(cal.date, '9999-12-31')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                AS is_first_day_of_month
+, CAST(CASE WHEN cal.day_of_week = 1 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                         AS is_first_day_of_week
 
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))       AS is_last_day_of_year
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1)) AS is_last_day_of_quarter
-, CAST(CASE WHEN cal.date = CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))     AS is_last_day_of_month
-, CAST(CASE WHEN cal.day_of_week = 7 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                                                  AS is_last_day_of_week
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('year', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 year' - INTERVAL '1 day' AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))          AS is_last_day_of_year
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('quarter', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 quarter' - INTERVAL '1 day' AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))    AS is_last_day_of_quarter
+, CAST(CASE WHEN cal.date = CAST(DATE_TRUNC('month', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 month' - INTERVAL '1 day' AS DATE) THEN 'Y' ELSE 'N' END AS CHAR(1))        AS is_last_day_of_month
+, CAST(CASE WHEN cal.day_of_week = 7 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                         AS is_last_day_of_week
 
-, CAST(CASE WHEN (cal.year % 4 = 0 AND cal.year % 100 <> 0) OR cal.year % 400 = 0 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                     AS is_leap_year
-, CAST(CASE WHEN cal.day_of_month = 29 AND cal.month = 2 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                              AS is_leap_day
+, CAST(CASE WHEN (cal.year % 4 = 0 AND cal.year % 100 <> 0) OR cal.year % 400 = 0 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                            AS is_leap_year
+, CAST(CASE WHEN cal.day_of_month = 29 AND cal.month = 2 THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                     AS is_leap_day
 
-, CAST(CASE WHEN cal.day_of_week IN (6, 7) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                                            AS is_weekend
-, CAST(CASE WHEN cal.day_of_week IN (1, 2, 3, 4, 5) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                                   AS is_workday
+, CAST(CASE WHEN cal.day_of_week IN (6, 7) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                                   AS is_weekend
+, CAST(CASE WHEN cal.day_of_week IN (1, 2, 3, 4, 5) THEN 'Y' ELSE 'N' END AS CHAR(1))                                                                                          AS is_workday
 
 -- Additional Dates
-, CAST(DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE)                                                                                           AS first_date_of_year
-, CAST(DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE)                                                                                     AS first_date_of_quarter
-, CAST(DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')), '1900-01-01') AS DATE)                                                                                         AS first_date_of_month
-, CAST(DATEADD('day', 1 - cal.day_of_week, NULLIF(cal.date, '9999-12-31')) AS DATE)                                                                                                                     AS first_date_of_week
+, CAST(DATE_TRUNC('year', NULLIF(cal.date, '9999-12-31')) AS DATE)                                                                                                             AS first_date_of_year
+, CAST(DATE_TRUNC('quarter', NULLIF(cal.date, '9999-12-31')) AS DATE)                                                                                                          AS first_date_of_quarter
+, CAST(DATE_TRUNC('month', NULLIF(cal.date, '9999-12-31')) AS DATE)                                                                                                            AS first_date_of_month
+, CAST(NULLIF(cal.date, '9999-12-31') + (1 - cal.day_of_week) AS DATE)                                                                                                         AS first_date_of_week
 
-, CAST(DATEADD('day', -1, DATEADD('year', DATEDIFF('year', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                   AS last_date_of_year
-, CAST(DATEADD('day', -1, DATEADD('quarter', DATEDIFF('quarter', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                             AS last_date_of_quarter
-, CAST(DATEADD('day', -1, DATEADD('month', DATEDIFF('month', '1900-01-01', NULLIF(cal.date, '9999-12-31')) + 1, '1900-01-01')) AS DATE)                                                                 AS last_date_of_month
-, CAST(DATEADD('day', 7 - cal.day_of_week, NULLIF(cal.date, '9999-12-31')) AS DATE)                                                                                                                     AS last_date_of_week
+, CAST(DATE_TRUNC('year', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 year' - INTERVAL '1 day' AS DATE)                                                                      AS last_date_of_year
+, CAST(DATE_TRUNC('quarter', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 quarter' - INTERVAL '1 day' AS DATE)                                                                AS last_date_of_quarter
+, CAST(DATE_TRUNC('month', NULLIF(cal.date, '9999-12-31')) + INTERVAL '1 month' - INTERVAL '1 day' AS DATE)                                                                    AS last_date_of_month
+, CAST(NULLIF(cal.date, '9999-12-31') + (7 - cal.day_of_week) AS DATE)                                                                                                         AS last_date_of_week
 
 -- Sequences
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.iso_year ASC) - 1)) AS INTEGER)                                                           AS iso_year_sort
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC) - 1)) AS INTEGER)                                                               AS year_sort
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC, cal.quarter ASC) - 1)) AS INTEGER)                                              AS quarter_sort
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC, cal.month ASC) - 1)) AS INTEGER)                                                AS month_sort
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.date ASC) - 1)) AS INTEGER)                                                               AS day_sort
-, CAST(IFF(cal.date IN ('1900-01-01', '9999-12-31'), NULL, (DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.iso_year ASC, cal.iso_week ASC) - 1)) AS INTEGER)                                         AS week_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.iso_year ASC) - 1 END AS INTEGER)                   AS iso_year_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC) - 1 END AS INTEGER)                       AS year_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC, cal.quarter ASC) - 1 END AS INTEGER)      AS quarter_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.year ASC, cal.month ASC) - 1 END AS INTEGER)        AS month_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.date ASC) - 1 END AS INTEGER)                       AS day_sort
+, CAST(CASE WHEN cal.date IN ('1900-01-01', '9999-12-31') THEN NULL ELSE DENSE_RANK() OVER (PARTITION BY NULL ORDER BY cal.iso_year ASC, cal.iso_week ASC) - 1 END AS INTEGER) AS week_sort
 
-, COALESCE(hol.holiday_name IS NOT NULL, FALSE)                                                                                                                                                         AS is_holiday
+, COALESCE(hol.holiday_name IS NOT NULL, FALSE)                                                                                                                                AS is_holiday
 , hol.holiday_name
 
 -- add indicators for high generation and consumption days, based on month and weekday/weekend for worst case day profiles
-, COALESCE(mlb.month_nr IN (5, 6, 7, 8) AND is_weekend = 'Y', FALSE)                                                                                                                                    AS is_high_generation_day
-, COALESCE(mlb.month_nr IN (12, 1, 2, 3) AND is_workday = 'Y', FALSE)                                                                                                                                   AS is_high_consumption_day
+, COALESCE(mlb.month_nr IN (5, 6, 7, 8) AND is_weekend = 'Y', FALSE)                                                                                                           AS is_high_generation_day
+, COALESCE(mlb.month_nr IN (12, 1, 2, 3) AND is_workday = 'Y', FALSE)                                                                                                          AS is_high_consumption_day
 
 FROM
   cte_calendar AS cal

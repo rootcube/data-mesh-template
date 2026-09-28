@@ -55,7 +55,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import dotenv_values
 
-from orchestrator.resources.snowflake import APPLICATION, PLACEHOLDER_PREFIX, SnowflakeSettings
+from orchestrator.resources.snowflake import APPLICATION, LOCAL_ENVIRONMENT, PLACEHOLDER_PREFIX, SnowflakeSettings
 from orchestrator.utils.dotenv import update_env_file, writable
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1154,12 +1154,29 @@ def cmd_wizard(_args: argparse.Namespace) -> int:
     print(style(DIM, "     checkout or machine, so this checkout's Terraform state does not know the objects."))
     print(style(DIM, "     Like 1, but first asks to sync the existing objects into Terraform or wipe them,"))
     print(style(DIM, "     and leaves the account settings as they are."))
+    local = style(f"{BOLD};{CYAN}", "Local only")
+    print(
+        f"  {style(BOLD, '4')}  {local}: no Snowflake account at all; dlt and dbt use a DuckDB file in this checkout."
+    )
+    print(style(DIM, "     Writes ENVIRONMENT=local to .env, nothing else."))
     print()
-    while (choice := ask("Which one is this? (1/2/3)", "1").strip()) not in ("1", "2", "3"):
-        warn("Type 1, 2 or 3.")
+    while (choice := ask("Which one is this? (1/2/3/4)", "1").strip()) not in ("1", "2", "3", "4"):
+        warn("Type 1, 2, 3 or 4.")
+    if choice == "4":
+        return main(["local"])
     if choice == "3":
         return main(["bootstrap", "--existing", "ask", "--account-settings", "skip"])
     return main(["bootstrap"] if choice == "1" else ["setup"])
+
+
+def cmd_local(_args: argparse.Namespace) -> int:
+    """`just setup` option 4: this checkout runs on the local DuckDB file, no Snowflake involved."""
+    step("Local environment")
+    print("dlt loads into and dbt builds in the DuckDB file DUCKDB_PATH points at (.duckdb/data/local.duckdb,")
+    print("set by the justfile and .envrc). The SNOWFLAKE_* lines of .env stay as they are, unused.")
+    write_env({"ENVIRONMENT": LOCAL_ENVIRONMENT})
+    done("Next: `just start` for the Dagster UI, or `just dlt run knmi` and then `just dbt build`.")
+    return 0
 
 
 def cmd_context(args: argparse.Namespace) -> int:
@@ -1282,8 +1299,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    wizard = sub.add_parser("wizard", help="`just setup`: asks fresh or provisioned account, then bootstrap or setup")
+    wizard = sub.add_parser("wizard", help="`just setup`: asks fresh, provisioned or existing account, or local only")
     wizard.set_defaults(func=cmd_wizard)
+
+    local = sub.add_parser("local", help="`just setup` option 4: no Snowflake, .env points at the local DuckDB file")
+    local.set_defaults(func=cmd_local)
 
     bootstrap = sub.add_parser("bootstrap", help="fresh account: Terraform user, provisioning, your key pair, .env")
     bootstrap.add_argument("--organization", help="organization name, the part before the dash; asked when omitted")

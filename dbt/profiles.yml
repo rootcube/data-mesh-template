@@ -1,11 +1,24 @@
 # Shared by every dbt project under dbt/ (DBT_PROFILES_DIR points here, set by the justfile
 # and .envrc). One profile, one target per environment; the target follows ENVIRONMENT unless
-# DBT_TARGET overrides it. Every target reads the same SNOWFLAKE_* variables: your personal key
-# pair in dev, the transform system user's key pair in tst, acc and prd.
+# DBT_TARGET overrides it. Every Snowflake target reads the same SNOWFLAKE_* variables: your
+# personal key pair in dev, the transform system user's key pair in tst, acc and prd.
 default:
   target: "{{ env_var('DBT_TARGET', env_var('ENVIRONMENT', 'dev')) }}"
 
   outputs:
+    # Local: a DuckDB file that dlt loads into and dbt builds in, no Snowflake needed
+    # (ENVIRONMENT=local). Also what parses, compiles and lints without any credentials (CI,
+    # pre-commit, sqlfluff). DUCKDB_PATH is set by the justfile, .envrc, scripts/dbt_all.py and
+    # CI; the fallback is the same path relative to the working directory, which parses fine
+    # but has no parent directory, so a command that connects fails instead of writing a stray
+    # file (dbt's v2 parser rejects the in-memory `:memory:` spelling as a rendered value).
+    # Personal-style schemas, <SNOWFLAKE_SCHEMA>_<LAYER>, DBT_<LAYER> when the prefix is blank.
+    local:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '.duckdb/data/local.duckdb') }}"
+      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT') }}"
+      threads: 4
+
     # Development: personal schemas (<SNOWFLAKE_SCHEMA>_<LAYER>) in DB_<PROJECT>_DEV.
     dev: &snowflake
       type: snowflake
@@ -31,13 +44,3 @@ default:
 
     prd:
       <<: *shared
-
-    # Parse, compile and lint without any Snowflake credentials (CI, pre-commit, sqlfluff): an
-    # in-memory DuckDB stands in for the warehouse. The sqlfluff dbt templater needs a working
-    # adapter connection to populate dbt's relation cache, which a fake Snowflake target can
-    # never provide. SQL is only rendered here, never executed.
-    dummy:
-      type: duckdb
-      path: ":memory:"
-      schema: "{{ env_var('SNOWFLAKE_SCHEMA', 'DBT') }}"
-      threads: 1
