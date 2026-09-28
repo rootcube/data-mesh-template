@@ -293,6 +293,24 @@ def test_init_sql_provisions_through_the_system_roles_and_leaves_the_account_alo
     assert "ALTER ACCOUNT" not in sql
 
 
+def test_init_sql_drops_the_trial_defaults_once_terraform_has_its_own_warehouse() -> None:
+    script = load_script()
+    sql = script.INIT_SQL.read_text(encoding="utf-8")
+    for statement in (
+        "DROP WAREHOUSE IF EXISTS COMPUTE_WH;",
+        "DROP WAREHOUSE IF EXISTS SNOWFLAKE_LEARNING_WH;",
+        "DROP DATABASE IF EXISTS SNOWFLAKE_LEARNING_DB;",
+        "DROP DATABASE IF EXISTS SNOWFLAKE_SAMPLE_DATA;",
+        "DROP ROLE IF EXISTS SNOWFLAKE_LEARNING_ROLE;",
+    ):
+        assert statement in sql
+    assert sql.index("CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM_PROVISIONING") < sql.index(
+        "DROP WAREHOUSE IF EXISTS COMPUTE_WH"
+    )
+    disable = sql.index("SELECT SYSTEM$DISABLE_SNOWFLAKE_LEARNING_ENVIRONMENT();")
+    assert disable < sql.index("DROP WAREHOUSE IF EXISTS SNOWFLAKE_LEARNING_WH")
+
+
 def test_account_settings_set_utc_and_list_their_parameters() -> None:
     script = load_script()
     sql = script.ACCOUNT_SQL.read_text(encoding="utf-8")

@@ -121,6 +121,25 @@ ALTER USER IF EXISTS TERRAFORM_USER SET
 ;
 
 -- -----------------------------------------------------------------------------
+-- 7. Drop what a fresh account comes with
+-- -----------------------------------------------------------------------------
+-- A new account ships the COMPUTE_WH warehouse, the SNOWFLAKE_SAMPLE_DATA share and
+-- the Snowsight Templates learning environment (SNOWFLAKE_LEARNING_ROLE, _WH, _DB,
+-- owned by ACCOUNTADMIN). None of them belongs to the platform, and Terraform has its
+-- own warehouse (section 3). A user whose default warehouse was COMPUTE_WH simply
+-- picks another one. SNOWFLAKE_SAMPLE_DATA comes back any time with
+-- CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM SHARE SFC_SAMPLES.SAMPLE_DATA.
+-- The learning environment is switched off first, or Snowflake provisions it again
+-- (https://docs.snowflake.com/en/user-guide/ui-snowsight/snowsight-templates).
+SELECT SYSTEM$DISABLE_SNOWFLAKE_LEARNING_ENVIRONMENT();
+DROP WAREHOUSE IF EXISTS COMPUTE_WH;
+DROP WAREHOUSE IF EXISTS SNOWFLAKE_LEARNING_WH;
+DROP DATABASE IF EXISTS SNOWFLAKE_LEARNING_DB;
+DROP DATABASE IF EXISTS SNOWFLAKE_SAMPLE_DATA;
+DROP ROLE IF EXISTS SNOWFLAKE_LEARNING_ROLE;
+
+
+-- -----------------------------------------------------------------------------
 -- Verification Queries
 -- -----------------------------------------------------------------------------
 SHOW GRANTS TO USER TERRAFORM_USER;
