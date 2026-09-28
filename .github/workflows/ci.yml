@@ -4,23 +4,24 @@ on:
   push:
     branches: [main]
   pull_request:
-  # The release workflow dispatches CI on release-please's branch: GitHub runs no workflows for
-  # pull requests opened with GITHUB_TOKEN, except through workflow_dispatch.
+  # Manual rerun from the Actions tab.
   workflow_dispatch:
 
 # Read-only token: the jobs only check out and test. Dependabot and fork pull requests get the same.
 permissions:
   contents: read
 
-# A new push to the same branch cancels the run still going for the previous one.
+# A new push to the same branch cancels the run still going for the previous one. Runs on `main`
+# finish: every commit there keeps its own result.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   python:
     name: Python (ruff, ty, pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
@@ -33,6 +34,7 @@ jobs:
   dbt-and-dagster:
     name: dbt parse + Dagster definitions
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
@@ -58,9 +60,13 @@ jobs:
   terraform:
     name: Terraform fmt + validate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          # Pinned so `fmt -check` cannot start failing on a new release. Bump it deliberately.
+          terraform_version: "1.15.5"
       - run: terraform fmt -check -recursive terraform
       - run: terraform -chdir=terraform init -backend=false
       - run: terraform -chdir=terraform validate
@@ -71,6 +77,7 @@ jobs:
   docs:
     name: Docs build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
