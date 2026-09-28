@@ -122,7 +122,9 @@ SOURCE = "airquality"
 ENTITY = "measurement_hourly"
 
 
-@dlt.source(name=f"{SOURCE}__{ENTITY}", max_table_nesting=0)
+# The source is named after the source, not after one of its entities: a second resource joins it
+# without renaming anything. The table name carries `<source>__<entity>`.
+@dlt.source(name=SOURCE, max_table_nesting=0)
 def airquality_source() -> Iterator[dlt.sources.DltResource]:
     """Hourly air-quality measurements for a handful of stations, last 7 days."""
 
@@ -161,6 +163,11 @@ Choices to make:
 :   Always `<source>__<entity>`. The resource name stays the bare entity (it becomes the last
     segment of the asset key); the table name carries the source prefix because every source of
     the project shares one `_SRC` schema.
+
+`name=SOURCE` on the source
+:   The dlt source name is the source, never one of its entities: it names the dlt schema and has
+    to hold for every resource the source grows. Asset keys do not depend on it; `defs.yaml` sets
+    them.
 
 More resources
 :   One `@dlt.resource` per endpoint, all yielded from the same source function, each with its

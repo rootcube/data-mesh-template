@@ -74,9 +74,14 @@ the Snowflake table to `knmi__climate_hourly`, the `<source>__<entity>` conventi
 one source-layer schema tidy with many sources in it.
 
 `source.py` is plain Python. It uses `dlt.sources.helpers.requests` (a `requests` session with
-retries) to call the KNMI endpoint in chunks of ten days, because the API rejects requests that
-span too many rows, and yields the JSON records unchanged. No renaming, no casting: that
-happens in the dbt staging model.
+retries) to call the KNMI endpoint in chunks of ten days and yields the JSON records unchanged. No
+renaming, no casting: that happens in the dbt staging model. The chunks are headroom rather than a
+current constraint: KNMI rejects a query over roughly 100k rows, the 30-day window is some 4,900,
+and because the rejection arrives as an HTML page with HTTP 200 it would surface as a JSON decode
+error, not as a failed status. A window that yields no rows at all raises instead of loading
+nothing, because an empty load is otherwise invisible: dlt reports the package as loaded, the
+Dagster materialization carries no row count, and the staging model's `has_data` test still passes
+on the rows of the previous load.
 
 ## Merge, primary key, full refresh
 
@@ -169,15 +174,29 @@ The file names stay dlt's: `PUT` keeps the name of the local file.
 and `WRITE` on the shared stages (`full` on the source layer in
 `terraform/config/roles/ingest.yaml`; the stage privileges are the source layer's extras in
 `terraform/config/layers/source.yaml`); the engineer role has the same on the personal ones (the
-`personal` block in `terraform/config/roles/engineer.yaml`). dlt keeps the files after a
-successful `COPY INTO` (`keep_staged_files`, its default); `LIST @_SRC.ST_DEFAULT` shows them,
-`REMOVE` cleans up. The stage has a directory table, so `SELECT * FROM DIRECTORY(@_SRC.ST_DEFAULT)`
-works too. Internal stages do not refresh it automatically; `dbt_common.refresh_stages()` runs
-`ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` (your personal one in `dev`) at the start
-of every `dbt run` and `dbt build`.
+`personal` block in `terraform/config/roles/engineer.yaml`).
+
+The files stay in the stage after a successful `COPY INTO` (`keep_staged_files`, dlt's default, kept
+on purpose): the stage is the landing archive of what was loaded, which is what makes the directory
+table worth refreshing on every dbt run. `LIST @_SRC.ST_DEFAULT` shows them, and
+`SELECT * FROM DIRECTORY(@_SRC.ST_DEFAULT)` reads the directory table; internal stages do not
+refresh it automatically, so `dbt_common.refresh_stages()` runs
+`ALTER STAGE <source-layer schema>.ST_DEFAULT REFRESH` (your personal one in `dev`) at the start of
+every `dbt run` and `dbt build`.
+
+Nothing prunes the archive, so prune it yourself when a source grows: `REMOVE` takes a path, so
+`REMOVE @_SRC.ST_DEFAULT/dlt/ingest/knmi/` drops every load file of one source (in `dev`,
+`REMOVE @DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/`), and a single folder
+`.../knmi/ingest_knmi__<load id>/` drops one load. Setting
+`DESTINATION__SNOWFLAKE__KEEP_STAGED_FILES=false` instead has dlt delete each file right after its
+`COPY INTO`, which trades the archive for nothing to clean up.
 
 Credentials are only validated when a pipeline runs, so importing the pipelines (which Dagster
-does on every code-location load) works without a `.env`. In `dev` the pipeline runs as your
+does on every code-location load) works without a `.env`; unset `SNOWFLAKE_*` variables are logged
+as a warning when the destination is built, because dlt's own error names its field names
+(`DESTINATION__SNOWFLAKE__CREDENTIALS__DATABASE`) rather than the platform's. The values are read at
+import, so a change in `.env` only reaches a running UI after `just stop` and `just start`. In `dev`
+the pipeline runs as your
 engineer role; in a deployed environment it runs as the project's ingest system role
 (`RL_<PROJECT>_<ENV>__ING`), which is the only role with write access to `_SRC` there. See
 [Role](../concepts/role.md).
