@@ -133,7 +133,6 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Asset key (dbt seed) | `<project>/seeds/<name>`, or `<project>/packages/<package>/seeds/<name>` | `dbt_example/packages/dbt_common/seeds/seed_month` |
 | Asset group (dbt) | the key without its last segment | `dbt_example/models/02_stg/knmi` |
 | Asset key (dbt source) | `config.meta.dagster.asset_key` from the source YAML | `dlt/ingest/knmi/climate_hourly` |
-| Asset group (dbt) | the dbt package name | `dbt_example`, `dbt_common` |
 
 `workspace.yaml` is the authoritative list of code locations; location names and module paths
 both use underscores. Asset keys are the same in every environment (they never carry the

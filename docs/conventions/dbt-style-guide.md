@@ -609,9 +609,12 @@ dependency order.
 
 Every installing project could build its own copy of those models, into the one database
 `.env` points at, so the same tables would be built twice. **Exactly one project builds them**
-(`dbt_example` today);
-another project opts out with `models: dbt_common: +enabled: false` in its `dbt_project.yml`.
-Macros, hooks and generic tests keep working either way.
+(`dbt_example` today); another project opts out per layer folder in its `dbt_project.yml`
+(`+enabled: false` on `dbt_common: 02_stg`, `03_int` and `04_mrt`, plus `seeds: dbt_common:`),
+keeping `stg__seed__unknown` and its seed `seed_unknown` for the unknown member its dimensions
+union in. Not `models: dbt_common: +enabled: false`: that also disables the `on-run-end` hooks,
+so the project stops uploading its run metadata. Macros, hooks and generic tests keep working
+either way.
 
 `dbt_common` declares no package dependencies of its own; each project lists `dbt_utils` in its
 own `packages.yml`. To run `dbt deps` in every project: `just dbt-all deps`.
