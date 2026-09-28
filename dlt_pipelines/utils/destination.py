@@ -1,9 +1,13 @@
 """The Snowflake destination and dataset every ingest pipeline loads into."""
 
+import logging
+
 from dlt.common.destination import Destination
 
 from dlt_pipelines.utils.snowflake_stage import snowflake_named_folders
-from orchestrator.resources.snowflake import SnowflakeSettings
+from orchestrator.resources.snowflake import APPLICATION, SnowflakeSettings
+
+LOGGER = logging.getLogger(__name__)
 
 SOURCE_LAYER = "src"
 STAGING_LAYER = "tmp"
@@ -24,9 +28,18 @@ def snowflake_destination(source: str) -> Destination:
     does on every code-location load) works without a .env.
     """
     settings = SnowflakeSettings.from_env()
+    if missing := settings.missing():
+        # A warning, not an exception: this runs at import, and importing has to work without a
+        # .env (the Dagster code location loads the pipelines on every start, CI validates it with
+        # no .env at all). The run itself fails, but on dlt's own field names
+        # (DESTINATION__SNOWFLAKE__CREDENTIALS__DATABASE), so name the platform's variables here.
+        # An unset SNOWFLAKE_DATABASE also leaves the stage path below starting with a dot.
+        LOGGER.warning("dlt destination for %s is incomplete, unset: %s", source, ", ".join(missing))
     return snowflake_named_folders(
         pipeline_name=pipeline_name(source),
-        credentials=settings.dlt_credentials(),
+        # `application` tags dlt's Snowflake sessions like every other connection of the platform;
+        # dlt would send its own "dltHub_dlt".
+        credentials=settings.dlt_credentials() | {"application": APPLICATION},
         stage_name=load_stage(settings, source),
         # `merge` loads into a staging table first; keep those in the temporary layer (`_TMP`, or the
         # personal `<PREFIX>_TMP` in dev) instead of dlt's default `<dataset>_staging` schema, which

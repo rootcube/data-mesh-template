@@ -1,6 +1,10 @@
+"""The shared dlt layer: the destination, the stage path and the load job per stage folder.
+
+Tests of the example KNMI source itself live in tests/test_dlt_knmi.py.
+"""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -12,15 +16,12 @@ from dlt.common.schema import Schema
 from dlt.destinations.impl.snowflake.configuration import SnowflakeClientConfiguration
 from dlt.load.configuration import LoaderConfiguration
 
-from dlt_pipelines.__main__ import discover
-from dlt_pipelines.pipelines.ingest.knmi.source import load_window
 from dlt_pipelines.utils.destination import load_stage, pipeline_name, snowflake_destination
-from dlt_pipelines.utils.snowflake_stage import NamedFolderClient, NamedFolderLoadJob
-from orchestrator.resources.snowflake import SnowflakeSettings
+from dlt_pipelines.utils.snowflake_stage import NamedFolderClient, NamedFolderLoadJob, snowflake_named_folders
+from orchestrator.resources.snowflake import APPLICATION, SnowflakeSettings
 
-
-def test_discover_finds_knmi() -> None:
-    assert discover()["knmi"] == "dlt_pipelines.pipelines.ingest.knmi.pipelines"
+STAGE = "DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi"
+LOAD_ID = "1790329283.5731854"
 
 
 def test_load_stage_is_the_stage_of_the_source_schema_with_a_path_per_source() -> None:
@@ -53,20 +54,45 @@ def test_each_load_goes_to_an_unquoted_pipeline_and_load_id_folder(tmp_path: Pat
     job = NamedFolderLoadJob(
         str(tmp_path / "knmi__climate_hourly.a1b2c3d4.0.jsonl"),
         SnowflakeClientConfiguration(),
-        stage_name="DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi",
+        stage_name=STAGE,
         keep_staged_files=False,
         pipeline_name="ingest_knmi",
     )
-    job.set_run_vars("1790329283.5731854", Schema("knmi__climate_hourly"), {"name": "knmi__climate_hourly"})
+    job.set_run_vars(LOAD_ID, Schema("knmi"), {"name": "knmi__climate_hourly"})
     sql_client = FakeSqlClient()
     job._job_client = cast(Any, SimpleNamespace(sql_client=sql_client))
     job.run()
-    folder = "@DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT/dlt/ingest/knmi/ingest_knmi__1790329283.5731854"
+    folder = f"@{STAGE}/ingest_knmi__{LOAD_ID}"
     put, copy, remove = sql_client.executed
     assert put.startswith("PUT 'file://") and put.endswith(f"'{folder}' OVERWRITE = TRUE, AUTO_COMPRESS = FALSE")
     assert copy.startswith('COPY INTO "DB_EXAMPLE_DEV"."DBT_USERNAME_SRC"."KNMI__CLIMATE_HOURLY"')
     assert f"FROM '{folder}/knmi__climate_hourly.a1b2c3d4.0.jsonl'" in copy
     assert remove == f"REMOVE '{folder}/knmi__climate_hourly.a1b2c3d4.0.jsonl'"
+
+
+def test_the_client_hands_data_files_to_a_named_folder_job_and_passes_other_jobs_through(tmp_path: Path) -> None:
+    # The whole path dlt takes when a load starts: factory -> client -> job, with credentials that
+    # are never connected with. A dlt upgrade that stops this from returning a NamedFolderLoadJob
+    # puts every load back in dlt's quoted "<load id>" folder without failing.
+    destination = snowflake_named_folders(
+        pipeline_name="ingest_knmi",
+        credentials="snowflake://user:pass@ORG-ACCOUNT/DB_EXAMPLE_DEV?warehouse=WH_EXAMPLE_DEV&role=RL",
+        stage_name=STAGE,
+    )
+    # `_bind_dataset_name` is how dlt's own pipeline hands the dataset to a destination config.
+    config = SnowflakeClientConfiguration()._bind_dataset_name(dataset_name="dbt_username_src")
+    client = destination.client(Schema("knmi"), config)
+    table = cast(Any, {"name": "knmi__climate_hourly"})
+
+    job = client.create_load_job(table, str(tmp_path / "knmi__climate_hourly.a1b2c3d4.0.jsonl"), LOAD_ID)
+    assert isinstance(job, NamedFolderLoadJob)
+    job.set_run_vars(LOAD_ID, Schema("knmi"), table)
+    assert job.load_folder == f"ingest_knmi__{LOAD_ID}"
+
+    # dlt's own jobs for .sql files are not load jobs of the destination; they stay untouched.
+    sql_file = tmp_path / "knmi__climate_hourly.a1b2c3d4.0.sql"
+    sql_file.write_text("SELECT 1")
+    assert not isinstance(client.create_load_job(table, str(sql_file), LOAD_ID), NamedFolderLoadJob)
 
 
 def test_destination_keeps_the_identity_of_dlts_snowflake_destination() -> None:
@@ -77,11 +103,8 @@ def test_destination_keeps_the_identity_of_dlts_snowflake_destination() -> None:
     assert pipeline_name("knmi") == "ingest_knmi"
 
 
-def test_load_window_never_starts_before_the_start_date() -> None:
-    start, end = load_window(datetime(2026, 1, 10, tzinfo=UTC), days_back=30)
-    assert (start, end) == (datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 10, tzinfo=UTC))
-    start, _ = load_window(datetime(2026, 9, 24, tzinfo=UTC), days_back=30)
-    assert start == datetime(2026, 8, 25, tzinfo=UTC)
+def test_dlt_sessions_carry_the_platforms_application_id() -> None:
+    assert snowflake_destination("knmi").config_params["credentials"]["application"] == APPLICATION
 
 
 def test_merge_staging_tables_go_to_the_temporary_layer(monkeypatch: pytest.MonkeyPatch) -> None:

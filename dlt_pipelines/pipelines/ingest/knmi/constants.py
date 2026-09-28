@@ -8,8 +8,11 @@ KNMI_UURGEGEVENS_URL = "https://www.daggegevens.knmi.nl/klimatologie/uurgegevens
 # keeping volumes small: 7 stations x 24 hours x DAYS_BACK days.
 STATIONS = (260, 270, 280, 290, 370, 375, 380)
 
-# The API rejects requests that span too many rows; fetch in chunks of this many days.
 DAYS_BACK = 30
+# Headroom, not a current constraint: the API rejects a query over roughly 100k rows (measured), and
+# the default window is 7 stations x 24 hours x 30 days = ~4.9k rows. Worth keeping because the
+# rejection arrives as an HTML "Query Error" page with HTTP 200, so a raised DAYS_BACK would not fail
+# on `raise_for_status()` but on `response.json()`.
 CHUNK_DAYS = 10
 
 # Nothing before this date is ever fetched, whatever DAYS_BACK says: keeps loads small and fast.
