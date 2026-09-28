@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.11](https://github.com/rootcube/data-mesh-template/compare/v0.1.10...v0.1.11) (2026-09-28)
+
+
+### Bug Fixes
+
+* enhance drop_objects function to support ownership handling ([2cd1002](https://github.com/rootcube/data-mesh-template/commit/2cd10022520543a99206077cafd81af0307b8bb3))
+* enhance drop_objects function to support ownership management during resource deletion ([3d9f3cf](https://github.com/rootcube/data-mesh-template/commit/3d9f3cf0364370fffa97d375405aad282d34d843))
+
+
+### Documentation
+
+* update access/ workflow docs to clarify privilege rules and code ownership ([6ba7bca](https://github.com/rootcube/data-mesh-template/commit/6ba7bca401b970164d882b9376a9c82226776e59))
+
 ## [0.1.10](https://github.com/rootcube/data-mesh-template/compare/v0.1.9...v0.1.10) (2026-09-28)
 
 
