@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/rootcube/data-mesh-template/compare/v0.1.19...v0.1.20) (2026-09-30)
+
+
+### Features
+
+* **terraform:** add new stack configurations for account and project environments ([#69](https://github.com/rootcube/data-mesh-template/issues/69)) ([2014892](https://github.com/rootcube/data-mesh-template/commit/2014892d0ccb0a0b4bf9f9e6ab2714109d74c4df))
+
 ## [0.1.19](https://github.com/rootcube/data-mesh-template/compare/v0.1.18...v0.1.19) (2026-09-30)
 
 
