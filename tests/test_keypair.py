@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -260,7 +261,8 @@ def test_reconcile_existing_asks_to_sync_wipe_or_abort(
 ) -> None:
     script = load_script()
     monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
-    monkeypatch.setattr(script, "planned_creates", lambda env: PLANNED)
+    monkeypatch.setattr(script, "planned_changes", lambda env: [])
+    monkeypatch.setattr(script, "planned_creates", lambda changes: PLANNED)
     replies = iter(answers)
     monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
     conn = FakeConnection()
@@ -359,9 +361,42 @@ def test_account_settings_are_asked_applied_or_skipped(
 def test_reconcile_existing_does_nothing_on_a_fresh_account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
     monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
-    monkeypatch.setattr(script, "planned_creates", lambda env: [PLANNED[1]])
+    monkeypatch.setattr(script, "planned_changes", lambda env: [])
+    monkeypatch.setattr(script, "planned_creates", lambda changes: [PLANNED[1]])
     assert script.reconcile_existing(FakeConnection(), {}, "ask", "ADMIN", yes=False) is True
     assert not (tmp_path / "adopt_imports.tf").exists()
+
+
+def grant_change(
+    address: str, actions: list[str], privileges: list[str], all_privileges: bool = False
+) -> dict[str, Any]:
+    before = {"privileges": privileges, "all_privileges": all_privileges}
+    return {
+        "address": address,
+        "type": "snowflake_grant_privileges_to_account_role",
+        "change": {"actions": actions, "before": before},
+    }
+
+
+def test_forget_vanished_grants_removes_only_revokes_of_grants_the_account_lost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    script = load_script()
+    calls: list[tuple[str, ...]] = []
+    monkeypatch.setattr(script, "terraform_output", lambda env, *args: calls.append(args) or "")
+    changes = [
+        grant_change("gone", ["delete"], []),
+        grant_change("replaced", ["delete", "create"], []),
+        grant_change("revoked", ["delete"], ["USAGE"]),
+        grant_change("granted_again", ["update"], []),
+        grant_change("all", ["delete"], [], all_privileges=True),
+        {"address": "schema", "type": "snowflake_schema", "change": {"actions": ["delete"], "before": {}}},
+    ]
+    script.forget_vanished_grants({}, changes)
+    assert calls == [("state", "rm", "gone", "replaced")]
+    calls.clear()
+    script.forget_vanished_grants({}, [grant_change(f"g{i}", ["delete"], []) for i in range(150)])
+    assert [len(args) - 2 for args in calls] == [100, 50]
 
 
 def test_usable_prefix_follows_the_user_schema_and_refuses_placeholders() -> None:

@@ -9,7 +9,8 @@
                                       objects that already exist are synced into the state (and handed to
                                       their SYSADMIN/SECURITYADMIN/USERADMIN owner) or wiped
                                       (--existing ask|sync|wipe); objects the state tracks that another
-                                      role owns (ACCOUNTADMIN, after an earlier version) are handed back
+                                      role owns (ACCOUNTADMIN, after an earlier version) are handed back,
+                                      grants it tracks that the account no longer has are forgotten
     just tf clean              remove every object this checkout's Terraform state tracks, databases and
                                       their data included, after you type the account name; the init.sql
                                       objects stay
@@ -755,17 +756,43 @@ def terraform_output(env: dict[str, str], *args: str) -> str:
     return result.stdout
 
 
-def planned_creates(env: dict[str, str]) -> list[dict[str, Any]]:
-    """The adoptable resources `terraform plan` would create: address, type and planned attributes."""
+def planned_changes(env: dict[str, str]) -> list[dict[str, Any]]:
+    """The resource changes of `terraform plan`, against the refreshed state (`terraform show -json`)."""
     with tempfile.TemporaryDirectory() as tmp:
         plan = str(Path(tmp) / "plan")
         terraform_output(env, "plan", "-input=false", "-no-color", f"-out={plan}")
         shown = terraform_output(env, "show", "-json", plan)
+    return json.loads(shown).get("resource_changes", [])
+
+
+def planned_creates(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The adoptable resources the plan would create: address, type and planned attributes."""
     return [
         {"address": change["address"], "type": change["type"], **(change["change"]["after"] or {})}
-        for change in json.loads(shown).get("resource_changes", [])
+        for change in changes
         if change["type"] in ADOPTABLE and change["change"]["actions"] == ["create"]
     ]
+
+
+def forget_vanished_grants(env: dict[str, str], changes: list[dict[str, Any]]) -> None:
+    """Remove from the state the grants the plan would revoke that the account no longer has.
+
+    The refresh leaves such a grant without privileges, and the provider builds its REVOKE from them, so the
+    apply fails on it ("exactly one of AccountRoleGrantPrivileges fields ... must be set"). Nothing is left to
+    revoke: grants of an earlier layout, say, on an account provisioned since from another checkout.
+    """
+    gone = [
+        change["address"]
+        for change in changes
+        if change["type"] == "snowflake_grant_privileges_to_account_role"
+        and "delete" in change["change"]["actions"]
+        and not change["change"]["before"]["privileges"]
+        and not change["change"]["before"]["all_privileges"]
+    ]
+    for start in range(0, len(gone), 100):  # Windows caps a command line at 32767 characters
+        terraform_output(env, "state", "rm", *gone[start : start + 100])
+    if gone:
+        ok(f"Forgot {len(gone)} grants in the Terraform state that the account no longer has")
 
 
 def managed_objects(env: dict[str, str]) -> list[dict[str, Any]]:
@@ -898,10 +925,13 @@ def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: 
     """Handle objects Terraform would create that already exist (an account provisioned from another checkout).
 
     `mode` is sync (adopt them into this checkout's state), wipe (drop them, then create them anew) or ask.
+    Grants the state tracks that the account no longer has are removed from the state first, whatever the mode.
     Returns False when the user aborts.
     """
     print("Looking for objects in the account that this checkout's Terraform state does not track...")
-    existing = existing_objects(conn, planned_creates(env))
+    changes = planned_changes(env)
+    forget_vanished_grants(env, changes)
+    existing = existing_objects(conn, planned_creates(changes))
     if not existing:
         ok("None found; Terraform creates everything.")
         return True
