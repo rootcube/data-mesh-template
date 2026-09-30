@@ -56,7 +56,7 @@ jobs:
           area python    '^(src|dlt_pipelines|scripts|tests)/|^(pyproject\.toml|uv\.lock|\.python-version)$'
           area dbt       '^(dbt|src|dlt_pipelines)/|^(workspace\.yaml|scripts/dbt_all\.py|pyproject\.toml|uv\.lock)$'
           area terraform '^terraform/|^(pyproject\.toml|uv\.lock)$'
-          area docs      "^(docs|overrides)/|^(mkdocs\.yml|pyproject\.toml|uv\.lock|scripts/check_doc_fences\.py)$|^(${quoted})$"
+          area docs      "^docs/|^(mkdocs\.yml|pyproject\.toml|uv\.lock|scripts/check_doc_fences\.py)$|^(${quoted})$"
           area setup     '^(justfile|\.env\.example|\.envrc|pyproject\.toml|uv\.lock|\.python-version)$|^scripts/|^dbt/[^/]+/(packages|package-lock)\.yml$'
           cat "$GITHUB_OUTPUT"
 

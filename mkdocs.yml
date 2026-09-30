@@ -10,8 +10,9 @@ copyright: rootcube
 
 theme:
   name: material
-  # Template overrides (partials/tabs-item.html puts the page icons back in the tabs)
-  custom_dir: overrides
+  # Template overrides (partials/tabs-item.html puts the page icons back in the tabs); the leading
+  # dot keeps Zensical from copying them into the built site
+  custom_dir: docs/.overrides
   language: en
   # The rootcube.com faces; the colors live in stylesheets/extra.css
   font:

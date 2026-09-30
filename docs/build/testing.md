@@ -166,9 +166,10 @@ job that lists what the change touches, then six check jobs in parallel:
 
 On a pull request each check job runs only when the change touches its inputs; a skipped job
 counts as passed for the required checks. Python and Terraform watch their own trees, dbt + Dagster
-watches `dbt/`, `src/`, `dlt_pipelines/` and `workspace.yaml`, Docs watches `docs/`, `mkdocs.yml`,
-`overrides/` and the files the pages include with `--8<--`, and the Setup matrix only the tooling
-path: the justfile, `scripts/`, `.env.example`, `.envrc` and the dbt package files. A dependency
+watches `dbt/`, `src/`, `dlt_pipelines/` and `workspace.yaml`, Docs watches `docs/` (the
+template overrides in `docs/.overrides/` included), `mkdocs.yml` and the files the pages include
+with `--8<--`, and the Setup matrix only the tooling path: the justfile, `scripts/`,
+`.env.example`, `.envrc` and the dbt package files. A dependency
 change (`pyproject.toml`, `uv.lock`, `.python-version`) or an edit to `ci.yml` runs everything, as
 do pushes to `main` and manual runs. The `Setup` matrix is not a required check in the `main`
 ruleset: it is the fresh-machine test of the setup path, and a runner hiccup on one OS should not
