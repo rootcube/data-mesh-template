@@ -85,6 +85,13 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
               +enabled: false
     ```
 
+**`exactly one of AccountRoleGrantPrivileges fields ... must be set` on a Terraform apply**
+:   The state tracks grants the account no longer has (the account was provisioned since from
+    another checkout, or changed by hand), and the provider cannot revoke a grant without
+    privileges. Run `just setup` again (answer 3): it removes them from the state before it
+    applies. With a plain `just tf apply`, find each grant's address with `just tf state list`,
+    remove it with `just tf state rm '<address>'` and apply again.
+
 **`just pre-commit` fails with `terraform: command not found`**
 :   The `terraform fmt` hook needs the Terraform binary when it runs on all files. Install
     Terraform, or rely on the git hook, which only fires the Terraform hooks for changed `.tf`
