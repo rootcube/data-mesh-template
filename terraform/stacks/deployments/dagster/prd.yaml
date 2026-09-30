@@ -1,0 +1,25 @@
+# Stack `dagster-prd`: Dagster for environment prd, on the local k3d cluster (`just k8s up`),
+# with the image `just k8s build` imports into it.
+import:
+  - catalog/dagster
+
+vars:
+  deployment: dagster
+  environment: prd
+  dlt_project: example
+  kube_context: k3d-dagster
+  image:
+    repository: dagster-starter
+    tag: local
+    pull_policy: IfNotPresent
+
+components:
+  terraform:
+    dagster:
+      # The service users (account) and their role grants (the project stacks) come first
+      dependencies:
+        components:
+          - name: snowflake-account
+            stack: account
+          - name: snowflake-project
+            stack: example-prd

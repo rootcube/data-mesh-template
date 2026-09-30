@@ -63,6 +63,6 @@ Each rule has one config file that decides it and at least one check that enforc
 | Terraform YAML | `terraform/config/_validation/schemas/*.json` | pre-commit (`validate-configs`), CI `terraform` job, `just tf-validate-config` |
 | Docs | `mkdocs.yml` | pre-commit (`check_doc_fences.py`), CI `docs` job (the fence check and `zensical build --strict`) |
 
-`just check` runs all of it except the Terraform CLI part; `just pre-commit` runs every hook on
+`just check` runs all of it except the Terraform and Atmos CLI part; `just pre-commit` runs every hook on
 every file. The full list of recipes is on [Commands](commands.md), the hook and job tables on
 [Git workflow](git-workflow.md#what-runs-when).

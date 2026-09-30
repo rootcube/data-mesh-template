@@ -27,3 +27,10 @@ Thumbs.db
 .terraform/
 # Import blocks `just sf bootstrap` writes for one apply when adopting existing objects
 adopt_imports.tf
+# What Atmos writes into each component directory (atmos.yaml): the local states per stack,
+# the stack's variables, the backend configuration and saved plans
+terraform.tfstate.d/
+*.terraform.tfvars.json
+backend.tf.json
+*.planfile
+providers_override.tf.json

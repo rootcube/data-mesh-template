@@ -72,7 +72,8 @@ src/orchestrator/            Dagster package
 └── utils/
 dlt_pipelines/               dlt package: pipelines/ingest/<source>/ (knmi to start with)
 dbt/                         profiles.yml (shared) + dbt_common (package) + dbt_example (project)
-terraform/                   Snowflake provisioning from terraform/config (administrators)
+terraform/                   Snowflake provisioning from terraform/config, and Dagster on Kubernetes, through Atmos (administrators)
+Dockerfile                   the code location image of the Kubernetes deployment
 scripts/                     snowflake.py (bootstrap, key-pair setup, check, query), info.py, dbt_all.py
 docs/ + mkdocs.yml           the documentation site; docs/.overrides/ holds the Zensical template overrides (page icons in the tabs)
 .github/                     CI, release-please, Dependabot, the exported `main` ruleset
@@ -88,7 +89,9 @@ works in personal schemas (`DBT_<USERNAME>_SRC` with its own stage, `DBT_<USERNA
 
 `terraform/README.md` (also in the docs under *Operate*) walks through the one-time
 Snowflake bootstrap (`just setup` on a fresh account, or by hand), the YAML configuration under
-`terraform/config`, and onboarding people. Every `just tf plan` shows exactly what changes.
+`terraform/config`, and onboarding people. Every `just tf plan --all` shows exactly what changes.
+*Operate > Dagster on Kubernetes* deploys Dagster to a local k3d cluster (`just k8s up`,
+`just k8s deploy`), running dlt and dbt as Snowflake service users.
 
 ## Working with AI agents
 

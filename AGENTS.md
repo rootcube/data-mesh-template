@@ -96,7 +96,11 @@ dbt/                              # profiles.yml (shared profile `default`: loca
 ├── dbt_common/                   #   package: macros (schema naming, query tag, run logging, metadata upload), generic dims/seeds, generic tests
 └── dbt_example/                  #   project: models/02_stg 03_int 04_mrt 05_exp, sources/, seeds/, exposures/, packages.yml (local dbt_common)
 terraform/                        # administrators: YAML config (organisations, teams, projects, environments, layers, accesses, roles, computes, users) -> Snowflake
+├── components/                   #   root modules, run by Atmos (atmos.yaml): snowflake-account (platform roles, created and service users), snowflake-project (one project x environment), dagster (Helm chart on Kubernetes, one environment)
+├── stacks/                       #   Atmos stacks, one state each: account.yaml, projects/<project>/<env>.yaml (vars project, environment code), deployments/dagster/<env>.yaml
+└── modules/                      #   config (YAML loading, shared by both components) and snowflake/* (resources)
 scripts/                          # snowflake.py (key-pair setup/check/query/keygen), info.py, dbt_all.py
+Dockerfile + .dockerignore        # the code location image of the Kubernetes deployment (uv, `deploy` group, dbt deps + parse at build)
 tests/                            # pytest, offline only
 docs/ + mkdocs.yml                # the documentation site; docs/.overrides/ holds the Zensical template overrides (page icons in the tabs)
 ```
@@ -109,17 +113,18 @@ the dlt asset key `dlt/ingest/<source>/<entity>`). dbt keys follow the file path
 
 ```bash
 just init             # uv + .venv + .env + dbt deps
-just install terraform # tools uv does not manage: terraform (tfenv), direnv, or all (gh is optional)
+just install terraform # tools uv does not manage: terraform (tfenv), atmos, direnv, or all (gh is optional)
 just sf setup         # one-time key-pair setup (interactive login)
-just setup            # init + wizard: fresh account (Terraform install, bootstrap, provisioning, key pair, .env) or provisioned (key pair, .env)
+just setup            # init + wizard: fresh account (Terraform and Atmos install, bootstrap, provisioning, key pair, .env) or provisioned (key pair, .env)
 just sf context       # (re)point .env at a project from the roles granted to you, no login
 just start            # Dagster UI on :3000
 just validate         # dagster definitions validate -w workspace.yaml
 just dbt build        # dbt in dbt/dbt_example (just project=dbt_x dbt ... for another project)
 just dlt run knmi     # one dlt pipeline outside Dagster
 just fmt / lint / typecheck / test / check
-just tf plan          # Terraform (administrators); just tf-validate-config checks the YAML
-just tf clean         # remove every object the Terraform state tracks, databases and data included (asks first)
+just tf plan --all    # Terraform through Atmos, one state per stack (administrators); just tf-validate-config checks the YAML
+just tf clean         # remove every object the stacks' Terraform states track, databases and data included (asks first)
+just k8s up / deploy / ui # Dagster on a local k3d cluster (a Docker engine must run; docs/operate/kubernetes.md)
 just docs             # docs site on :8000 (`just docs build --strict` after editing docs/)
 ```
 
@@ -141,7 +146,7 @@ Full rules: [Reference](docs/reference/index.md). The hard musts:
 
 - **dlt load** ([guide](docs/build/adding-dlt-loads.md)): a folder `dlt_pipelines/pipelines/ingest/<source>/` with `pipelines.py` (module-level `source` and `pipeline`, `table_name=<source>__<entity>`), `source.py`, `constants.py` and a `defs.yaml`; then a `src_<source>.yml` in the dbt project (schema line, `identifier`, `meta.dagster.asset_key`, `freshness` and `loaded_at_field`) and a staging model.
 - **dbt model** ([guide](docs/build/adding-dbt-models.md)): `models/<layer>/<domain>/<name>.sql` plus its YAML in a sibling `_conf/` folder. Models reference only the layer directly below.
-- **project** ([guide](docs/build/adding-projects.md)): a `terraform/config/projects/<project>.yaml`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
+- **project** ([guide](docs/build/adding-projects.md)): a `terraform/config/projects/<project>.yaml` with one Atmos stack manifest per environment under `terraform/stacks/projects/<project>/`, a copy of `dbt/dbt_example` and of `src/orchestrator/locations/dbt/dbt_example`, one line in `workspace.yaml`, one block in `.github/CODEOWNERS`. Exactly one project builds the `dbt_common` models.
 - **Python asset** ([guide](docs/build/adding-python-assets.md)): in the location that owns it; a genuinely separate concern is a new code location in `workspace.yaml`.
 - **Job, schedule, sensor**: named `<kind>__<location>__<name>` and always derived, never written per instance: the dlt location makes `job__dlt__ingest_<source>` and its daily schedule per source folder, every dbt location gets the same set from `build_dbt_defs()` and `source_freshness.py`. Do not add one-off jobs in a location's `definitions.py`; extend the factory. Docs describe these as patterns (`<source>`, `<project>`), not as lists of instances. See [Orchestration](docs/understand/orchestration.md#jobs).
 

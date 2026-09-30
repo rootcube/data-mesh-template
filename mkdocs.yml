@@ -120,6 +120,7 @@ nav:
       - Snowflake provisioning: operate/snowflake-provisioning.md
       - Onboarding: operate/onboarding.md
       - Snowflake trial account: operate/snowflake-trial-account-setup.md
+      - Dagster on Kubernetes: operate/kubernetes.md
   - Understand:
       - understand/index.md
       - The platform model:

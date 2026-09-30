@@ -92,7 +92,8 @@ why `dbt deps` and a parse have to have run first: without `packages/` the parse
 location shows an error. `just dbt-all deps` fixes it, and `just init` and `just check` run the
 parse. Both paths read the same `dbt/<project>/target/manifest.json`, because
 `DataMeshDbtProjectComponent` ignores the copy of the project that dagster-dbt otherwise
-snapshots into `.local_defs_state/`.
+snapshots into `.local_defs_state/`. The Kubernetes image runs `dbt deps` and `dbt parse` when
+it is built ([Kubernetes](../operate/kubernetes.md)), since nothing parses there on load.
 
 The `select: "fqn:*"` in that file means every node. It is not a bare `*`, which dbt's CLI
 expands to the file names in the project directory on Windows, and then selects nothing.
@@ -151,7 +152,7 @@ same set from `build_dbt_defs()`. Below, `<source>` is a folder under
 | `job__<project>__run_all` | `<project>` | `dbt run`: the models, no tests |
 | `job__<project>__test_all` | `<project>` | `dbt test` |
 | `job__<project>__seed_all` | `<project>` | `dbt seed` |
-| `job__<project>__source_freshness` | `<project>` | `dbt source freshness`, into `dbt/<project>/target/freshness/sources.json`. A stale source is a warning; a missing `sources.json` fails the run |
+| `job__<project>__source_freshness` | `<project>` | `dbt source freshness`, then one observation per source on its asset with the `max_loaded_at` dbt found. A stale source is a warning; a `sources.json` dbt did not write fails the run |
 | `job__<project>__build_fresher` | `<project>` | `dbt build --select <sources_selector>`: the sensor below launches it with the downstream of the sources that got fresher; from the Launchpad, any dbt selector goes in `sources_selector` |
 
 `build_all` is an asset job: the UI shows one materialization per model. The other five are one
@@ -180,14 +181,16 @@ own: the load lands, the next freshness check sees it, the sensor rebuilds its d
 | `schedule__dlt__ingest_<source>` | daily at 06:00 UTC (`0 6 * * *`) | Launches `job__dlt__ingest_<source>`; these carry the daily load, one run per source |
 | `schedule__dlt__ingest_all` | same cron, stopped everywhere | Opt-in: launches `job__dlt__ingest_all`, every load in one run. Start it and stop the per-source schedules, or every load runs twice |
 | `schedule__<project>__source_freshness` | every hour (`0 * * * *`) | Launches `job__<project>__source_freshness` |
-| `sensor__<project>__source_freshness` | every 5 minutes | Reads `sources.json`, compares each source's `max_loaded_at` with its cursor and, when any advanced, launches `job__<project>__build_fresher` with `source:<source>.<table>+ ...` for exactly those sources. It also records an observation with the new `max_loaded_at` on the source's asset (the dlt asset, through the shared key) |
+| `sensor__<project>__source_freshness` | every 5 minutes | Reads each source's latest observation, compares its `max_loaded_at` with the cursor and, when any advanced, launches `job__<project>__build_fresher` with `source:<source>.<table>+ ...` for exactly those sources |
 
 A source takes part when its YAML has a `freshness` block and a `loaded_at_field` or
 `loaded_at_query`; `src_knmi.yml` derives one from dlt's `_dlt_load_id`, and dbt skips the
 sources that have neither. The first tick after the sensor starts sees every source as new and
-builds the whole downstream once; from then on only what changed. The handoff between job and
-sensor is that file, which works while both run on one filesystem (`dagster dev`, one
-container); a deployment that runs jobs in their own pods puts shared storage in between.
+builds the whole downstream once; from then on only what changed. The job and the sensor meet
+in the event log, not in dbt's `sources.json`: the observations sit on the source's asset (the
+dlt asset, through the shared key), so the history of every check shows there too, and the job
+can run in a pod of its own on Kubernetes while the sensor runs in the code server, both reading
+the same instance storage.
 
 All of them start **stopped** in `dev` and `local` (`SnowflakeSettings.is_personal`), so nothing
 fires by itself on a laptop; switch them on under *Automation* in the UI to try the chain. In

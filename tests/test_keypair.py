@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -214,11 +215,73 @@ def test_existing_objects_matches_planned_creates_by_full_name() -> None:
 
 def test_write_imports_uses_quoted_identifiers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
-    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
-    script.write_imports([PLANNED[0], PLANNED[3]])
-    text = (tmp_path / "adopt_imports.tf").read_text()
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    instance = script.Instance("snowflake-project", "example-dev")
+    instance.adopt_file.parent.mkdir(parents=True)
+    script.write_imports(instance, [PLANNED[0], PLANNED[3]])
+    text = (tmp_path / "components" / "snowflake-project" / "adopt_imports.tf").read_text()
+    assert "one apply of stack example-dev" in text
     assert 'import {\n  to = module.database["dev"].snowflake_database.this\n  id = "\\"DB_EXAMPLE_DEV\\""\n}' in text
     assert 'id = "\\"DB_EXAMPLE_DEV\\".\\"_SRC\\".\\"ST_DEFAULT\\""' in text
+
+
+def test_apply_stack_imports_the_adopted_objects_for_that_one_apply(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The import blocks sit in the component directory, so they exist only while their own stack applies."""
+    script = load_script()
+    monkeypatch.setattr(script, "TF_DIR", tmp_path)
+    instance = script.Instance("snowflake-project", "example-dev")
+    instance.adopt_file.parent.mkdir(parents=True)
+    seen: list[tuple[tuple[str, ...], bool]] = []
+    monkeypatch.setattr(script, "atmos", lambda env, *args: seen.append((args, instance.adopt_file.exists())))
+    script.apply_stack({}, instance, [PLANNED[0]], yes=True)
+    assert seen == [(("terraform", "apply", "snowflake-project", "-s", "example-dev", "--", "-auto-approve"), True)]
+    assert not instance.adopt_file.exists()
+    seen.clear()
+    script.apply_stack({}, instance, [], yes=False)
+    assert seen == [(("terraform", "apply", "snowflake-project", "-s", "example-dev"), False)]
+
+
+def test_apply_stacks_stops_at_a_stack_that_was_not_applied(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A declined `yes` (Terraform exits 1) ends the bootstrap with the stack's name, not a traceback."""
+    script = load_script()
+    applied: list[str] = []
+
+    def apply(env: dict[str, str], instance: Any, adopted: list[dict[str, Any]], yes: bool) -> None:
+        if instance.stack == "example-dev":
+            raise subprocess.CalledProcessError(1, ["atmos", "terraform", "apply"])
+        applied.append(instance.stack)
+
+    monkeypatch.setattr(script, "apply_stack", apply)
+    stacks = [
+        script.Instance("snowflake-account", "account"),
+        script.Instance("snowflake-project", "example-dev"),
+        script.Instance("snowflake-project", "example-prd"),
+    ]
+    with pytest.raises(SystemExit, match="Stack example-dev was not applied"):
+        script.apply_stacks({}, stacks, {}, yes=False)
+    assert applied == ["account"]
+
+
+def test_instances_put_the_account_stack_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The project stacks grant roles to the persons the account stack creates."""
+    script = load_script()
+    described = {
+        stack: {"components": {"terraform": {component: {"workspace": stack}}}}
+        for stack, component in [
+            ("example-prd", "snowflake-project"),
+            ("account", "snowflake-account"),
+            ("example-dev", "snowflake-project"),
+            ("dagster-prd", "dagster"),  # the Kubernetes deployment: not the bootstrap's business
+        ]
+    }
+    monkeypatch.setattr(script, "atmos_output", lambda env, *args: json.dumps(described))
+    assert script.instances({}) == [
+        script.Instance("snowflake-account", "account"),
+        script.Instance("snowflake-project", "example-dev"),
+        script.Instance("snowflake-project", "example-prd"),
+    ]
 
 
 def test_drop_objects_takes_ownership_goes_outermost_first_and_spares_the_current_user() -> None:
@@ -257,19 +320,32 @@ def test_drop_objects_drops_a_schema_itself_when_its_database_stays() -> None:
     ],
 )
 def test_reconcile_existing_asks_to_sync_wipe_or_abort(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, answers: list[str], proceeds: bool, imports: bool, drops: bool
+    monkeypatch: pytest.MonkeyPatch, answers: list[str], proceeds: bool, imports: bool, drops: bool
 ) -> None:
     script = load_script()
-    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
-    monkeypatch.setattr(script, "planned_changes", lambda env: [])
+    monkeypatch.setattr(script, "planned_changes", lambda env, instance: [])
     monkeypatch.setattr(script, "planned_creates", lambda changes: PLANNED)
     replies = iter(answers)
     monkeypatch.setattr("builtins.input", lambda prompt: next(replies))
     conn = FakeConnection()
-    assert script.reconcile_existing(conn, {}, "ask", "ADMIN", yes=False) is proceeds
-    assert (tmp_path / "adopt_imports.tf").exists() is imports
+    stacks = [script.Instance("snowflake-project", "example-dev")]
+    adopt = script.reconcile_existing(conn, {}, stacks, "ask", "ADMIN", yes=False)
+    assert (adopt is not None) is proceeds
+    assert bool(adopt) is imports
     assert any(sql.startswith("DROP") for sql in conn.executed) is drops
     assert any(sql.startswith("GRANT OWNERSHIP") for sql in conn.executed) is proceeds
+
+
+def test_reconcile_existing_adopts_each_object_into_the_stack_that_plans_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = load_script()
+    account, dev = script.Instance("snowflake-account", "account"), script.Instance("snowflake-project", "example-dev")
+    planned = {"account": [PLANNED[6]], "example-dev": [PLANNED[0], PLANNED[1]]}
+    monkeypatch.setattr(script, "planned_changes", lambda env, instance: [instance.stack])
+    monkeypatch.setattr(script, "forget_vanished_grants", lambda env, instance, changes: None)
+    monkeypatch.setattr(script, "planned_creates", lambda changes: planned[changes[0]])
+    adopt = script.reconcile_existing(FakeConnection(), {}, [account, dev], "sync", "ADMIN", yes=False)
+    # DB_EXAMPLE_PRD does not exist in the account, so Terraform creates it instead of adopting it.
+    assert adopt == {account: [PLANNED[6]], dev: [PLANNED[0]]}
 
 
 def test_sync_hands_adopted_objects_to_the_system_role_terraform_uses() -> None:
@@ -358,13 +434,12 @@ def test_account_settings_are_asked_applied_or_skipped(
     assert bool(conn.scripts) is applied
 
 
-def test_reconcile_existing_does_nothing_on_a_fresh_account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reconcile_existing_does_nothing_on_a_fresh_account(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
-    monkeypatch.setattr(script, "ADOPT_FILE", tmp_path / "adopt_imports.tf")
-    monkeypatch.setattr(script, "planned_changes", lambda env: [])
+    monkeypatch.setattr(script, "planned_changes", lambda env, instance: [])
     monkeypatch.setattr(script, "planned_creates", lambda changes: [PLANNED[1]])
-    assert script.reconcile_existing(FakeConnection(), {}, "ask", "ADMIN", yes=False) is True
-    assert not (tmp_path / "adopt_imports.tf").exists()
+    stacks = [script.Instance("snowflake-project", "example-prd")]
+    assert script.reconcile_existing(FakeConnection(), {}, stacks, "ask", "ADMIN", yes=False) == {}
 
 
 def grant_change(
@@ -383,7 +458,8 @@ def test_forget_vanished_grants_removes_only_revokes_of_grants_the_account_lost(
 ) -> None:
     script = load_script()
     calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(script, "terraform_output", lambda env, *args: calls.append(args) or "")
+    monkeypatch.setattr(script, "atmos_output", lambda env, *args: calls.append(args) or "")
+    instance = script.Instance("snowflake-project", "example-dev")
     changes = [
         grant_change("gone", ["delete"], []),
         grant_change("replaced", ["delete", "create"], []),
@@ -392,11 +468,11 @@ def test_forget_vanished_grants_removes_only_revokes_of_grants_the_account_lost(
         grant_change("all", ["delete"], [], all_privileges=True),
         {"address": "schema", "type": "snowflake_schema", "change": {"actions": ["delete"], "before": {}}},
     ]
-    script.forget_vanished_grants({}, changes)
-    assert calls == [("state", "rm", "gone", "replaced")]
+    script.forget_vanished_grants({}, instance, changes)
+    assert calls == [("terraform", "state", "rm", "snowflake-project", "-s", "example-dev", "--", "gone", "replaced")]
     calls.clear()
-    script.forget_vanished_grants({}, [grant_change(f"g{i}", ["delete"], []) for i in range(150)])
-    assert [len(args) - 2 for args in calls] == [100, 50]
+    script.forget_vanished_grants({}, instance, [grant_change(f"g{i}", ["delete"], []) for i in range(150)])
+    assert [len(args) - 7 for args in calls] == [100, 50]
 
 
 def test_usable_prefix_follows_the_user_schema_and_refuses_placeholders() -> None:
@@ -778,13 +854,14 @@ STATE = {
 
 def test_managed_objects_reads_every_module_of_the_state(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
-    monkeypatch.setattr(script, "terraform_output", lambda env, *args: json.dumps(STATE))
-    assert sorted(script.object_path(r) for r in script.managed_objects({})) == [
+    instance = script.Instance("snowflake-project", "example-dev")
+    monkeypatch.setattr(script, "atmos_output", lambda env, *args: json.dumps(STATE))
+    assert sorted(script.object_path(r) for r in script.managed_objects({}, instance)) == [
         ("DB_EXAMPLE_DEV",),
         ("DB_EXAMPLE_DEV", "_SRC", "ST_DEFAULT"),
     ]
-    monkeypatch.setattr(script, "terraform_output", lambda env, *args: '{"format_version": "1.0"}')
-    assert script.managed_objects({}) == []  # no state yet
+    monkeypatch.setattr(script, "atmos_output", lambda env, *args: '{"format_version": "1.0"}')
+    assert script.managed_objects({}, instance) == []  # no state yet
 
 
 def test_misowned_objects_lists_what_another_role_owns() -> None:
@@ -799,16 +876,17 @@ def test_misowned_objects_lists_what_another_role_owns() -> None:
 
 def test_reclaim_managed_objects_hands_them_back_after_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
-    monkeypatch.setattr(script, "managed_objects", lambda env: PLANNED)
+    monkeypatch.setattr(script, "managed_objects", lambda env, instance: PLANNED)
+    stacks = [script.Instance("snowflake-project", "example-dev")]
     conn = FakeConnection()
-    script.reclaim_managed_objects(conn, {}, yes=True)
+    script.reclaim_managed_objects(conn, {}, stacks, yes=True)
     assert [sql for sql in conn.executed if sql.startswith("GRANT")] == [
         'GRANT OWNERSHIP ON DATABASE "DB_EXAMPLE_DEV" TO ROLE SYSADMIN COPY CURRENT GRANTS',
         'GRANT OWNERSHIP ON USER "ADMIN" TO ROLE USERADMIN COPY CURRENT GRANTS',
     ]
     conn = FakeConnection()
     monkeypatch.setattr("builtins.input", lambda prompt: "n")
-    script.reclaim_managed_objects(conn, {}, yes=False)
+    script.reclaim_managed_objects(conn, {}, stacks, yes=False)
     assert not [sql for sql in conn.executed if sql.startswith("GRANT")]
 
 
@@ -846,41 +924,60 @@ def test_terraform_settings_connect_as_the_terraform_user() -> None:
         script.terraform_settings({})
 
 
-def fake_terraform(monkeypatch: pytest.MonkeyPatch, script: ModuleType, addresses: list[str]) -> list[tuple[str, ...]]:
-    """Record terraform calls; answer `state list` with `addresses` and `show -json` with STATE."""
+def fake_atmos(monkeypatch: pytest.MonkeyPatch, script: ModuleType, tracked: list[str]) -> list[tuple[str, ...]]:
+    """Two stacks: `account` with an empty state, `example-dev` tracking `tracked` (its `show -json` is STATE).
+
+    Returns the Atmos calls that change something (destroy, state rm), in the order they are made.
+    """
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(script, "require_terraform", lambda: None)
     monkeypatch.setattr(
         script, "terraform_env", lambda: {"TF_VAR_SNOWFLAKE_ORGANIZATION": "MYORG", "TF_VAR_SNOWFLAKE_ACCOUNT": "ACC"}
     )
-    monkeypatch.setattr(script, "terraform", lambda env, *args: calls.append(args))
-    answers = {"state": "\n".join(addresses), "show": json.dumps(STATE)}
-    monkeypatch.setattr(script, "terraform_output", lambda env, *args: answers[args[0]])
+    stacks = {
+        "account": {"components": {"terraform": {"snowflake-account": {"workspace": "account"}}}},
+        "example-dev": {"components": {"terraform": {"snowflake-project": {"workspace": "example-dev"}}}},
+    }
+    states = {"account": [], "example-dev": tracked}
+
+    def output(env: dict[str, str], *args: str) -> str:
+        if args[0] == "describe":
+            return json.dumps(stacks)
+        stack = args[args.index("-s") + 1]
+        if args[1:3] == ("state", "list"):
+            return "\n".join(states[stack])
+        if args[1] == "show":
+            return json.dumps(STATE) if states[stack] else '{"format_version": "1.0"}'
+        calls.append(args)
+        return ""
+
+    monkeypatch.setattr(script, "atmos_output", output)
+    monkeypatch.setattr(script, "atmos", lambda env, *args: calls.append(args))
     return calls
 
 
 def test_clean_changes_nothing_unless_the_account_name_is_typed(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
-    calls = fake_terraform(monkeypatch, script, ['module.database["dev"].snowflake_database.this'])
+    calls = fake_atmos(monkeypatch, script, ['module.database["dev"].snowflake_database.this'])
     monkeypatch.setattr("builtins.input", lambda prompt: "MYORG")
     assert script.cmd_clean(None) == 1
-    assert calls == [("init", "-input=false")]
+    assert calls == []
 
 
 def test_clean_destroys_the_rest_then_drops_the_databases(monkeypatch: pytest.MonkeyPatch) -> None:
     script = load_script()
     addresses = ['module.database["dev"].snowflake_database.this', 'snowflake_stage_internal.default["dev_src"]']
-    calls = fake_terraform(monkeypatch, script, addresses)
+    calls = fake_atmos(monkeypatch, script, addresses)
     conn = FakeConnection()
     settings = SnowflakeSettings(account="MYORG-ACC")
     monkeypatch.setattr(script, "terraform_settings", lambda env: settings)
     monkeypatch.setattr(SnowflakeSettings, "connect", lambda self: conn)
     monkeypatch.setattr("builtins.input", lambda prompt: "myorg-acc")
     assert script.cmd_clean(None) == 0
+    stack = ("snowflake-project", "-s", "example-dev", "--")
     assert calls == [
-        ("init", "-input=false"),
-        ("destroy", "-auto-approve", "-input=false", "-target=snowflake_stage_internal.default"),
-        ("state", "rm", "module.database"),
+        ("terraform", "destroy", *stack, "-auto-approve", "-input=false", "-target=snowflake_stage_internal.default"),
+        ("terraform", "state", "rm", *stack, "module.database"),
     ]
     assert conn.executed == ['DROP DATABASE IF EXISTS "DB_EXAMPLE_DEV"']
 
@@ -888,13 +985,13 @@ def test_clean_destroys_the_rest_then_drops_the_databases(monkeypatch: pytest.Mo
 def test_clean_on_an_empty_state_says_so_and_fails(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An empty state means this checkout knows nothing, not that the account is clean."""
+    """Empty states mean this checkout knows nothing, not that the account is clean."""
     script = load_script()
-    calls = fake_terraform(monkeypatch, script, [])
+    calls = fake_atmos(monkeypatch, script, [])
     assert script.cmd_clean(None) == 1
-    assert calls == [("init", "-input=false")]
+    assert calls == []
     out = capsys.readouterr().out
-    assert "tracks no objects" in out and "--existing sync" in out
+    assert "track no objects" in out and "--existing sync" in out
 
 
 def test_clean_names_what_stays_in_the_account(capsys: pytest.CaptureFixture[str]) -> None:

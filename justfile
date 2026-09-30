@@ -23,15 +23,24 @@ export PYTHONWARNINGS := "ignore:::snowflake.connector.vendored.requests"
 # right after `just init` installs it, before the user restarts their shell.
 _uv_bin   := if os_family() == "windows" { home_directory() + "\\.local\\bin" } else { home_directory() / ".local" / "bin" }
 _path_sep := if os_family() == "windows" { ";" } else { ":" }
-# Same for `just install terraform` on Windows: winget adds its package folder to the user PATH,
-# which only shells started after the install pick up.
-_tf_bin   := if os_family() == "windows" { env("LOCALAPPDATA", "") + "\\Microsoft\\WinGet\\Packages\\Hashicorp.Terraform_Microsoft.Winget.Source_8wekyb3d8bbwe" + _path_sep } else { "" }
-export PATH := _uv_bin + _path_sep + _tf_bin + env("PATH")
+# Same for `just install terraform`, `k3d` and `kubectl` on Windows: winget adds each package folder
+# to the user PATH (or links the tool into WinGet\Links when it may create symlinks), which only
+# shells started after the install pick up.
+_winget_pkg := env("LOCALAPPDATA", "") + "\\Microsoft\\WinGet\\Packages\\"
+_winget_src := "_Microsoft.Winget.Source_8wekyb3d8bbwe" + _path_sep
+_winget_bin := if os_family() == "windows" { env("LOCALAPPDATA", "") + "\\Microsoft\\WinGet\\Links" + _path_sep + _winget_pkg + "Hashicorp.Terraform" + _winget_src + _winget_pkg + "k3d.k3d" + _winget_src + _winget_pkg + "Kubernetes.kubectl" + _winget_src } else { "" }
+export PATH := _uv_bin + _path_sep + _winget_bin + env("PATH")
 
 # Overridable: `just project=dbt_other dbt build` targets another dbt project under dbt/.
 project     := "dbt_example"
 dbt_project := "dbt" / project
-tf_dir      := "terraform"
+# The Atmos release `just install atmos` fetches on Windows (Homebrew installs its latest elsewhere);
+# atmos.yaml states the versions this configuration works with.
+atmos_version := "1.230.0"
+# The local Kubernetes cluster (k3d) and the image `just k8s build` imports into it: the image of
+# terraform/stacks/deployments/dagster/*.yaml, whose kube_context is k3d-<cluster>.
+k8s_cluster := "dagster"
+k8s_image   := "dagster-starter:local"
 # sqlfluff discovers a config above the working directory only by walking from there to your home
 # directory. A checkout on another drive than your profile (Windows) shares no path with it, so the
 # shared dbt/.sqlfluff is never found; pass it explicitly and the lookup stops mattering.
@@ -98,7 +107,7 @@ setup: _init
 info:
     uv run python scripts/info.py
 
-# install a tool uv does not manage: all | uv | tfenv | terraform | direnv (Homebrew on macOS/Linux); `gh` is optional and not part of `all`
+# install a tool uv does not manage: all | uv | tfenv | terraform | atmos | direnv (Homebrew on macOS/Linux); `k3d`, `kubectl` (local Kubernetes) and `gh` are optional and not part of `all`
 [unix]
 install tool="all":
     #!/usr/bin/env bash
@@ -110,18 +119,46 @@ install tool="all":
         tf|terraform)
                    command -v tfenv >/dev/null 2>&1 || brew_install tfenv https://github.com/tfutils/tfenv
                    tfenv install latest && tfenv use latest ;;
+        atmos)     brew_install atmos https://atmos.tools/install ;;
+        k3d)       brew_install k3d https://k3d.io ;;
+        kubectl)   brew_install kubectl https://kubernetes.io/docs/tasks/tools/ ;;
         direnv)    brew_install direnv https://direnv.net/docs/installation.html
                    echo 'then add to ~/.zshrc (or ~/.bashrc): eval "$(direnv hook zsh)"' ;;
         gh)        brew_install gh https://cli.github.com/
                    echo "then: gh auth login" ;;
-        all)       for t in uv terraform direnv; do just install "$t" || echo "$t: install by hand"; done ;;
-        *)         echo "usage: just install [all|uv|tfenv|terraform|direnv|gh]"; exit 1 ;;
+        all)       for t in uv terraform atmos direnv; do just install "$t" || echo "$t: install by hand"; done ;;
+        *)         echo "usage: just install [all|uv|tfenv|terraform|atmos|k3d|kubectl|direnv|gh]"; exit 1 ;;
     esac
 
-# install a tool uv does not manage: all | uv | terraform | direnv (winget); `gh` is optional and not part of `all`
+# install a tool uv does not manage: all | uv | terraform | atmos | direnv (winget); `k3d`, `kubectl` (local Kubernetes) and `gh` are optional and not part of `all`
 [windows]
 install tool="all":
-    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { if (Get-Command terraform -ErrorAction SilentlyContinue) { "terraform already installed" } else { winget install --id Hashicorp.Terraform -e } } "direnv" { if (Get-Command direnv -ErrorAction SilentlyContinue) { "direnv already installed" } else { winget install --id direnv.direnv -e }; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { if (Get-Command gh -ErrorAction SilentlyContinue) { "gh already installed" } else { winget install --id GitHub.cli -e }; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|direnv|gh]"; exit 1 } }
+    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { if (Get-Command terraform -ErrorAction SilentlyContinue) { "terraform already installed" } else { winget install --id Hashicorp.Terraform -e } } "atmos" { just _install-atmos } "k3d" { if (Get-Command k3d -ErrorAction SilentlyContinue) { "k3d already installed" } else { winget install --id k3d.k3d -e } } "kubectl" { if (Get-Command kubectl -ErrorAction SilentlyContinue) { "kubectl already installed" } else { winget install --id Kubernetes.kubectl -e } } "direnv" { if (Get-Command direnv -ErrorAction SilentlyContinue) { "direnv already installed" } else { winget install --id direnv.direnv -e }; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { if (Get-Command gh -ErrorAction SilentlyContinue) { "gh already installed" } else { winget install --id GitHub.cli -e }; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install atmos; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|atmos|k3d|kubectl|direnv|gh]"; exit 1 } }
+
+# Atmos has no winget package: Scoop when you have it, otherwise the release binary, checked against
+# the release's SHA256SUMS, into ~\.local\bin (on PATH through uv's installer).
+[windows]
+[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[extension(".ps1")]
+_install-atmos:
+    $ErrorActionPreference = "Stop"; $ProgressPreference = "SilentlyContinue"
+    if (Get-Command atmos -ErrorAction SilentlyContinue) { "atmos already installed"; exit 0 }
+    if (Get-Command scoop -ErrorAction SilentlyContinue) { scoop install atmos; exit $LASTEXITCODE }
+    $version = "{{atmos_version}}"
+    $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+    $name = "atmos_${version}_windows_$arch.exe"
+    $base = "https://github.com/cloudposse/atmos/releases/download/v$version"
+    $download = Join-Path $env:TEMP $name
+    $sums = Join-Path $env:TEMP "atmos_${version}_SHA256SUMS"
+    Invoke-WebRequest "$base/$name" -OutFile $download
+    Invoke-WebRequest "$base/atmos_${version}_SHA256SUMS" -OutFile $sums
+    $expected = (Select-String -Path $sums -Pattern " $([regex]::Escape($name))$").Line.Split(" ")[0]
+    if ((Get-FileHash $download -Algorithm SHA256).Hash -ne $expected.ToUpper()) { Remove-Item $download; throw "checksum mismatch for $name" }
+    $bin = Join-Path $HOME ".local\bin"
+    New-Item -ItemType Directory -Force $bin | Out-Null
+    Move-Item -Force $download (Join-Path $bin "atmos.exe")
+    Remove-Item $sums
+    "atmos $version installed in $bin"
 
 # --- Snowflake --------------------------------------------------------------
 
@@ -291,7 +328,7 @@ sqlfluff *args:
 
 # --- Terraform (platform administrators) -----------------------------------
 
-# run terraform in terraform/, e.g. `just tf init`, `just tf plan`, `just tf apply`; `just tf clean` removes every object the state tracks, databases and their data included
+# run Terraform through Atmos on the stacks, e.g. `just tf plan --all`, `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
 [unix]
 [positional-arguments]
 tf cmd *args:
@@ -299,21 +336,79 @@ tf cmd *args:
     set -euo pipefail
     case "$1" in
         clean) uv run python scripts/snowflake.py clean ;;
-        *)     cd {{tf_dir}}; terraform "$@" ;;
+        *)     atmos terraform "$@" ;;
     esac
 
-# run terraform in terraform/, e.g. `just tf init`, `just tf plan`, `just tf apply`; `just tf clean` removes every object the state tracks, databases and their data included
+# run Terraform through Atmos on the stacks, e.g. `just tf plan --all`, `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
 [windows]
 [positional-arguments]
 [script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
 [extension(".ps1")]
 tf cmd *args:
-    if ($args[0] -eq "clean") { uv run python scripts/snowflake.py clean } else { cd {{tf_dir}}; terraform @args }
+    if ($args[0] -eq "clean") { uv run python scripts/snowflake.py clean } else { atmos terraform @args }
     exit $LASTEXITCODE
 
 # validate the YAML configuration under terraform/config against its JSON schemas
 tf-validate-config:
     uv run python terraform/config/_validation/validate_configs.py
+
+# one-off: split a pre-Atmos terraform/terraform.tfstate into one state per stack (`--dry-run` to see where everything goes)
+tf-split-state *args:
+    uv run python scripts/split_state.py {{args}}
+
+# --- Kubernetes (local k3d) ------------------------------------------------
+# The Dagster deployment of a stack terraform/stacks/deployments/dagster/<env>.yaml; its namespace
+# is the stack name (<deployment>-<env>). A Docker engine must be running (docs/operate/kubernetes.md).
+
+# local Kubernetes for Dagster: `just k8s up` (create or start the k3d cluster), `build` (image into the cluster), `deploy [stack]` (build + apply + restart), `ui [stack]` (webserver on :3000), `down`
+[unix]
+k8s cmd stack="dagster-prd":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    context="k3d-{{k8s_cluster}}"
+    case "{{cmd}}" in
+        up)     if k3d cluster get {{k8s_cluster}} >/dev/null 2>&1; then k3d cluster start {{k8s_cluster}}; else k3d cluster create {{k8s_cluster}} --wait; fi ;;
+        build)  docker build -t {{k8s_image}} .
+                k3d image import {{k8s_image}} -c {{k8s_cluster}} ;;
+        # The image keeps its tag, so the running code servers only pick up a new build on a restart.
+        deploy) just k8s build
+                atmos terraform apply dagster -s {{stack}}
+                kubectl --context "$context" -n {{stack}} rollout restart deployment ;;
+        ui)     pod=$(kubectl --context "$context" -n {{stack}} get pods -l component=dagster-webserver -o jsonpath='{.items[0].metadata.name}')
+                echo "Dagster on http://localhost:3000 (Ctrl+C stops the forward)"
+                kubectl --context "$context" -n {{stack}} port-forward "$pod" 3000:80 ;;
+        down)   k3d cluster stop {{k8s_cluster}} ;;
+        *)      echo "usage: just k8s up|build|deploy|ui|down [stack]"; exit 1 ;;
+    esac
+
+# local Kubernetes for Dagster: `just k8s up` (create or start the k3d cluster), `build` (image into the cluster), `deploy [stack]` (build + apply + restart), `ui [stack]` (webserver on :3000), `down`
+[windows]
+[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[extension(".ps1")]
+k8s cmd stack="dagster-prd":
+    $context = "k3d-{{k8s_cluster}}"
+    function Check { if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+    switch ("{{cmd}}") {
+        "up" {
+            k3d cluster get {{k8s_cluster}} *> $null
+            if ($LASTEXITCODE -eq 0) { k3d cluster start {{k8s_cluster}} } else { k3d cluster create {{k8s_cluster}} --wait }; Check
+        }
+        "build" { docker build -t {{k8s_image}} .; Check; k3d image import {{k8s_image}} -c {{k8s_cluster}}; Check }
+        # The image keeps its tag, so the running code servers only pick up a new build on a restart.
+        "deploy" {
+            just k8s build; Check
+            atmos terraform apply dagster -s {{stack}}; Check
+            kubectl --context $context -n {{stack}} rollout restart deployment; Check
+        }
+        "ui" {
+            $pod = kubectl --context $context -n {{stack}} get pods -l component=dagster-webserver -o "jsonpath={.items[0].metadata.name}"; Check
+            Write-Host "Dagster on http://localhost:3000 (Ctrl+C stops the forward)"
+            kubectl --context $context -n {{stack}} port-forward $pod 3000:80
+        }
+        "down" { k3d cluster stop {{k8s_cluster}}; Check }
+        default { Write-Host "usage: just k8s up|build|deploy|ui|down [stack]"; exit 1 }
+    }
+    exit $LASTEXITCODE
 
 # --- Docs -------------------------------------------------------------------
 

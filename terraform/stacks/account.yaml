@@ -1,0 +1,3 @@
+# Stack `account`: the objects that belong to no single project and environment.
+import:
+  - catalog/snowflake-account

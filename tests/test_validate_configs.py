@@ -79,11 +79,24 @@ def write_configs(root: Path, configs: dict[str, dict[str, Any]]) -> Path:
     return root
 
 
+def write_stack(root: Path, project: str, environment: str, stack_vars: dict[str, str] | None = None) -> Path:
+    """Write the Atmos stack manifest terraform/stacks/projects/<project>/<environment>.yaml next to config/."""
+    path = root / "stacks" / "projects" / project / f"{environment}.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stack_vars = stack_vars or {"project": project, "environment": environment}
+    path.write_text(yaml.safe_dump({"import": ["catalog/snowflake-project"], "vars": stack_vars}), encoding="utf-8")
+    return path
+
+
 def config_dir(tmp_path: Path, **changes: dict[str, Any]) -> Path:
-    """The base tree with one config type replaced or extended, e.g. projects={"example": {...}}."""
+    """The base tree with one config type replaced or extended, e.g. projects={"example": {...}}.
+
+    The base project's one stack manifest (example/dev) is written too.
+    """
     configs = base_configs()
     for config_type, files in changes.items():
         configs[config_type].update(files)
+    write_stack(tmp_path, "example", "dev")
     return write_configs(tmp_path / "config", configs)
 
 
@@ -234,3 +247,94 @@ def test_a_wildcard_covers_every_required_config(tmp_path: Path) -> None:
     wildcards = project(layers="*", environments="*", computes="*", roles="*")
     is_valid, errors = validator.validate_mandatory_configs(config_dir(tmp_path, projects={"example": wildcards}))
     assert (is_valid, errors) == (True, [])
+
+
+# --- Stack manifests (terraform/stacks/projects) ----------------------------
+
+
+def test_a_project_environment_without_a_stack_manifest_is_an_error(tmp_path: Path) -> None:
+    configs = config_dir(tmp_path)
+    (tmp_path / "stacks" / "projects" / "example" / "dev.yaml").unlink()
+    is_valid, errors = validator.validate_stacks(configs)
+    assert is_valid is False
+    assert errors == ["  [stacks/projects/example/dev.yaml]: Missing: projects/example.yaml lists environment dev"]
+
+
+def test_a_stack_manifest_no_project_environment_asks_for_is_an_error(tmp_path: Path) -> None:
+    configs = config_dir(tmp_path)
+    write_stack(tmp_path, "example", "prd")
+    is_valid, errors = validator.validate_stacks(configs)
+    assert is_valid is False
+    assert errors == [
+        "  [stacks/projects/example/prd.yaml]: No project in config/projects lists this environment (or it is disabled)"
+    ]
+
+
+def test_stack_manifest_vars_must_match_its_path(tmp_path: Path) -> None:
+    configs = config_dir(tmp_path)
+    write_stack(tmp_path, "example", "dev", {"project": "example", "environment": "prd"})
+    is_valid, errors = validator.validate_stacks(configs)
+    assert is_valid is False
+    assert errors == ["  [stacks/projects/example/dev.yaml]: vars must be `project: example` and `environment: dev`"]
+
+
+# --- Service users ----------------------------------------------------------
+
+SERVICE_KEY = (
+    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0IDAQAB"
+)
+
+
+def service_user(**changes: Any) -> dict[str, Any]:
+    """A service user holding the transform role in development, with `changes` applied (None removes a key)."""
+    user = {
+        "login": "EXAMPLE_DEV_TRANSFORM",
+        "type": "service",
+        "rsa_public_key": SERVICE_KEY,
+        "roles": [{"project": "example", "role": "transform", "environments": ["development"]}],
+        **changes,
+    }
+    return {key: value for key, value in user.items() if value is not None}
+
+
+def with_service_user(tmp_path: Path, user: dict[str, Any]) -> Path:
+    """The base tree plus a system role `transform` in the project and the given user file `svc`."""
+    transform = {"code": "tfm", "name": "Transform", "type": "system", "level": "project"}
+    return config_dir(
+        tmp_path,
+        roles={"transform": transform},
+        projects={"example": project(roles=["engineer", "analyst", "transform"])},
+        users={"svc": user},
+    )
+
+
+def test_a_service_user_with_its_key_passes(tmp_path: Path) -> None:
+    assert validator.validate_all_configs(with_service_user(tmp_path, service_user()), VALIDATION_DIR) is True
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"rsa_public_key": None},  # Terraform creates it with this key, so it is required
+        {"login": "example_dev_transform"},  # upper case only
+        {"create": True},  # persons only
+        {"email": "svc@example.com"},
+    ],
+)
+def test_a_service_user_breaking_the_schema_is_rejected(tmp_path: Path, changes: dict[str, Any]) -> None:
+    configs = with_service_user(tmp_path, service_user(**changes))
+    assert validator.validate_schema(configs, VALIDATION_DIR) is False
+
+
+def test_a_person_with_a_public_key_is_rejected(tmp_path: Path) -> None:
+    person = {**base_configs()["users"]["username_example"], "rsa_public_key": SERVICE_KEY}
+    assert validator.validate_schema(config_dir(tmp_path, users={"username_example": person}), VALIDATION_DIR) is False
+
+
+def test_a_service_user_holding_a_person_role_is_an_error(tmp_path: Path) -> None:
+    user = service_user(roles=[{"project": "example", "role": "engineer"}])
+    is_valid, errors, _ = validator.validate_user_references(with_service_user(tmp_path, user))
+    assert is_valid is False
+    assert errors == [
+        "  [users/svc]: Service users hold system roles only; 'engineer' is not one (type: system in config/roles)"
+    ]

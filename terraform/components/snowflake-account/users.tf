@@ -1,20 +1,23 @@
 # -----------------------------------------------------------------------------
-# Users: who may assume which project roles (config/users/**/*.yaml, keyed by file name)
+# Users: the persons and service users Terraform creates (config/users/**/*.yaml, keyed by file name)
 # -----------------------------------------------------------------------------
-# A user lists project roles per environment. The role must exist for that
-# project (see the project's `roles`), the environment must be one of the
-# project's environments. Persons are created here only when `create: true`;
-# existing (SSO) logins just receive the grants. Service users for the system
-# roles are created by hand with a key pair (see README.md).
+# Persons are created here only when `create: true`; existing (SSO) logins just
+# receive the grants. Service users (`type: service`) are always created here, with
+# the public key of their file. The role grants themselves belong to the project
+# stacks (components/snowflake-project/users.tf), one per project and environment,
+# which depend on this stack.
 
 locals {
   enabled_users = { for key, user in local.users : key => user if !try(user.disabled, false) }
 
   users_to_create = { for key, user in local.enabled_users : key => user if try(user.create, false) }
 
-  # The logins Terraform does not create itself, so the only ones worth checking against the account.
-  logins_to_check = { for key, user in local.enabled_users : key => user if !try(user.create, false) }
+  # Service users (`type: service`): TYPE = SERVICE, a key pair and no password; the deployment
+  # runs dlt and dbt as them (terraform/components/dagster).
+  services_to_create = { for key, user in local.enabled_users : key => user if try(user.type, "person") == "service" }
 
+  # Every project role a user may assume, over all projects and environments: the defaults of
+  # created users and the user_role_grants output. The grants are the project stacks'.
   user_role_grants = flatten([
     for user_key, user in local.enabled_users : [
       for assignment in user.roles : [
@@ -23,9 +26,7 @@ locals {
           ? local.projects[assignment.project].environments
           : try(tolist(assignment.environments), local.projects[assignment.project].environments)
           ) : {
-          key            = "${user_key}_${assignment.project}_${environment_key}_${assignment.role}"
           user_key       = user_key
-          login          = user.login
           role_name      = upper("RL_${assignment.project}_${local.environment_codes[environment_key]}__${local.role_codes[assignment.role]}")
           database_name  = upper("DB_${assignment.project}_${local.environment_codes[environment_key]}")
           warehouse_name = upper("WH_${assignment.project}_${local.environment_codes[environment_key]}")
@@ -37,32 +38,11 @@ locals {
     ]
   ])
 
-  user_role_grant_map = { for g in local.user_role_grants : g.key => g }
-
   # Defaults for created users: their first role assignment (role, database, default warehouse).
   user_defaults = {
-    for user_key in keys(local.users_to_create) :
+    for user_key in concat(keys(local.users_to_create), keys(local.services_to_create)) :
     user_key => try([for g in local.user_role_grants : g if g.user_key == user_key][0], null)
   }
-}
-
-# Every login in the account, so a `create: false` file whose login does not exist here fails at
-# plan time with a clear message instead of at apply time with "object does not exist or not
-# authorized" (the schemas of that user would already be created by then). SECURITYADMIN holds
-# MANAGE GRANTS, so SHOW USERS returns every user. The whole SHOW USERS output lands in the state
-# (README.md, State and teardown), so the read is skipped when there is nothing to check; the data
-# source takes only a single `like` or `starts_with`, which a list of logins does not fit.
-data "snowflake_users" "existing" {
-  count           = length(local.logins_to_check) > 0 ? 1 : 0
-  provider        = snowflake.securityadmin
-  with_describe   = false
-  with_parameters = false
-}
-
-locals {
-  existing_logins = toset(flatten([
-    for users in data.snowflake_users.existing : [for user in users.users : upper(user.show_output[0].name)]
-  ]))
 }
 
 resource "random_password" "user" {
@@ -94,25 +74,20 @@ resource "snowflake_user" "person" {
   default_namespace    = try(local.user_defaults[each.key].database_name, null)
 }
 
-resource "snowflake_grant_account_role" "user" {
-  for_each = local.user_role_grant_map
-  provider = snowflake.securityadmin
+resource "snowflake_service_user" "service" {
+  for_each = local.services_to_create
+  provider = snowflake.useradmin
 
-  role_name = each.value.role_name
-  user_name = each.value.login
-
-  depends_on = [module.project_role, snowflake_user.person]
-
-  lifecycle {
-    precondition {
-      condition     = contains(keys(local.users_to_create), each.value.user_key) || contains(local.existing_logins, upper(each.value.login))
-      error_message = "User ${each.value.login} (config/users/**/${each.value.user_key}.yaml) does not exist in this account. Set `create: true` to create it, or `disabled: true` if the login belongs to another account."
-    }
-  }
+  name              = each.value.login
+  comment           = try(each.value.name, each.key)
+  rsa_public_key    = each.value.rsa_public_key
+  default_role      = try(local.user_defaults[each.key].role_name, null)
+  default_warehouse = try(local.user_defaults[each.key].warehouse_name, null)
+  default_namespace = try(local.user_defaults[each.key].database_name, null)
 }
 
 output "user_role_grants" {
-  description = "Role grants per user (login -> roles)"
+  description = "Role grants per user over all projects and environments (login -> roles), from config/users"
   value = {
     for user_key, user in local.enabled_users : user.login => sort([
       for g in local.user_role_grants : g.role_name if g.user_key == user_key
@@ -120,7 +95,8 @@ output "user_role_grants" {
   }
 }
 
-# `just tf output -json initial_passwords` to hand out; each person must change it on first login.
+# `just tf output snowflake-account -s account -json initial_passwords` to hand out; each person
+# must change it on first login.
 output "initial_passwords" {
   description = "One-time passwords of the persons created here (create: true)"
   sensitive   = true

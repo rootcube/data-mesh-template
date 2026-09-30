@@ -1,0 +1,8 @@
+# The account-wide objects: platform roles and the persons Terraform creates
+# (terraform/components/snowflake-account).
+import:
+  - catalog/defaults
+
+components:
+  terraform:
+    snowflake-account: {}

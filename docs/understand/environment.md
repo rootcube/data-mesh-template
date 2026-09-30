@@ -35,7 +35,7 @@ databases; it defaults to one day, the Standard Edition maximum, and Enterprise 
 raise it up to 90 (`production.yaml` shows it).
 
 `disabled: true` hides an environment everywhere: Terraform filters it out of every project
-(`terraform/variables.tf`), and the validator warns when a project still lists it. `test` and
+(`terraform/modules/config`), and the validator warns when a project still lists it. `test` and
 `sandbox` ship disabled; enable `test` by flipping the flag and adding it to the project's
 `environments`. The example project runs in `development` and `production` only.
 

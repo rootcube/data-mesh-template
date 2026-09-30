@@ -147,7 +147,7 @@ source layer there. See [Role](role.md).
 dlt writes each load as JSONL files under `.dlt/data/`, uploads them with `PUT` and loads the
 table with `COPY INTO`. `stage_name` decides where those files land: not the table's implicit
 stage, but the internal stage `ST_DEFAULT` that Terraform creates in every source-layer schema
-(`terraform/stages.tf`), next to the tables it loads. Inside it, `load_stage()` gives every
+(`terraform/components/snowflake-project/stages.tf`), next to the tables it loads. Inside it, `load_stage()` gives every
 source a path that mirrors the asset key prefix, and every load a folder of its own:
 
 ```

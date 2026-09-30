@@ -39,8 +39,8 @@ The locator from the activation mail (`xy12345.eu-central-1`) is not what you ne
 
 ## 3. Install the tools
 
-`just` and git. Terraform (1.5 or newer) is needed too, but `just setup` installs it for you when
-it is missing, through tfenv on Homebrew and winget on Windows.
+`just` and git. Terraform (1.5 or newer) and Atmos are needed too, but `just setup` installs them
+for you when they are missing (`just install terraform`, `just install atmos`).
 
 === "macOS / Linux"
 
@@ -64,7 +64,7 @@ just setup
 
 `just setup` runs `just init` (uv, the virtual environment, `.env`, dbt packages) and then asks
 whether the account is fresh or already provisioned. Answer `1` (fresh). That is
-`just sf bootstrap`, which installs Terraform if missing and asks for the organization name, the
+`just sf bootstrap`, which installs Terraform and Atmos if missing and asks for the organization name, the
 account name, your username, your password and an MFA passcode (leave it empty for a push
 notification), then:
 
@@ -86,7 +86,7 @@ notification), then:
    `ACCOUNTADMIN` for daily work;
 5. writes `terraform/config/users/local/<you>.yaml` (the `engineer` role in `development` on every
    project under `terraform/config/projects/`; `users/local/` is git-ignored), puts the
-   `TF_VAR_SNOWFLAKE_*` block in `.env`, and runs `terraform init` and `terraform apply`. Read the
+   `TF_VAR_SNOWFLAKE_*` block in `.env`, and applies every Atmos stack, the `account` stack first. Read the
    plan and answer `yes`. It creates the databases, schemas, roles and warehouses of the `example`
    project in `development` and `production`, grants you `RL_EXAMPLE_DEV__ENG` and creates your
    personal schemas (`DBT_<USERNAME>_SRC`, `DBT_<USERNAME>_STG`, ...) in `DB_EXAMPLE_DEV`;
@@ -95,7 +95,7 @@ notification), then:
    `.env`, readable by you only (as are the private keys).
 
 `just sf bootstrap --yes` runs the same without the wizard: it applies the account parameters,
-auto-approves the Terraform plan and skips the context confirmation.
+auto-approves the Terraform plans and skips the context confirmation.
 
 Rerunning `just setup` is safe. The prompts offer the organization, account and user from your
 `.env` as defaults (Enter keeps them), `account_settings.sql` and `init.sql` are idempotent, the
@@ -124,10 +124,10 @@ models.
 |-------|--------------|
 | Your login holds `ACCOUNTADMIN`, so one person does bootstrap, provisioning and engineering | An administrator bootstraps and provisions ([Snowflake provisioning](snowflake-provisioning.md)); engineers only run `just sf setup` |
 | Password plus MFA is the only login | Usually SSO; `just sf setup` opens the browser instead |
-| Terraform state is a local `terraform.tfstate` | Move it to a remote backend before a second administrator applies |
-| The account expires after 30 days, with everything in it | Nothing expires; `just tf clean` removes what Terraform created, databases and data included, after you type the account name ([State and teardown](snowflake-provisioning.md#state-and-teardown)) |
+| Terraform states are local, one per stack | Move them to a remote backend before a second administrator applies ([Stacks and state](snowflake-provisioning.md#stacks-and-state)) |
+| The account expires after 30 days, with everything in it | Nothing expires; `just tf clean` removes what Terraform created, databases and data included, after you type the account name ([Stacks and state](snowflake-provisioning.md#stacks-and-state)) |
 
 The user file the bootstrap wrote sits in `terraform/config/users/local/`, which git ignores,
 because its login exists in this account only. Move it up to `terraform/config/users/` and commit
-it if you want the grant to survive a later `terraform apply` from another checkout, and delete it
+it if you want the grant to survive a later `just tf apply --all` from another checkout, and delete it
 when the trial is over.

@@ -1,4 +1,7 @@
-"""Offline tests of the source-freshness chain (src/orchestrator/locations/dbt/source_freshness.py)."""
+"""Offline tests of the source-freshness chain (src/orchestrator/locations/dbt/source_freshness.py).
+
+The job and the sensor meet in the event log; an ephemeral instance holds it here.
+"""
 
 import json
 from pathlib import Path
@@ -6,6 +9,8 @@ from pathlib import Path
 import pytest
 from dagster import (
     AssetKey,
+    AssetObservation,
+    DagsterInstance,
     DefaultScheduleStatus,
     DefaultSensorStatus,
     Definitions,
@@ -17,10 +22,13 @@ from dagster_dbt import DbtCliResource, DbtProject
 
 from orchestrator.locations.dbt.shared import dbt_command_job
 from orchestrator.locations.dbt.source_freshness import (
+    FRESHNESS_METADATA,
     SELECTOR_CONFIG,
     build_source_freshness_defs,
     dbt_selector,
     diff_freshness,
+    freshness_observations,
+    observed_freshness,
 )
 
 KNMI = "source.dbt_example.knmi.climate_hourly"
@@ -63,6 +71,30 @@ def test_selector_covers_the_downstream_of_each_source() -> None:
 def test_selector_rejects_a_model_unique_id() -> None:
     with pytest.raises(ValueError):
         dbt_selector(["model.dbt_example.stg__knmi__climate_hourly"])
+
+
+def test_the_job_observes_every_source_dbt_could_query() -> None:
+    results = [
+        {"unique_id": KNMI, "max_loaded_at": "2026-09-28T06:00:00", "status": "pass"},
+        {"unique_id": OTHER, "max_loaded_at": "2026-09-28T05:00:00", "status": "pass"},  # no asset key
+        {"unique_id": KNMI, "max_loaded_at": None, "status": "runtime error"},
+    ]
+    (observation,) = freshness_observations(results, {KNMI: KNMI_KEY})
+    assert observation.asset_key == KNMI_KEY
+    assert observation.metadata[FRESHNESS_METADATA].value == "2026-09-28T06:00:00"
+
+
+def test_the_sensor_reads_the_latest_observation_of_each_source() -> None:
+    instance = DagsterInstance.ephemeral()
+    assert observed_freshness(instance, {KNMI: KNMI_KEY}) == []
+    for max_loaded_at in ("2026-09-28T06:00:00", "2026-09-28T07:00:00"):
+        instance.report_runless_asset_event(AssetObservation(KNMI_KEY, metadata={FRESHNESS_METADATA: max_loaded_at}))
+    assert observed_freshness(instance, {KNMI: KNMI_KEY}) == [
+        {"unique_id": KNMI, "max_loaded_at": "2026-09-28T07:00:00"}
+    ]
+    # An observation from elsewhere, without the metadata, leaves the source out (it keeps its cursor).
+    instance.report_runless_asset_event(AssetObservation(KNMI_KEY, metadata={"rows": 3}))
+    assert observed_freshness(instance, {KNMI: KNMI_KEY}) == []
 
 
 def test_dbt_command_job_names_follow_the_convention() -> None:
@@ -109,28 +141,26 @@ def test_automation_is_off_unless_asked(tmp_path: Path) -> None:
 
 def test_sensor_skips_until_the_freshness_job_ran(tmp_path: Path) -> None:
     sensor = _freshness_defs(tmp_path / "dbt_example").get_repository_def().sensor_defs[0]
-    assert isinstance(sensor(build_sensor_context()), SkipReason)
+    assert isinstance(sensor(build_sensor_context(instance=DagsterInstance.ephemeral())), SkipReason)
 
 
 def test_sensor_builds_downstream_of_the_fresher_sources_once(tmp_path: Path) -> None:
-    project_dir = tmp_path / "dbt_example"
-    sources_json = project_dir / "target" / "freshness" / "sources.json"
-    sources_json.parent.mkdir(parents=True)
-    results = [{"unique_id": KNMI, "max_loaded_at": "2026-09-28T06:00:00", "status": "pass"}]
-    sources_json.write_text(json.dumps({"results": results}))
-    sensor = _freshness_defs(project_dir).get_repository_def().sensor_defs[0]
+    instance = DagsterInstance.ephemeral()
+    instance.report_runless_asset_event(
+        AssetObservation(KNMI_KEY, metadata={FRESHNESS_METADATA: "2026-09-28T06:00:00"})
+    )
+    sensor = _freshness_defs(tmp_path / "dbt_example").get_repository_def().sensor_defs[0]
 
-    first = sensor(build_sensor_context())
+    first = sensor(build_sensor_context(instance=instance))
     assert isinstance(first, SensorResult)
     (request,) = first.run_requests or []
     selector = {"config": {SELECTOR_CONFIG: "source:knmi.climate_hourly+"}}
     assert request.run_config == {"ops": {"op__dbt_example__build_fresher": selector}}
-    (observation,) = first.asset_events or []
-    assert observation.asset_key == KNMI_KEY
+    assert not first.asset_events  # the job observes the sources; the sensor only reads
     assert json.loads(first.cursor or "") == {KNMI: "2026-09-28T06:00:00"}
 
-    # The same sources.json again: nothing got fresher, the cursor stays.
-    second = sensor(build_sensor_context(cursor=first.cursor))
+    # The same observation again: nothing got fresher, the cursor stays.
+    second = sensor(build_sensor_context(instance=instance, cursor=first.cursor))
     assert isinstance(second, SensorResult)
     assert not second.run_requests
     assert second.cursor == first.cursor

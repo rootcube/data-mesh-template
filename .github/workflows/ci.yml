@@ -33,6 +33,7 @@ jobs:
       terraform: ${{ steps.filter.outputs.terraform }}
       docs: ${{ steps.filter.outputs.docs }}
       setup: ${{ steps.filter.outputs.setup }}
+      image: ${{ steps.filter.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,9 +56,10 @@ jobs:
           }
           area python    '^(src|dlt_pipelines|scripts|tests)/|^(pyproject\.toml|uv\.lock|\.python-version)$'
           area dbt       '^(dbt|src|dlt_pipelines)/|^(workspace\.yaml|scripts/dbt_all\.py|pyproject\.toml|uv\.lock)$'
-          area terraform '^terraform/|^(pyproject\.toml|uv\.lock)$'
+          area terraform '^terraform/|^(atmos\.yaml|pyproject\.toml|uv\.lock)$'
           area docs      "^docs/|^(mkdocs\.yml|pyproject\.toml|uv\.lock|scripts/check_doc_fences\.py)$|^(${quoted})$"
           area setup     '^(justfile|\.env\.example|\.envrc|pyproject\.toml|uv\.lock|\.python-version)$|^scripts/|^dbt/[^/]+/(packages|package-lock)\.yml$'
+          area image     '^(src|dlt_pipelines|dbt)/|^(Dockerfile|\.dockerignore|pyproject\.toml|uv\.lock|\.python-version|\.dlt/config\.toml|scripts/dbt_all\.py)$'
           cat "$GITHUB_OUTPUT"
 
   hygiene:
@@ -154,11 +156,45 @@ jobs:
           # Pinned so `fmt -check` cannot start failing on a new release. Bump it deliberately.
           terraform_version: "1.15.5"
       - run: terraform fmt -check -recursive terraform
-      - run: terraform -chdir=terraform init -backend=false
-      - run: terraform -chdir=terraform validate
+      # Every component is a root module of its own, planned once per Atmos stack (atmos.yaml).
+      - run: |
+          for component in terraform/components/*/; do
+            terraform -chdir="$component" init -backend=false
+            terraform -chdir="$component" validate
+          done
+      - name: Install Atmos
+        env:
+          # The release `just install atmos` installs on Windows (atmos_version in the justfile).
+          ATMOS_VERSION: "1.230.0"
+        run: |
+          asset="atmos_${ATMOS_VERSION}_linux_amd64"
+          base="https://github.com/cloudposse/atmos/releases/download/v${ATMOS_VERSION}"
+          curl -fsSLO "$base/$asset"
+          curl -fsSL "$base/atmos_${ATMOS_VERSION}_SHA256SUMS" | grep " ${asset}$" | sha256sum --check -
+          install -D -m 0755 "$asset" "$HOME/.local/bin/atmos"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: atmos validate stacks
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - run: uv sync --locked
       - run: uv run python terraform/config/_validation/validate_configs.py
+
+  image:
+    # The code location image of the Kubernetes deployment (Dockerfile): it builds, and the code
+    # locations load in it, the way the Dagster Helm chart starts them. Built only, never pushed.
+    name: Image build
+    needs: changes
+    # Runs when the change touches this area, or when `changes` itself failed.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.image == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -t dagster-starter:ci .
+      - name: Code locations load in the image
+        run: |
+          for module in orchestrator.locations.dlt.definitions orchestrator.locations.dbt.dbt_example.definitions; do
+            docker run --rm -e ENVIRONMENT=prd dagster-starter:ci dagster definitions validate -m "$module"
+          done
 
   docs:
     name: Docs build

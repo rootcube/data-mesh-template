@@ -76,7 +76,8 @@ def snowflake_destination(source: str) -> Destination:
 def load_stage(settings: SnowflakeSettings, source: str) -> str:
     """The stage path dlt PUTs a source's load files into: `<source schema>.ST_DEFAULT/dlt/ingest/<source>`.
 
-    Terraform creates `ST_DEFAULT` in every source-layer schema (terraform/stages.tf): the shared
+    Terraform creates `ST_DEFAULT` in every source-layer schema
+    (terraform/components/snowflake-project/stages.tf): the shared
     `DB_<PROJECT>_<ENV>._SRC.ST_DEFAULT`, and in dev each developer's own
     `DB_<PROJECT>_DEV.<SNOWFLAKE_SCHEMA>_SRC.ST_DEFAULT`, so the load files sit next to the tables they
     load. The path below it mirrors the Dagster asset key (`dlt/ingest/<source>/<entity>`); each load

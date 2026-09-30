@@ -1,0 +1,13 @@
+# One project in one environment (terraform/components/snowflake-project). A stack under
+# projects/<project>/ imports this and sets `project` and `environment` (the environment code).
+# Users are granted project roles here, so the persons the account stack creates come first.
+import:
+  - catalog/defaults
+
+components:
+  terraform:
+    snowflake-project:
+      dependencies:
+        components:
+          - name: snowflake-account
+            stack: account

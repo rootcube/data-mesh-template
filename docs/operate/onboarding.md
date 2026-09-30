@@ -33,7 +33,7 @@ The fields, from `terraform/config/_validation/schemas/user.schema.json`:
 
 | Field | Required | Meaning |
 |-------|----------|---------|
-| `login` | yes | Snowflake login name. For SSO accounts this is the existing login. Unless `create` is `true`, the login must exist in the account: `just tf plan` checks and stops with a message naming the file otherwise. |
+| `login` | yes | Snowflake login name. For SSO accounts this is the existing login. Unless `create` is `true`, the login must exist in the account: `just tf plan --all` checks and stops with a message naming the file otherwise. |
 | `name` | no | Display name, stored as the user comment. |
 | `email` | no | Only used when creating the user. |
 | `create` | no | `false` (default): the login exists already, only the grants are made. `true`: create the user as a person, with a one-time password they must change at first login. Service users are created by hand ([below](#a-service-user)). |
@@ -52,13 +52,15 @@ That role also inherits `transform` and `ingest` in development and `analyst` ev
 
 ```bash
 just tf-validate-config
-just tf plan
-just tf apply
+just tf plan --all
+just tf apply --all
 ```
 
-`just tf output -json user_role_grants` shows the roles per login, and
-`just tf output -json personal_schemas` the personal schemas the apply created (step 4). For a
-created person, hand out the password from `just tf output -json initial_passwords`; Snowflake
+`just tf output snowflake-account -s account -- -json user_role_grants` shows the roles per login,
+and `just tf output snowflake-project -s <project>-dev -- -json personal_schemas` the personal
+schemas the apply created (step 4). For a
+created person, hand out the password from
+`just tf output snowflake-account -s account -- -json initial_passwords`; Snowflake
 forces a change at the first login.
 
 !!! note "Defaults on the user"
@@ -87,10 +89,10 @@ writes their `.env`. Their side of it, step by step and including what lands in 
 
 The engineer role has a `personal` block in `terraform/config/roles/engineer.yaml`
 (`environments: [dev]`). For every user who holds it there, the apply in step 2 creates one
-schema per project layer in `DB_<PROJECT>_DEV` (`terraform/personal.tf`): `DBT_USERNAME_SRC`,
+schema per project layer in `DB_<PROJECT>_DEV` (`terraform/components/snowflake-project/personal.tf`): `DBT_USERNAME_SRC`,
 `DBT_USERNAME_REF`, `DBT_USERNAME_STG`, `DBT_USERNAME_INT`, `DBT_USERNAME_MRT`,
 `DBT_USERNAME_EXP`, `DBT_USERNAME_MTD` and `DBT_USERNAME_TMP`, plus the person's own load stage
-`DBT_USERNAME_SRC.ST_DEFAULT` (`terraform/stages.tf`). `SYSADMIN` owns them like every other
+`DBT_USERNAME_SRC.ST_DEFAULT` (`terraform/components/snowflake-project/stages.tf`). `SYSADMIN` owns them like every other
 schema; the engineer role gets the privileges of the block's access tier (`access: full`, see
 [Access](../understand/access.md)) on them directly (current and future grants), but no
 `CREATE SCHEMA`: dlt and dbt use the schemas, they never create them. So the apply has to come
@@ -130,56 +132,51 @@ write `.env`. Then:
 
 Deployed environments run dlt and dbt as system users: the `ingest` role
 (`RL_<PROJECT>_<ENV>__ING`) for dlt, the `transform` role (`RL_<PROJECT>_<ENV>__TFM`) for dbt.
+Terraform creates them, `TYPE = SERVICE` with a key pair and no password, from a user file with
+`type: service`:
 
-1. Create the user by hand, as `SECURITYADMIN` (Terraform only creates persons):
+1. Generate the key pair. `keygen` never logs in; it writes the pair under `~/.snowflake/keys/`
+   and prints the public key body:
 
-    ```sql
-    CREATE USER example_prd_transform TYPE = SERVICE COMMENT = 'dbt in example production';
+    ```bash
+    just sf keygen EXAMPLE_PRD_TRANSFORM
     ```
 
-2. Grant its roles through a user file with `create: false`:
+2. Describe the user, with that body and the roles it holds:
 
     ```yaml
-    login: "example_prd_transform"
+    login: "EXAMPLE_PRD_TRANSFORM"
     name: "dbt in example production"
-    create: false
+    type: service
+    rsa_public_key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
     roles:
       - project: example
         role: transform
         environments: [production]
     ```
 
-    then `just tf apply`.
-3. Generate a key pair and register it. `keygen` never logs in; it writes the pair under
-   `~/.snowflake/keys/` and prints the public key body:
+    The login is upper case, and a service user holds system roles only (`ingest`, `transform`);
+    `just tf-validate-config` checks both.
+3. `just tf apply --all`: the `account` stack creates the user, the project stack grants the role.
 
-    ```bash
-    just sf keygen example_prd_transform
-    ```
+The private key (`~/.snowflake/keys/EXAMPLE_PRD_TRANSFORM.p8`) is what the deployment signs in
+with. [Dagster on Kubernetes](kubernetes.md) takes it from there into a Kubernetes secret and
+gives each code location this environment; any other runtime needs the same:
 
-    Then, as `SECURITYADMIN`:
+```dotenv
+ENVIRONMENT=prd
+SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
+SNOWFLAKE_USER=EXAMPLE_PRD_TRANSFORM
+SNOWFLAKE_PRIVATE_KEY_PATH=/path/to/EXAMPLE_PRD_TRANSFORM.p8
+SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
+SNOWFLAKE_ROLE=RL_EXAMPLE_PRD__TFM
+SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_PRD
+SNOWFLAKE_DATABASE=DB_EXAMPLE_PRD
+SNOWFLAKE_SCHEMA=
+```
 
-    ```sql
-    ALTER USER example_prd_transform SET RSA_PUBLIC_KEY = '<public key body>';
-    ```
-
-4. The deployment gets the private key (`~/.snowflake/keys/example_prd_transform.p8`) and this
-   environment:
-
-    ```dotenv
-    ENVIRONMENT=prd
-    SNOWFLAKE_ACCOUNT=MYORG-MYACCOUNT
-    SNOWFLAKE_USER=example_prd_transform
-    SNOWFLAKE_PRIVATE_KEY_PATH=/path/to/example_prd_transform.p8
-    SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
-    SNOWFLAKE_ROLE=RL_EXAMPLE_PRD__TFM
-    SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_PRD
-    SNOWFLAKE_DATABASE=DB_EXAMPLE_PRD
-    SNOWFLAKE_SCHEMA=
-    ```
-
-    With `ENVIRONMENT=prd` the layer schemas are the provisioned `_SRC`, `_STG`, ...; dbt puts
-    anything without a layer into `_TMP`, its fallback when `SNOWFLAKE_SCHEMA` is empty.
+With `ENVIRONMENT=prd` the layer schemas are the provisioned `_SRC`, `_STG`, ...; dbt puts
+anything without a layer into `_TMP`, its fallback when `SNOWFLAKE_SCHEMA` is empty.
 
 !!! note "Warehouse grants of the system roles"
     `ingest` and `transform` receive warehouse privileges on the `default` compute and on their
@@ -190,6 +187,6 @@ Deployed environments run dlt and dbt as system users: the `ingest` role
 
 ## Removing access
 
-Set `disabled: true` in the user's file, or delete the file, and `just tf apply`. The grants
+Set `disabled: true` in the user's file, or delete the file, and `just tf apply --all`. The grants
 disappear; a user Terraform created is dropped as well. So are the person's personal schemas in
 the development database, with everything in them.

@@ -60,7 +60,7 @@ roles:
 
 The lists hold **keys**, the file names under `environments/`, `layers/`, `computes/` and
 `roles/`. The short codes in those files (`dev`, `stg`, `eng`, ...) are what ends up in object
-names. Three rules from `terraform/variables.tf`:
+names. Three rules from `terraform/modules/config`:
 
 Wildcards
 :   `"*"` for any of the four lists means every enabled entry of that kind.

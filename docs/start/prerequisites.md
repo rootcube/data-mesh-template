@@ -31,8 +31,9 @@ Two tools you install yourself, and one conversation with whoever runs your Snow
     `.python-version`) inside the project's `.venv`. You never activate it by hand: every
     command runs through `uv run`.
 
-Terraform is not an engineer's tool here. Administrators need it, and so does the fresh-account
-path of `just setup`, which installs it for you when it is missing.
+Terraform and [Atmos](https://atmos.tools), which runs it, are not an engineer's tools here.
+Administrators need them, and so does the fresh-account path of `just setup`, which installs them
+for you when they are missing.
 
 ## What to ask your administrator for
 
@@ -57,7 +58,7 @@ anybody else's tables.
 !!! tip "No platform yet? A trial account is enough"
     Sign up for a free [Snowflake trial](https://signup.snowflake.com/) (30 days, no card). Your
     trial login holds `ACCOUNTADMIN`, so `just setup` bootstraps the account, installs Terraform
-    if it is missing, provisions the `example` project and fills in `.env` from the organization
+    and Atmos if they are missing, provisions the `example` project and fills in `.env` from the organization
     name, the account name, your username and your password. The table above then answers itself.
     Step by step: [Snowflake trial account](../operate/snowflake-trial-account-setup.md).
 

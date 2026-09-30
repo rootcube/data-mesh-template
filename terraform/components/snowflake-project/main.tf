@@ -1,16 +1,53 @@
 # -----------------------------------------------------------------------------
-# Modern Data Mesh Platform - Snowflake Infrastructure
+# Modern Data Mesh Platform - Snowflake Infrastructure: one Project x Environment
 # -----------------------------------------------------------------------------
 #
-# This root module orchestrates the provisioning of Snowflake resources
-# based on the platform's conceptual model:
+# This root module provisions one Project in one Environment of the platform's
+# conceptual model, one Atmos stack each (terraform/stacks/projects/<project>/<env>.yaml),
+# each with its own Terraform state:
 #
 #   Organisation -> Team -> Project -> Environment -> { Layers, Roles, Compute }
 #
-# Configuration is loaded from YAML files in the config directory.
-# See variables.tf for the locals that parse these YAML files.
+# Configuration is loaded from YAML files in the config directory by the config
+# module (terraform/modules/config). Account-wide objects (platform roles, users)
+# live in the snowflake-account component.
 #
 # -----------------------------------------------------------------------------
+
+module "config" {
+  source      = "../../modules/config"
+  config_path = var.config_path
+}
+
+locals {
+  # The configuration, under the names the locals below were written against
+  roles                               = module.config.roles
+  computes                            = module.config.computes
+  environments                        = module.config.environments
+  layers                              = module.config.layers
+  accesses                            = module.config.accesses
+  users                               = module.config.users
+  environment_codes                   = module.config.environment_codes
+  layer_codes                         = module.config.layer_codes
+  compute_codes                       = module.config.compute_codes
+  role_codes                          = module.config.role_codes
+  layer_access_privileges             = module.config.layer_access_privileges
+  compute_snowflake_warehouse_mapping = module.config.compute_snowflake_warehouse_mapping
+
+  # The environment key of this stack's environment code (var.environment is the code, as in
+  # DB_<PROJECT>_<ENV>); null when config/environments has no such code (the stack output fails then).
+  environment_key = one([for key, code in local.environment_codes : key if code == var.environment])
+
+  # This stack's project, in this stack's environment only. Every key below is built from the
+  # project and environment keys, so the resource addresses are the ones a single root module
+  # over all projects and environments gave them (scripts/split_state.py relies on it).
+  projects = {
+    for key, project in module.config.projects : key => merge(project, {
+      environments = [for environment_key in project.environments : environment_key if environment_key == local.environment_key]
+    })
+    if key == var.project
+  }
+}
 
 locals {
   # Build a flattened list of all project-environment combinations
@@ -59,13 +96,6 @@ locals {
   # --------------------------------------------------------------------------
   # Roles
   # --------------------------------------------------------------------------
-
-  # Platform-level roles (created once, not scoped to project/environment)
-  platform_roles = {
-    for role_key, role in local.roles :
-    role_key => role
-    if role.level == "platform" && !try(role.disabled, false)
-  }
 
   # Project-level roles (created per Project x Environment)
   # The project.roles list is the AUTHORITATIVE source for which roles are created
@@ -287,7 +317,7 @@ locals {
 
   # One access role per layer and access tier (config/accesses: view, read, edit, full) in every
   # project database: AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>, with the tier's privileges (plus the
-  # layer's extras, variables.tf) on the layer schema. All four exist for every layer, whether a
+  # layer's extras, modules/config) on the layer schema. All four exist for every layer, whether a
   # project role uses them or not, so every layer has the same four doors.
   project_environment_layer_accesses = flatten([
     for pel in local.project_environment_layers : [
@@ -366,7 +396,7 @@ locals {
 # -----------------------------------------------------------------------------
 
 module "database" {
-  source   = "./modules/snowflake/database"
+  source   = "../../modules/snowflake/database"
   for_each = local.project_environment_map
 
   project_code     = each.value.project_key
@@ -381,7 +411,7 @@ module "database" {
 # -----------------------------------------------------------------------------
 
 module "schema" {
-  source   = "./modules/snowflake/schema"
+  source   = "../../modules/snowflake/schema"
   for_each = local.project_environment_layer_map
 
   database_name = each.value.database_name
@@ -392,27 +422,11 @@ module "schema" {
 }
 
 # -----------------------------------------------------------------------------
-# Platform Roles (Global)
-# -----------------------------------------------------------------------------
-
-module "platform_role" {
-  source    = "./modules/snowflake/role"
-  for_each  = local.platform_roles
-  providers = { snowflake = snowflake.securityadmin }
-
-  purpose = upper(each.value.code)
-  comment = each.value.desc
-
-  # Custom roles roll up to SYSADMIN, so it can manage whatever they create.
-  granted_to_roles = ["SYSADMIN"]
-}
-
-# -----------------------------------------------------------------------------
 # Project Roles (Project x Environment)
 # -----------------------------------------------------------------------------
 
 module "project_role" {
-  source    = "./modules/snowflake/role"
+  source    = "../../modules/snowflake/role"
   for_each  = local.project_environment_role_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -430,7 +444,7 @@ module "project_role" {
 # -----------------------------------------------------------------------------
 
 module "warehouse" {
-  source   = "./modules/snowflake/warehouse"
+  source   = "../../modules/snowflake/warehouse"
   for_each = local.project_environment_warehouse_map
 
   project     = upper(each.value.project_key)
@@ -451,7 +465,7 @@ module "warehouse" {
 # -----------------------------------------------------------------------------
 
 module "warehouse_grant" {
-  source    = "./modules/snowflake/warehouse_grant"
+  source    = "../../modules/snowflake/warehouse_grant"
   for_each  = local.warehouse_grant_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -471,7 +485,7 @@ module "warehouse_grant" {
 # -----------------------------------------------------------------------------
 
 module "database_grant" {
-  source    = "./modules/snowflake/database_grant"
+  source    = "../../modules/snowflake/database_grant"
   for_each  = local.database_grant_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -491,7 +505,7 @@ module "database_grant" {
 # -----------------------------------------------------------------------------
 
 module "role_grant" {
-  source    = "./modules/snowflake/role_grant"
+  source    = "../../modules/snowflake/role_grant"
   for_each  = local.role_grant_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -509,7 +523,7 @@ module "role_grant" {
 # -----------------------------------------------------------------------------
 
 module "access_role" {
-  source    = "./modules/snowflake/role"
+  source    = "../../modules/snowflake/role"
   for_each  = local.access_role_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -527,7 +541,7 @@ module "access_role" {
 # -----------------------------------------------------------------------------
 
 module "access_role_grant" {
-  source    = "./modules/snowflake/schema_grant"
+  source    = "../../modules/snowflake/schema_grant"
   for_each  = local.access_role_map
   providers = { snowflake = snowflake.securityadmin }
 
@@ -548,7 +562,7 @@ module "access_role_grant" {
 # -----------------------------------------------------------------------------
 
 module "role_access_grant" {
-  source    = "./modules/snowflake/role_grant"
+  source    = "../../modules/snowflake/role_grant"
   for_each  = local.role_access_grant_map
   providers = { snowflake = snowflake.securityadmin }
 

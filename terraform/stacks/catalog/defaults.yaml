@@ -1,0 +1,7 @@
+# Defaults of every stack: the local backend, one state per stack and component under
+# terraform/components/<component>/terraform.tfstate.d/<stack>/terraform.tfstate (git-ignored).
+# A remote backend is a change here plus `terraform init -migrate-state` per stack.
+terraform:
+  backend_type: local
+  backend:
+    local: {}

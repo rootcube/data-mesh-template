@@ -51,6 +51,12 @@ dev = [
 docs = [
     "zensical>=0.0.64",
 ]
+# Kubernetes deployment (Dockerfile): run pods load the instance the Dagster Helm chart configures,
+# Postgres storage and the K8s run launcher. Same release train as dagster (0.29.x with 1.13.x).
+deploy = [
+    "dagster-k8s>=0.29",
+    "dagster-postgres>=0.29",
+]
 
 [tool.uv]
 default-groups = ["dev"]

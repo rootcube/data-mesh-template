@@ -1,57 +1,13 @@
 # -----------------------------------------------------------------------------
-# Input Variables
+# Config Module: the platform's YAML configuration (terraform/config), loaded and normalized
 # -----------------------------------------------------------------------------
+# No resources: both components (terraform/components/snowflake-account and
+# snowflake-project) read the same YAML through this module, so the wildcard
+# resolution, code maps and defaults below exist once.
 
-# Configuration Path
 variable "config_path" {
   description = "Path to the configuration directory containing YAML files"
   type        = string
-  default     = "./config"
-}
-
-# -----------------------------------------------------------------------------
-# Provider Configuration
-# -----------------------------------------------------------------------------
-
-# Mapped to TF_VAR_SNOWFLAKE_ORGANIZATION environment variable
-variable "SNOWFLAKE_ORGANIZATION" {
-  description = "Snowflake organization name (the part before the dash in <organization>-<account>)"
-  type        = string
-}
-
-# Mapped to TF_VAR_SNOWFLAKE_ACCOUNT environment variable
-variable "SNOWFLAKE_ACCOUNT" {
-  description = "Snowflake account name (the part after the dash in <organization>-<account>)"
-  type        = string
-}
-
-# Mapped to TF_VAR_SNOWFLAKE_USER environment variable
-variable "SNOWFLAKE_USER" {
-  description = "Service user Terraform authenticates as (created by modules/snowflake/init.sql)"
-  type        = string
-  default     = "TERRAFORM_USER"
-}
-
-# Mapped to TF_VAR_SNOWFLAKE_WAREHOUSE environment variable
-variable "SNOWFLAKE_WAREHOUSE" {
-  description = "Warehouse for the provider's own queries (created by modules/snowflake/init.sql)"
-  type        = string
-  default     = "WH_PLATFORM_PROVISIONING"
-}
-
-# Mapped to TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH environment variable
-variable "SNOWFLAKE_PRIVATE_KEY_PATH" {
-  description = "Private key of the service user (generate with `just sf keygen terraform`)"
-  type        = string
-  default     = "~/.snowflake/keys/terraform.p8"
-}
-
-# Mapped to TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE environment variable
-variable "SNOWFLAKE_PRIVATE_KEY_PASSPHRASE" {
-  description = "Passphrase of the private key, null when the key is not encrypted"
-  type        = string
-  default     = null
-  sensitive   = true
 }
 
 # -----------------------------------------------------------------------------
@@ -192,7 +148,7 @@ locals {
   # -------------------------------------------------------------------------
   # What an access tier grants on a layer: the tier's own privileges (config/accesses) plus the
   # layer's extras for that tier (`privileges` in config/layers, e.g. stages in the source layer).
-  # Used for the layer access roles (main.tf) and the personal schemas (personal.tf).
+  # Used for the layer access roles and the personal schemas (components/snowflake-project).
 
   layer_access_privileges = {
     for layer_key, layer in local.layers : layer_key => {
@@ -280,7 +236,7 @@ locals {
   }
 
   # Defaults of the optional compute attributes, the same ones compute.schema.json documents.
-  # main.tf reads these keys unguarded, so a YAML that leaves them out must still have them.
+  # The project component reads these keys unguarded, so a YAML that leaves them out must still have them.
   # `sizes` has no sensible default and is required in the schema.
   compute_defaults = {
     desc              = ""
@@ -295,4 +251,73 @@ locals {
   computes = {
     for key, compute in local.computes_raw : key => merge(local.compute_defaults, compute)
   }
+}
+
+# -----------------------------------------------------------------------------
+# Outputs: the normalized configuration, under the names the components use as locals
+# -----------------------------------------------------------------------------
+
+output "projects" {
+  description = "Projects keyed by file name, wildcards resolved and disabled entries filtered out"
+  value       = local.projects
+}
+
+output "roles" {
+  description = "Roles keyed by file name (config/roles, sub-folders included)"
+  value       = local.roles
+}
+
+output "computes" {
+  description = "Compute profiles keyed by file name, with the defaults of the optional attributes"
+  value       = local.computes
+}
+
+output "environments" {
+  description = "Environments keyed by file name"
+  value       = local.environments
+}
+
+output "layers" {
+  description = "Layers keyed by file name"
+  value       = local.layers
+}
+
+output "accesses" {
+  description = "Access tiers keyed by file name (view, read, edit, full)"
+  value       = local.accesses
+}
+
+output "users" {
+  description = "User files keyed by file name alone (config/users, users/local included)"
+  value       = local.users
+}
+
+output "environment_codes" {
+  description = "Environment key -> code (development -> dev)"
+  value       = local.environment_codes
+}
+
+output "layer_codes" {
+  description = "Layer key -> code"
+  value       = local.layer_codes
+}
+
+output "compute_codes" {
+  description = "Compute key -> code"
+  value       = local.compute_codes
+}
+
+output "role_codes" {
+  description = "Role key -> code"
+  value       = local.role_codes
+}
+
+output "layer_access_privileges" {
+  description = "Layer key -> access key -> privileges (the tier's own plus the layer's extras)"
+  value       = local.layer_access_privileges
+}
+
+output "compute_snowflake_warehouse_mapping" {
+  description = "Warehouse size code -> Snowflake warehouse size"
+  value       = local.compute_snowflake_warehouse_mapping
 }

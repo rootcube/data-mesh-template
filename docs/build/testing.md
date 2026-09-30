@@ -160,7 +160,7 @@ job that lists what the change touches, then six check jobs in parallel:
 | Hygiene hooks | `uv sync --locked`, then `pre-commit run --all-files` for `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-added-large-files`, `check-merge-conflict` and `detect-private-key` |
 | Python | `uv sync --locked`, `ruff format --check`, `ruff check`, `ty check`, `pytest` |
 | dbt parse + Dagster definitions | `dbt_all.py deps`, `dbt_all.py parse --target local`, the same parse with `--use-v2-parser`, `sqlfluff lint models` in every project under `dbt/`, `dagster definitions validate -w workspace.yaml` and `check_asset_keys.py`, all against the local DuckDB file (`DBT_TARGET=local`, `DUCKDB_PATH`) |
-| Terraform | `terraform fmt -check`, `terraform init -backend=false`, `terraform validate`, `validate_configs.py` |
+| Terraform | `terraform fmt -check`, `terraform init -backend=false` and `terraform validate` per component, `atmos validate stacks`, `validate_configs.py` |
 | Docs | `uv sync --locked --group docs`, `check_doc_fences.py`, `zensical build --strict` |
 | Setup (Linux, macOS, Windows) | The fresh-machine path: `just init`, `just info`, `just check`, `just sf keygen`, `just start` until the UI answers with every code location loaded, `just stop` until the port is free |
 

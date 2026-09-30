@@ -36,7 +36,7 @@ nowhere else; there is no automated escalation or support path wired to it.
 
 ## In Snowflake
 
-Nothing. Terraform loads `terraform/config/teams/` (see `terraform/variables.tf`) so that
+Nothing. Terraform loads `terraform/config/teams/` (see `terraform/modules/config`) so that
 projects can reference a team, but no Snowflake object carries the team name, and so no team
 appears in [Naming](../reference/naming.md). Ownership is visible through the Project's objects
 instead: whoever holds `RL_EXAMPLE_PRD__ENG` is the platform team.

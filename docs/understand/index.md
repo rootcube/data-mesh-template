@@ -37,7 +37,7 @@ graph TD
     USR["User<br/>username@example.com"] -. is granted .-> RDEV
 ```
 
-Every box is a YAML file under `terraform/config/`, and `just tf plan` shows what Terraform
+Every box is a YAML file under `terraform/config/`, and `just tf plan --all` shows what Terraform
 turns it into.
 
 | Concept | Defined in `terraform/config/` | Becomes in Snowflake | Shows up in the repo as |
@@ -122,7 +122,7 @@ Engineer
 
 Platform administrator
 :   Owns `terraform/`. Bootstraps the account once, edits the YAML under `terraform/config/`,
-    runs `just tf plan` and `just tf apply`, and onboards people and service users. The runbook
+    runs `just tf plan --all` and `just tf apply --all`, and onboards people and service users. The runbook
     is [Snowflake provisioning](../operate/snowflake-provisioning.md).
 
 ## What is deliberately not a concept

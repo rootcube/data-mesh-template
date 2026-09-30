@@ -87,10 +87,10 @@ repos:
         pass_filenames: false
 
       - id: validate-configs
-        name: validate terraform/config YAML
+        name: validate terraform/config YAML and the stack manifests
         entry: uv run python terraform/config/_validation/validate_configs.py
         language: system
-        files: ^terraform/config/.*\.(yaml|json)$
+        files: ^terraform/(config|stacks)/.*\.(yaml|json)$
         pass_filenames: false
 
   # Docs: a code fence titled with a repository path has to quote that file verbatim.

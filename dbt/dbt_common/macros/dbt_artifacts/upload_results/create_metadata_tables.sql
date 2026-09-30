@@ -9,7 +9,7 @@
     those tables yet. This macro creates the tables on demand, so the upload works
     standalone. A monitoring project can consume them as dbt *sources*.
     The tables live in the metadata layer (`_MTD`, or `<prefix>_MTD` in dev), a schema
-    Terraform provisions in both cases (terraform/main.tf, terraform/personal.tf).
+    Terraform provisions in both cases (terraform/components/snowflake-project: main.tf, personal.tf).
 
     Column definitions (names, order, types) are hand-derived from the upstream v2.10.0
     model shells (`models/sources/*.sql`) for the Snowflake path only:

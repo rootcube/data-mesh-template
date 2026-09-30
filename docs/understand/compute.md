@@ -41,7 +41,7 @@ min_cluster_count: 1
 max_cluster_count: 1
 ```
 
-Size codes map to Snowflake sizes in `terraform/variables.tf`: `xs` is `XSMALL`, `s`
+Size codes map to Snowflake sizes in `terraform/modules/config`: `xs` is `XSMALL`, `s`
 `SMALL`, `m` `MEDIUM`, `l` `LARGE`, `xl` `XLARGE`, and so on up to `x6l`. Every warehouse is
 created suspended (the module default) and resumes on first use.
 
@@ -68,7 +68,7 @@ Roles get warehouse privileges through `privileges.computes` in `roles/*.yaml`:
 | `ingest` | `default`, `ingest` | `USAGE`, `OPERATE` |
 | `transform` | `default`, `transform` | `USAGE`, `OPERATE` |
 
-Two details of `terraform/main.tf` are worth knowing before you change a project's `computes`:
+Two details of `terraform/components/snowflake-project/main.tf` are worth knowing before you change a project's `computes`:
 
 - A warehouse grant is only created when the project lists that profile. Every shipped role
   asks for `default`, so a project with `computes: [default]` works; the `ingest` and

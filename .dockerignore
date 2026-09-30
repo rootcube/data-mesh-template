@@ -1,0 +1,25 @@
+# The build context of the Dockerfile, as an allowlist: the package, the dbt projects, the lock file
+# and what the build reads. Everything else stays out, first of all .env, keys, Terraform states and
+# the local Dagster, dlt, DuckDB and dbt state.
+**
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!LICENSE
+!LICENSES
+!NOTICE
+!src
+!dlt_pipelines
+!dbt
+!.dlt/config.toml
+!scripts/dbt_all.py
+
+# ...minus the local state inside those
+**/__pycache__
+**/.local_defs_state
+dbt/*/target
+dbt/*/packages
+dbt/*/dbt_packages
+dbt/*/logs
+dbt/.user.yml
