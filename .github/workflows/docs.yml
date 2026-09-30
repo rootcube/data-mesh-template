@@ -8,7 +8,8 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
-      - 'overrides/**'
+      # GitHub does not document whether ** matches a dot folder, so the template overrides are named.
+      - 'docs/.overrides/**'
       - 'mkdocs.yml'
       # Pulled into a page with --8<--, so it is part of the site.
       - 'terraform/README.md'

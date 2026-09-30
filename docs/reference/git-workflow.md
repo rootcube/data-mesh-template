@@ -158,8 +158,8 @@ release-please, on every push to `main`, from `.github/workflows/release-please.
 pull request, and on its merge the tag and the GitHub release. It is not a check on your pull
 request.
 
-Docs, on every push to `main` that touches the site (`docs/`, `overrides/`, `mkdocs.yml`,
-`terraform/README.md`), from `.github/workflows/docs.yml`: the strict build again, then the deploy
+Docs, on every push to `main` that touches the site (`docs/`, its template overrides in
+`docs/.overrides/`, `mkdocs.yml`, `terraform/README.md`), from `.github/workflows/docs.yml`: the strict build again, then the deploy
 to GitHub Pages at the `site_url` in `mkdocs.yml`. Not a check on your pull request either; CI's
 `docs` job is.
 

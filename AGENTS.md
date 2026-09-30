@@ -98,8 +98,7 @@ dbt/                              # profiles.yml (shared profile `default`: loca
 terraform/                        # administrators: YAML config (organisations, teams, projects, environments, layers, accesses, roles, computes, users) -> Snowflake
 scripts/                          # snowflake.py (key-pair setup/check/query/keygen), info.py, dbt_all.py
 tests/                            # pytest, offline only
-docs/ + mkdocs.yml                # the documentation site
-overrides/                        # Zensical template overrides (page icons in the tabs)
+docs/ + mkdocs.yml                # the documentation site; docs/.overrides/ holds the Zensical template overrides (page icons in the tabs)
 ```
 
 Locations load in their own subprocess and never import each other; cross-location lineage

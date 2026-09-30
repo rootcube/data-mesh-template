@@ -27,7 +27,7 @@ LICENSES/.
 
 2. Zensical (documentation theme partial)
 
-   Path here:     overrides/partials/tabs-item.html
+   Path here:     docs/.overrides/partials/tabs-item.html
    Upstream:      https://github.com/zensical/zensical
    Version:       0.0.64, file zensical/templates/partials/tabs-item.html
    License:       MIT, text in LICENSES/MIT-zensical.txt

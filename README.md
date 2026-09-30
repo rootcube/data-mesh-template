@@ -74,8 +74,7 @@ dlt_pipelines/               dlt package: pipelines/ingest/<source>/ (knmi to st
 dbt/                         profiles.yml (shared) + dbt_common (package) + dbt_example (project)
 terraform/                   Snowflake provisioning from terraform/config (administrators)
 scripts/                     snowflake.py (bootstrap, key-pair setup, check, query), info.py, dbt_all.py
-docs/ + mkdocs.yml           the documentation site
-overrides/                   Zensical template overrides (page icons in the tabs)
+docs/ + mkdocs.yml           the documentation site; docs/.overrides/ holds the Zensical template overrides (page icons in the tabs)
 .github/                     CI, release-please, Dependabot, the exported `main` ruleset
 ```
 
