@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.19](https://github.com/rootcube/data-mesh-template/compare/v0.1.18...v0.1.19) (2026-09-30)
+
+
+### Bug Fixes
+
+* **docs:** update documentation paths for template overrides and remove unused tabs-item.html ([#66](https://github.com/rootcube/data-mesh-template/issues/66)) ([f887254](https://github.com/rootcube/data-mesh-template/commit/f8872549cb4ed1fa9d830fa06d12a89ef000d43a))
+* handle vanished grants in Terraform state during apply ([#67](https://github.com/rootcube/data-mesh-template/issues/67)) ([e71de67](https://github.com/rootcube/data-mesh-template/commit/e71de674ed9114be210f22a3cbb8c1eb8c8de2bf))
+
 ## [0.1.18](https://github.com/rootcube/data-mesh-template/compare/v0.1.17...v0.1.18) (2026-09-28)
 
 
