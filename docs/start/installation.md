@@ -77,6 +77,25 @@ What is different in local mode:
   sqlfluff lint while a run is active, fail with a lock error. Fine for one engineer working
   alone; see [Orchestration](../understand/orchestration.md#the-local-instance).
 
+### dlt in local mode
+
+The same `ENVIRONMENT=local` switches dlt: `destination()` in `dlt_pipelines/utils/destination.py`
+hands every pipeline dlt's DuckDB destination on `DUCKDB_PATH` instead of the Snowflake one, so
+a pipeline changes nothing and needs no credentials. A load lands in the source schema the dbt
+sources read, `dbt_src` (or `<SNOWFLAKE_SCHEMA>_src` when `.env` still carries a prefix), as
+`<source>__<entity>` next to dlt's `_dlt_loads`, `_dlt_version` and `_dlt_pipeline_state`
+tables. `merge` loads stage in dlt's default `<schema>_staging`, emptied after each load
+(`.dlt/config.toml`), and pipeline state stays under `.dlt/data`. The Snowflake stage, its
+`<pipeline>__<load id>` folders and `.dlt/secrets.toml` play no part.
+
+- `just dlt run knmi` loads outside Dagster; `just dlt run knmi --full-refresh` reloads from scratch.
+- `just start`, then materialize `dlt/ingest/knmi/climate_hourly`: the same load through Dagster.
+- A new source follows [Adding a dlt load](../build/adding-dlt-loads.md) unchanged;
+  `destination(SOURCE)` decides from `.env` where it lands.
+- `ENVIRONMENT=local` without `DUCKDB_PATH` (a bare `uv run` outside `just` and direnv) fails at
+  import with a message naming the variable, instead of letting dlt write `ingest_knmi.duckdb`
+  into the working directory.
+
 `just reset-local` deletes `.duckdb/` along with the rest of the local state and recreates the
 directory. Next: `just start`, or `just dlt run knmi` and then `just dbt build`.
 

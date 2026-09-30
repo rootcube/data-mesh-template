@@ -59,9 +59,13 @@ so skipping a step only postpones the failure.
 
 `just dbt build`, `just dlt run` and every `just sf` recipe reach Snowflake and need a filled
 `.env` that only a human can create ([Snowflake authentication](../start/snowflake-auth.md)).
-Without one, set `ENVIRONMENT=local` in `.env` (or run with `DBT_TARGET=local`): dlt and dbt then
-build against the local DuckDB file, exactly as CI does for `dbt parse`. See
-[Local only, no Snowflake](../start/installation.md#local-only-no-snowflake).
+Without one, set `ENVIRONMENT=local` in `.env`: dlt and dbt then build against the local DuckDB
+file, exactly as CI does for `dbt parse`. `DBT_TARGET=local` on its own only switches dbt. For
+dlt that means `just dlt run <source>` needs no credentials: `destination()` returns dlt's
+DuckDB destination and the load lands in the same source schema the dbt sources read (`dbt_src`
+with a blank prefix), with no stage involved. Run through `just` or direnv, which export
+`DUCKDB_PATH`. See [Local only, no Snowflake](../start/installation.md#local-only-no-snowflake)
+and [The local environment](../understand/ingestion.md#the-local-environment).
 
 ## On the administrator side
 
@@ -89,6 +93,7 @@ The mistakes that actually happen here. Check failures with a mundane cause are 
 | A second project building the `dbt_common` models, writing the same tables twice | Exactly one project builds them, see [dbt_common](dbt-style-guide.md#dbt_common) |
 | A model without a `+schema`, which lands in an unprovisioned schema | [How the values become schema names](environment-variables.md#how-the-values-become-schema-names) |
 | Schedules and sensors are stopped in `dev` and `local` and running elsewhere | Leave the default alone; switch one on in the UI to test it |
+| `ENVIRONMENT=local` with a bare `uv run`, so `DUCKDB_PATH` is unset: the dlt location fails at import naming the variable | Run through `just` or direnv, which export it; the dbt profile falls back to a relative path that parses but cannot connect |
 | A one-off job, schedule or sensor written by hand in a `definitions.py` | They are derived per source and per project; extend the factory, see [Orchestration](../understand/orchestration.md) |
 | A `.env` value with special characters | Single quotes, see [Quoting](environment-variables.md) |
 

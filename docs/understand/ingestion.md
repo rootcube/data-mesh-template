@@ -142,6 +142,19 @@ In `dev` the pipeline runs as your engineer role. In a deployed environment it r
 project's ingest system role, `RL_<PROJECT>_<ENV>__ING`, the only role with write access to the
 source layer there. See [Role](role.md).
 
+### The local environment
+
+With `ENVIRONMENT=local` the same two functions point at the DuckDB file `DUCKDB_PATH` names:
+`destination()` returns `dlt.destinations.duckdb` and `source_dataset()` the same source schema
+name, `dbt_src` with a blank prefix, so the dbt sources read the load exactly as they do in
+`dev`. dlt inserts straight into the file: no stage, no `PUT` or `COPY INTO`, so the section
+below does not apply. `merge` loads stage in dlt's default `<schema>_staging`, emptied after
+each load, and pipeline state stays under `.dlt/data`. The loaded table sits next to dlt's
+`_dlt_loads`, `_dlt_version` and `_dlt_pipeline_state`. Without `DUCKDB_PATH`, which the
+justfile and `.envrc` export, the factory fails at import rather than letting dlt write
+`ingest_knmi.duckdb` into the working directory. Setup and commands:
+[Local only, no Snowflake](../start/installation.md#local-only-no-snowflake).
+
 ### The load stage
 
 dlt writes each load as JSONL files under `.dlt/data/`, uploads them with `PUT` and loads the
