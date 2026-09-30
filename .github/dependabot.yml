@@ -30,7 +30,9 @@ updates:
       prefix: "ci(deps)"
 
   - package-ecosystem: terraform
-    directory: /terraform
+    # One root module (and lock file) per component
+    directories:
+      - /terraform/components/*
     schedule:
       interval: weekly
       day: monday

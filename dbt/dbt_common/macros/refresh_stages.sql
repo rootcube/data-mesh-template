@@ -1,6 +1,6 @@
 /*
     Refreshes the directory table of the dlt load stage at the start of a run: ST_DEFAULT in the source layer,
-    `_SRC.ST_DEFAULT`, or your personal `<SNOWFLAKE_SCHEMA>_SRC.ST_DEFAULT` in dev (terraform/stages.tf).
+    `_SRC.ST_DEFAULT`, or your personal `<SNOWFLAKE_SCHEMA>_SRC.ST_DEFAULT` in dev (terraform/components/snowflake-project/stages.tf).
     Internal stages never refresh it by themselves, so dbt does it before reading the source layer.
 */
 
@@ -16,7 +16,7 @@
   {# No stage yet, or no privileges on it: warn and let the run continue instead of aborting it. #}
   {% set found = run_query("SHOW STAGES LIKE 'ST_DEFAULT' IN SCHEMA " ~ schema) %}
   {% if found | length == 0 %}
-    {{ log('Skipped the directory table refresh: ' ~ stage ~ ' does not exist or is not authorized. `just tf apply` provisions it (terraform/stages.tf).', info=true) }}
+    {{ log('Skipped the directory table refresh: ' ~ stage ~ ' does not exist or is not authorized. `just tf apply --all` provisions it (terraform/components/snowflake-project/stages.tf).', info=true) }}
     {{ return('') }}
   {% endif %}
 

@@ -433,6 +433,18 @@ def assignment_problems(assignment: dict, configs: dict[str, dict[str, dict]]) -
     return problems
 
 
+def service_role_problems(user: dict, configs: dict[str, dict[str, dict]]) -> list[str]:
+    """A service user (`type: service`) may hold system roles only: a person role such as engineer
+    would give it personal schemas, and a deployment has no use for a person's privileges."""
+    if user.get("type") != "service":
+        return []
+    return [
+        f"Service users hold system roles only; '{a.get('role')}' is not one (type: system in config/roles)"
+        for a in user.get("roles", [])
+        if configs["roles"].get(a.get("role"), {}).get("type", "system") != "system"
+    ]
+
+
 def duplicate_user_files(config_dir: Path) -> dict[str, list[str]]:
     """User files that share a file name: Terraform keys users by file name alone, so it fails on them."""
     users_dir = config_dir / "users"
@@ -458,6 +470,7 @@ def validate_user_references(config_dir: Path) -> tuple[bool, list[str], list[st
 
     for user_key, user in sorted(configs["users"].items()):
         problems = [problem for a in user.get("roles", []) for problem in assignment_problems(a, configs)]
+        problems += service_role_problems(user, configs)
         if not problems:
             print(f" ✅ users/{user_key}")
             continue
@@ -473,6 +486,55 @@ def validate_user_references(config_dir: Path) -> tuple[bool, list[str], list[st
         print(f" ❌ users/{user_key}: {error_msg}")
 
     return len(errors) == 0, errors, warnings
+
+
+def expected_stack_manifests(configs: dict[str, dict[str, dict]]) -> dict[str, tuple[str, str]]:
+    """<project>/<environment code>.yaml -> (project, environment code), one per project and enabled environment."""
+    codes = {key: str(cfg.get("code")) for key, cfg in configs["environments"].items()}
+    return {
+        f"{project_key}/{codes[env]}.yaml": (project_key, codes[env])
+        for project_key, project in configs["projects"].items()
+        for env in project_environments(project, configs)
+    }
+
+
+def validate_stacks(config_dir: Path) -> tuple[bool, list[str]]:
+    """
+    Validate that terraform/stacks/projects holds exactly one Atmos stack manifest per project and enabled
+    environment: projects/<project>/<environment code>.yaml, with those two as its vars.
+
+    Terraform provisions one project in one environment per stack, so a missing manifest leaves that
+    environment unprovisioned and an extra one describes a stack config/ knows nothing of.
+
+    Returns:
+        Tuple of (is_valid, list_of_errors)
+    """
+    errors = []
+    configs = load_all_configs(config_dir)
+    stacks_dir = config_dir.parent / "stacks" / "projects"
+    expected = expected_stack_manifests(configs)
+    found = {path.relative_to(stacks_dir).as_posix(): path for path in sorted(stacks_dir.rglob("*.yaml"))}
+
+    problems: dict[str, str] = {}
+    for name in expected.keys() - found.keys():
+        project_key, code = expected[name]
+        problems[name] = f"Missing: projects/{project_key}.yaml lists environment {code}"
+    for name in found.keys() - expected.keys():
+        problems[name] = "No project in config/projects lists this environment (or it is disabled)"
+    for name in expected.keys() & found.keys():
+        project_key, code = expected[name]
+        stack_vars = load_yaml(found[name]).get("vars") or {}
+        if stack_vars.get("project") != project_key or stack_vars.get("environment") != code:
+            problems[name] = f"vars must be `project: {project_key}` and `environment: {code}`"
+
+    for name in sorted(expected.keys() | found.keys()):
+        if name in problems:
+            errors.append(f"  [stacks/projects/{name}]: {problems[name]}")
+            print(f" ❌ stacks/projects/{name}: {problems[name]}")
+        else:
+            print(f" ✅ stacks/projects/{name}")
+
+    return len(errors) == 0, errors
 
 
 def validate_mandatory_configs(config_dir: Path) -> tuple[bool, list[str]]:
@@ -681,6 +743,14 @@ def validate_all_configs(config_dir: Path, validation_dir: Path, specific_file: 
         print("\n User Validation:")
 
         is_valid, errors, warnings = validate_user_references(config_dir)
+
+        if not is_valid:
+            all_valid = False
+
+        # One Atmos stack manifest per project and environment (terraform/stacks/projects)
+        print("\n Stack Validation:")
+
+        is_valid, errors = validate_stacks(config_dir)
 
         if not is_valid:
             all_valid = False

@@ -89,9 +89,10 @@ Homebrew on macOS and Linux and winget on Windows:
 |------|------------|
 | `terraform` | The fresh-account path of `just setup`, which installs it for you when missing, and everything under [Operate](../operate/index.md); Homebrew installs it through tfenv |
 | `tfenv` | macOS and Linux only: the Terraform version manager on its own, without installing a Terraform version |
+| `atmos` | Runs Terraform once per project and environment ([Stacks and state](../operate/snowflake-provisioning.md#stacks-and-state)); needed wherever `terraform` is. Homebrew on macOS and Linux; on Windows Scoop when you have it, otherwise the release the justfile pins, checked against its checksums, into `~\.local\bin` |
 | `direnv` | Activates `.venv` and loads `.env` when you `cd` into the checkout (the repo ships an `.envrc`), which `just` already does for its own recipes |
 | `gh` | The GitHub CLI, for pull requests from the terminal |
-| `all` | `uv`, `terraform` and `direnv`; `gh` stays optional and is not part of it |
+| `all` | `uv`, `terraform`, `atmos` and `direnv`; `gh` stays optional and is not part of it |
 
 Engineers on a provisioned platform need none of them.
 

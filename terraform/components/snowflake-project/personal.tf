@@ -5,7 +5,7 @@
 # holds it (config/users) a schema per project layer in the listed environments:
 # <PREFIX>_SRC, <PREFIX>_STG, ... in DB_<PROJECT>_DEV. They are created here, owned by
 # SYSADMIN like every other schema, and the role gets the privileges of the block's
-# access tier on them (layer_access_privileges in variables.tf: the tier plus the layer's
+# access tier on them (layer_access_privileges in modules/config: the tier plus the layer's
 # extras), granted directly since these schemas are per person, not through an access
 # role; stages.tf adds the user's own load stage <PREFIX>_SRC.ST_DEFAULT.
 #
@@ -74,7 +74,7 @@ locals {
 }
 
 module "personal_schema" {
-  source   = "./modules/snowflake/schema"
+  source   = "../../modules/snowflake/schema"
   for_each = local.personal_schema_map
 
   database_name = each.value.database_name
@@ -86,7 +86,7 @@ module "personal_schema" {
 }
 
 module "personal_schema_grant" {
-  source    = "./modules/snowflake/schema_grant"
+  source    = "../../modules/snowflake/schema_grant"
   for_each  = local.personal_schema_grant_map
   providers = { snowflake = snowflake.securityadmin }
 

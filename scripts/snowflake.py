@@ -5,13 +5,14 @@
                                another checkout (-> bootstrap, syncing or wiping what exists)
     just sf bootstrap          fresh account, as ACCOUNTADMIN: account settings (account_settings.sql,
                                       --account-settings ask|apply|skip), Terraform service user (init.sql),
-                                      provisioning (terraform apply), your own key pair and .env, in one go;
-                                      objects that already exist are synced into the state (and handed to
-                                      their SYSADMIN/SECURITYADMIN/USERADMIN owner) or wiped
-                                      (--existing ask|sync|wipe); objects the state tracks that another
-                                      role owns (ACCOUNTADMIN, after an earlier version) are handed back,
-                                      grants it tracks that the account no longer has are forgotten
-    just tf clean              remove every object this checkout's Terraform state tracks, databases and
+                                      provisioning (terraform apply of every Atmos stack, the account stack
+                                      first), your own key pair and .env, in one go; objects that already
+                                      exist are synced into the stacks' states (and handed to their
+                                      SYSADMIN/SECURITYADMIN/USERADMIN owner) or wiped (--existing
+                                      ask|sync|wipe); objects a state tracks that another role owns
+                                      (ACCOUNTADMIN, after an earlier version) are handed back, grants it
+                                      tracks that the account no longer has are forgotten
+    just tf clean              remove every object the stacks' Terraform states track, databases and
                                       their data included, after you type the account name; the init.sql
                                       objects stay
     just sf setup              one-time: log in interactively, create + register a key pair, write .env
@@ -74,8 +75,14 @@ TF_DIR = ROOT / "terraform"
 INIT_SQL = TF_DIR / "modules" / "snowflake" / "init.sql"
 ACCOUNT_SQL = TF_DIR / "modules" / "snowflake" / "account_settings.sql"
 TERRAFORM_KEY = "terraform"
-# Import blocks for objects an earlier Terraform state created; lives for one `terraform apply`.
-ADOPT_FILE = TF_DIR / "adopt_imports.tf"
+# Import blocks for objects an earlier Terraform state created, next to the component they are adopted
+# into; the file lives for one `terraform apply` of one stack.
+ADOPT_FILE_NAME = "adopt_imports.tf"
+# The component of the account-wide objects; the project stacks depend on its one stack (terraform/stacks).
+ACCOUNT_COMPONENT = "snowflake-account"
+# The components that provision Snowflake, the only ones the bootstrap and `just tf clean` handle
+# (not the Dagster deployment, terraform/components/dagster).
+SNOWFLAKE_COMPONENTS = ("snowflake-account", "snowflake-project")
 
 # --- console helpers ----------------------------------------------------------
 
@@ -433,7 +440,7 @@ def verify(settings: SnowflakeSettings) -> bool:
 
 
 def personal_prefix(user: str) -> str:
-    """Prefix of the personal schemas Terraform provisions for `user` (terraform/personal.tf).
+    """Prefix of the personal schemas Terraform provisions for `user` (components/snowflake-project/personal.tf).
 
     The `schema_prefix` of the user's file under terraform/config/users, else DBT_<first part of the
     login>: DBT_USERNAME for username@example.com.
@@ -716,8 +723,26 @@ def refresh_windows_path() -> None:
     os.environ["PATH"] = os.pathsep.join(current)
 
 
-def terraform(env: dict[str, str], *args: str) -> None:
-    subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, check=True)
+@dataclasses.dataclass(frozen=True)
+class Instance:
+    """One Terraform component in one Atmos stack (atmos.yaml): a workspace with its own state."""
+
+    component: str
+    stack: str
+
+    @property
+    def adopt_file(self) -> Path:
+        return TF_DIR / "components" / self.component / ADOPT_FILE_NAME
+
+
+def terraform_args(command: str, instance: Instance, *flags: str) -> list[str]:
+    """`terraform <command> <component> -s <stack> -- <flags>`: Atmos hands the flags to Terraform unchanged."""
+    return ["terraform", *command.split(), instance.component, "-s", instance.stack, *(["--", *flags] if flags else [])]
+
+
+def atmos(env: dict[str, str], *args: str) -> None:
+    """Run Atmos in the repository root, where atmos.yaml is; Terraform's prompts reach the user."""
+    subprocess.run(["atmos", *args], cwd=ROOT, env=env, check=True)
 
 
 # Resource types an earlier Terraform state may already have created in the account: type -> (label, the
@@ -729,10 +754,12 @@ ADOPTABLE = {
     "snowflake_warehouse": ("warehouse", ("name",)),
     "snowflake_account_role": ("role", ("name",)),
     "snowflake_user": ("user", ("name",)),
+    "snowflake_service_user": ("user", ("name",)),
 }
 
 
-# The system role Terraform creates each type as (terraform/providers.tf), so the owner an adopted object needs.
+# The system role Terraform creates each type as (the providers.tf of the components), so the owner an adopted
+# object needs.
 OWNER = {
     "snowflake_database": "SYSADMIN",
     "snowflake_schema": "SYSADMIN",
@@ -740,6 +767,7 @@ OWNER = {
     "snowflake_warehouse": "SYSADMIN",
     "snowflake_account_role": "SECURITYADMIN",
     "snowflake_user": "USERADMIN",
+    "snowflake_service_user": "USERADMIN",
 }
 
 
@@ -747,21 +775,35 @@ def object_path(resource: dict[str, Any]) -> tuple[str, ...]:
     return tuple(str(resource[attr]) for attr in ADOPTABLE[resource["type"]][1])
 
 
-def terraform_output(env: dict[str, str], *args: str) -> str:
-    """Run terraform in terraform/ and return its stdout; exit with its output when it fails."""
-    result = subprocess.run(["terraform", *args], cwd=TF_DIR, env=env, capture_output=True, encoding="utf-8")
+def atmos_output(env: dict[str, str], *args: str) -> str:
+    """Run Atmos and return its stdout, which carries only Terraform's output; exit with both when it fails."""
+    result = subprocess.run(
+        ["atmos", *args], cwd=ROOT, env=env, stdin=subprocess.DEVNULL, capture_output=True, encoding="utf-8"
+    )
     if result.returncode != 0:
         print(result.stdout + result.stderr)
-        sys.exit(f"terraform {args[0]} failed")
+        sys.exit(f"atmos {' '.join(args[:4])} failed")
     return result.stdout
 
 
-def planned_changes(env: dict[str, str]) -> list[dict[str, Any]]:
-    """The resource changes of `terraform plan`, against the refreshed state (`terraform show -json`)."""
+def instances(env: dict[str, str]) -> list[Instance]:
+    """Every Snowflake component instance of the stacks, the account one first: the project stacks depend on it."""
+    described = json.loads(atmos_output(env, "describe", "stacks", "--format", "json", "--sections", "workspace"))
+    found = [
+        Instance(component, stack)
+        for stack, config in described.items()
+        for component in config["components"]["terraform"]
+        if component in SNOWFLAKE_COMPONENTS
+    ]
+    return sorted(found, key=lambda instance: (instance.component != ACCOUNT_COMPONENT, instance.stack))
+
+
+def planned_changes(env: dict[str, str], instance: Instance) -> list[dict[str, Any]]:
+    """The resource changes of `terraform plan` of one instance, against its refreshed state (`show -json`)."""
     with tempfile.TemporaryDirectory() as tmp:
         plan = str(Path(tmp) / "plan")
-        terraform_output(env, "plan", "-input=false", "-no-color", f"-out={plan}")
-        shown = terraform_output(env, "show", "-json", plan)
+        atmos_output(env, *terraform_args("plan", instance, "-input=false", "-no-color", f"-out={plan}"))
+        shown = atmos_output(env, *terraform_args("show", instance, "-json", plan))
     return json.loads(shown).get("resource_changes", [])
 
 
@@ -774,7 +816,7 @@ def planned_creates(changes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def forget_vanished_grants(env: dict[str, str], changes: list[dict[str, Any]]) -> None:
+def forget_vanished_grants(env: dict[str, str], instance: Instance, changes: list[dict[str, Any]]) -> None:
     """Remove from the state the grants the plan would revoke that the account no longer has.
 
     The refresh leaves such a grant without privileges, and the provider builds its REVOKE from them, so the
@@ -790,14 +832,14 @@ def forget_vanished_grants(env: dict[str, str], changes: list[dict[str, Any]]) -
         and not change["change"]["before"]["all_privileges"]
     ]
     for start in range(0, len(gone), 100):  # Windows caps a command line at 32767 characters
-        terraform_output(env, "state", "rm", *gone[start : start + 100])
+        atmos_output(env, *terraform_args("state rm", instance, *gone[start : start + 100]))
     if gone:
-        ok(f"Forgot {len(gone)} grants in the Terraform state that the account no longer has")
+        ok(f"Forgot {len(gone)} grants in the state of {instance.stack} that the account no longer has")
 
 
-def managed_objects(env: dict[str, str]) -> list[dict[str, Any]]:
-    """The adoptable resources this checkout's Terraform state tracks: address, type and attributes (no refresh)."""
-    state = json.loads(terraform_output(env, "show", "-json"))
+def managed_objects(env: dict[str, str], instance: Instance) -> list[dict[str, Any]]:
+    """The adoptable resources the state of one instance tracks: address, type and attributes (no refresh)."""
+    state = json.loads(atmos_output(env, *terraform_args("show", instance, "-json")))
     modules = [state.get("values", {}).get("root_module", {})]
     resources: list[dict[str, Any]] = []
     while modules:
@@ -820,13 +862,15 @@ def account_objects(conn: Any) -> dict[str, dict[tuple[str, ...], str]]:
         owner = header.index("owner")
         return {tuple(str(row[header.index(c)]) for c in columns): str(row[owner]) for row in cursor.fetchall()}
 
+    users = owners("SHOW USERS", "name")  # persons and service users alike
     return {
         "snowflake_database": owners("SHOW DATABASES", "name"),
         "snowflake_schema": owners("SHOW SCHEMAS IN ACCOUNT", "database_name", "name"),
         "snowflake_stage_internal": owners("SHOW STAGES IN ACCOUNT", "database_name", "schema_name", "name"),
         "snowflake_warehouse": owners("SHOW WAREHOUSES", "name"),
         "snowflake_account_role": owners("SHOW ROLES", "name"),
-        "snowflake_user": owners("SHOW USERS", "name"),
+        "snowflake_user": users,
+        "snowflake_service_user": users,
     }
 
 
@@ -846,15 +890,49 @@ def misowned_objects(conn: Any, managed: list[dict[str, Any]]) -> list[dict[str,
     ]
 
 
-def write_imports(resources: list[dict[str, Any]]) -> None:
-    """Import blocks so the next `terraform apply` adopts `resources` instead of creating them."""
+def write_imports(instance: Instance, resources: list[dict[str, Any]]) -> None:
+    """Import blocks so the next `terraform apply` of `instance` adopts `resources` instead of creating them.
+
+    They sit in the component directory, where they would apply to every stack of the component: only
+    `apply_stack` writes them, right before the apply of this one stack, and removes them right after.
+    """
     blocks = "".join(
         f"import {{\n  to = {r['address']}\n  id = {json.dumps('.'.join(map(quote_ident, object_path(r))))}\n}}\n\n"
         for r in resources
     )
-    ADOPT_FILE.write_text(
-        f"# Written by `just sf bootstrap` for one apply; deleted afterwards.\n\n{blocks}", encoding="utf-8"
+    instance.adopt_file.write_text(
+        f"# Written by `just sf bootstrap` for one apply of stack {instance.stack}; deleted afterwards.\n\n{blocks}",
+        encoding="utf-8",
     )
+
+
+def apply_stack(env: dict[str, str], instance: Instance, adopted: list[dict[str, Any]], yes: bool) -> None:
+    """`terraform apply` of one instance, importing the `adopted` objects into its state first."""
+    if adopted:
+        write_imports(instance, adopted)
+    try:
+        atmos(env, *terraform_args("apply", instance, *(["-auto-approve"] if yes else [])))
+    finally:
+        instance.adopt_file.unlink(missing_ok=True)
+
+
+def apply_stacks(
+    env: dict[str, str], stacks: list[Instance], adopt: dict[Instance, list[dict[str, Any]]], yes: bool
+) -> None:
+    """Apply every stack in order, the account stack first (the project stacks grant roles to its users).
+
+    A declined confirmation (anything but `yes`) or a failed apply stops the run with the stack's name;
+    Terraform has already said why. The stacks applied before it stay applied.
+    """
+    for instance in stacks:
+        step(f"Applying stack {instance.stack} ({instance.component})")
+        try:
+            apply_stack(env, instance, adopt.get(instance, []), yes)
+        except subprocess.CalledProcessError:
+            sys.exit(
+                f"Stack {instance.stack} was not applied: Terraform goes ahead only on `yes`, or the apply failed "
+                "(see above). Run `just setup` again; the stacks applied so far show no changes."
+            )
 
 
 def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str, take_ownership: bool = False) -> None:
@@ -867,7 +945,7 @@ def drop_objects(conn: Any, resources: list[dict[str, Any]], current_user: str, 
     what Terraform created as SYSADMIN and needs no such step.
     """
     order = ["snowflake_database", "snowflake_schema", "snowflake_stage_internal"]
-    order += ["snowflake_warehouse", "snowflake_account_role", "snowflake_user"]
+    order += ["snowflake_warehouse", "snowflake_account_role", "snowflake_user", "snowflake_service_user"]
     gone: set[tuple[str, ...]] = set()  # dropped databases and schemas, everything in them went along
     for resource in sorted(resources, key=lambda r: order.index(r["type"])):
         kind = ADOPTABLE[resource["type"]][0].upper()
@@ -900,18 +978,18 @@ def transfer_ownership(conn: Any, resources: list[dict[str, Any]]) -> None:
         ok(f"{kind.lower()} {'.'.join(object_path(resource))} now owned by {owner}")
 
 
-def reclaim_managed_objects(conn: Any, env: dict[str, str], yes: bool) -> None:
-    """Hand objects this checkout's Terraform state tracks back to the role Terraform manages them as.
+def reclaim_managed_objects(conn: Any, env: dict[str, str], stacks: list[Instance], yes: bool) -> None:
+    """Hand objects the stacks' Terraform states track back to the role Terraform manages them as.
 
     init.sql drops RL_PLATFORM_PROVISIONING, the role earlier versions provisioned with, and Snowflake gives
     what it owned to ACCOUNTADMIN. reconcile_existing adopts only objects the state does not track; tracked
     ones would stay with ACCOUNTADMIN, where Terraform (SYSADMIN, SECURITYADMIN, USERADMIN) cannot change
     them. Runs before any plan, whose refresh can already fail on them.
     """
-    misowned = misowned_objects(conn, managed_objects(env))
+    misowned = misowned_objects(conn, [r for instance in stacks for r in managed_objects(env, instance)])
     if not misowned:
         return
-    warn(f"{len(misowned)} objects in this checkout's Terraform state have another owner than Terraform expects:")
+    warn(f"{len(misowned)} objects in the stacks' Terraform states have another owner than Terraform expects:")
     for resource in misowned:
         label = ADOPTABLE[resource["type"]][0]
         print(f"    {label:<10} {'.'.join(object_path(resource))}  {resource['owner']} -> {OWNER[resource['type']]}")
@@ -921,20 +999,25 @@ def reclaim_managed_objects(conn: Any, env: dict[str, str], yes: bool) -> None:
         warn("Left as they are; Terraform cannot change objects its roles do not own.")
 
 
-def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: str, yes: bool) -> bool:
+def reconcile_existing(
+    conn: Any, env: dict[str, str], stacks: list[Instance], mode: str, current_user: str, yes: bool
+) -> dict[Instance, list[dict[str, Any]]] | None:
     """Handle objects Terraform would create that already exist (an account provisioned from another checkout).
 
-    `mode` is sync (adopt them into this checkout's state), wipe (drop them, then create them anew) or ask.
-    Grants the state tracks that the account no longer has are removed from the state first, whatever the mode.
-    Returns False when the user aborts.
+    `mode` is sync (adopt them into the stacks' states), wipe (drop them, then create them anew) or ask.
+    Grants a state tracks that the account no longer has are removed from it first, whatever the mode.
+    Returns the objects each stack's apply adopts (none after a wipe), or None when the user aborts.
     """
-    print("Looking for objects in the account that this checkout's Terraform state does not track...")
-    changes = planned_changes(env)
-    forget_vanished_grants(env, changes)
-    existing = existing_objects(conn, planned_creates(changes))
+    print("Looking for objects in the account that the stacks' Terraform states do not track...")
+    adopt: dict[Instance, list[dict[str, Any]]] = {}
+    for instance in stacks:
+        changes = planned_changes(env, instance)
+        forget_vanished_grants(env, instance, changes)
+        adopt[instance] = existing_objects(conn, planned_creates(changes))
+    existing = [r for resources in adopt.values() for r in resources]
     if not existing:
         ok("None found; Terraform creates everything.")
-        return True
+        return {}
     warn(f"{len(existing)} objects Terraform would create already exist (provisioned from another checkout?):")
     for resource in existing:
         print(f"    {ADOPTABLE[resource['type']][0]:<10} {'.'.join(object_path(resource))}")
@@ -942,31 +1025,35 @@ def reconcile_existing(conn: Any, env: dict[str, str], mode: str, current_user: 
         if yes:
             mode = "sync"
         else:
-            print("  sync  adopt them into this checkout's Terraform state; data and grants stay, owners become")
+            print("  sync  adopt them into the stacks' Terraform states; data and grants stay, owners become")
             print("        SYSADMIN (databases, schemas, stages, warehouses), SECURITYADMIN (roles), USERADMIN (users)")
             print("  wipe  drop them (databases with all their schemas and data), then provision from scratch")
             choice = ask("sync, wipe or abort?", "sync").lower()
             mode = {"s": "sync", "w": "wipe"}.get(choice[:1], "abort")
     if mode == "sync":
         transfer_ownership(conn, existing)
-        write_imports(existing)
-        ok(f"Wrote {ADOPT_FILE.name}: the apply below imports them before provisioning the rest")
-        return True
+        ok("The applies below import them into their stacks before provisioning the rest")
+        return adopt
     if mode == "wipe" and (yes or ask('Type "wipe" to drop them for good') == "wipe"):
         drop_objects(conn, existing, current_user, take_ownership=True)
-        return True
+        return {}
     print("Aborted; nothing was changed in Snowflake.")
-    return False
+    return None
 
 
 # The databases carry prevent_destroy, so no Terraform plan drops them: `just tf clean` drops them with SQL.
 PROTECTED_MODULE = "module.database"
 
 
+# What provisioning runs: Terraform, through Atmos (atmos.yaml).
+PROVISIONING_TOOLS = ("terraform", "atmos")
+
+
 def require_terraform() -> None:
-    refresh_windows_path()  # installed by winget after this shell started
-    if shutil.which("terraform") is None:
-        sys.exit("terraform not found on PATH; install it with `just install terraform`, then open a new shell.")
+    refresh_windows_path()  # installed by winget (or into ~/.local/bin) after this shell started
+    for tool in PROVISIONING_TOOLS:
+        if shutil.which(tool) is None:
+            sys.exit(f"{tool} not found on PATH; install it with `just install {tool}`, then open a new shell.")
 
 
 def terraform_env() -> dict[str, str]:
@@ -976,7 +1063,7 @@ def terraform_env() -> dict[str, str]:
 
 
 def terraform_settings(env: dict[str, str]) -> SnowflakeSettings:
-    """TERRAFORM_USER's connection as SYSADMIN, which owns the project databases (defaults as in variables.tf)."""
+    """TERRAFORM_USER's connection as SYSADMIN, which owns the project databases (defaults as in the components)."""
     organization = env.get("TF_VAR_SNOWFLAKE_ORGANIZATION", "")
     account = env.get("TF_VAR_SNOWFLAKE_ACCOUNT", "")
     if not organization or not account:
@@ -1017,7 +1104,7 @@ def print_leftovers() -> None:
 
 def confirm_clean(account: str, addresses: list[str], databases: list[dict[str, Any]]) -> bool:
     """Show what `just tf clean` removes and ask for the account name back."""
-    warn(f"This removes all {len(addresses)} resources this checkout's Terraform state tracks in {account}:")
+    warn(f"This removes all {len(addresses)} resources the stacks' Terraform states track in {account}:")
     for database in databases:
         print(f"    database  {database['name']}, with every schema, table, stage and file in it")
     print("    and every warehouse, role, user and grant Terraform created. The init.sql objects stay.")
@@ -1077,13 +1164,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
 def cmd_bootstrap(args: argparse.Namespace) -> int:
     """A fresh account (trial or otherwise) from account, user and password to a provisioned project and .env."""
     refresh_windows_path()  # installed by an earlier run, but this shell predates it
-    if shutil.which("terraform") is None:
-        step("Installing Terraform (just install terraform)")
-        # A failure (no Homebrew, say) prints its own advice; the PATH check below has the last word.
-        subprocess.run(["just", "install", "terraform"], cwd=ROOT, check=False)
-        refresh_windows_path()
-        if shutil.which("terraform") is None:
-            sys.exit("terraform still not on PATH; open a new shell or install it by hand, then rerun `just setup`")
+    for tool in PROVISIONING_TOOLS:
+        if shutil.which(tool) is None:
+            step(f"Installing {tool} (just install {tool})")
+            # A failure (no Homebrew, say) prints its own advice; the PATH check below has the last word.
+            subprocess.run(["just", "install", tool], cwd=ROOT, check=False)
+            refresh_windows_path()
+            if shutil.which(tool) is None:
+                sys.exit(f"{tool} still not on PATH; open a new shell or install it by hand, then rerun `just setup`")
     # A rerun offers what the previous run wrote to .env as defaults (Enter keeps them).
     current = {k: (v or "") for k, v in dotenv_values(ENV_FILE).items()} if ENV_FILE.exists() else {}
     previous_org, _, previous_account = current.get("SNOWFLAKE_ACCOUNT", "").partition("-")
@@ -1142,18 +1230,16 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         }
         write_env({f"TF_VAR_{k}": v for k, v in tf_vars.items()})
         env = {**os.environ, **{f"TF_VAR_{k}": v for k, v in tf_vars.items()}}
-        terraform(env, "init", "-input=false")
+        stacks = instances(env)
         # Still logged in as ACCOUNTADMIN here, which can see (and drop) whatever an earlier state created,
         # and owns what init.sql's DROP ROLE left behind.
-        reclaim_managed_objects(conn, env, args.yes)
-        if not reconcile_existing(conn, env, args.existing, exact_user, args.yes):
+        reclaim_managed_objects(conn, env, stacks, args.yes)
+        adopt = reconcile_existing(conn, env, stacks, args.existing, exact_user, args.yes)
+        if adopt is None:
             return 1
     finally:
         conn.close()
-    try:
-        terraform(env, "apply", *(["-auto-approve"] if args.yes else []))
-    finally:
-        ADOPT_FILE.unlink(missing_ok=True)
+    apply_stacks(env, stacks, adopt, args.yes)
 
     step("5/5 Verifying key-pair login and writing .env")
     settings = SnowflakeSettings(
@@ -1181,7 +1267,7 @@ def cmd_wizard(_args: argparse.Namespace) -> int:
     print(f"  {style(BOLD, '2')}  {provisioned}: an administrator ran Terraform and granted you a project role.")
     print(style(DIM, "     Registers your key pair and writes .env."))
     print(f"  {style(BOLD, '3')}  {existing}: you hold ACCOUNTADMIN and provisioned it before, from another")
-    print(style(DIM, "     checkout or machine, so this checkout's Terraform state does not know the objects."))
+    print(style(DIM, "     checkout or machine, so this checkout's Terraform states do not know the objects."))
     print(style(DIM, "     Like 1, but first asks to sync the existing objects into Terraform or wipe them,"))
     print(style(DIM, "     and leaves the account settings as they are."))
     local = style(f"{BOLD};{CYAN}", "Local only")
@@ -1266,38 +1352,53 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_clean(_args: argparse.Namespace) -> int:
-    """`just tf clean`: every object the Terraform state tracks goes, the prevent_destroy databases included.
+def clean_stack(env: dict[str, str], settings: SnowflakeSettings, instance: Instance, tracked: list[str]) -> None:
+    """Remove what one stack's state tracks: Terraform destroys all but the databases, SQL drops those.
 
-    Terraform destroys everything but the databases; TERRAFORM_USER then drops those as SYSADMIN, and they
-    leave the state last, so a rerun after a failure picks up where this one stopped.
+    The databases leave the state last, so a rerun after a failure picks up where this one stopped.
     """
-    require_terraform()
-    env = terraform_env()
-    terraform(env, "init", "-input=false")
-    addresses = terraform_output(env, "state", "list").split()
-    if not addresses:
-        warn(
-            "This checkout's Terraform state tracks no objects, so there is nothing to remove. That says "
-            "nothing about the account, which may still be fully provisioned. Adopt it into this state first "
-            "(`just setup` and answer 3, or `just sf bootstrap --existing sync --account-settings skip`), or "
-            "point Terraform at the remote backend that holds the real state (terraform/README.md)."
-        )
-        return 1
-    settings = terraform_settings(env)
-    databases = [r for r in managed_objects(env) if r["type"] == "snowflake_database"]
-    if not confirm_clean(settings.account, addresses, databases):
-        print("Aborted; nothing was changed in Snowflake.")
-        return 1
-    targets = destroy_targets(addresses)
+    targets = destroy_targets(tracked)
+    databases = [r for r in managed_objects(env, instance) if r["type"] == "snowflake_database"]
     if targets:
-        terraform(env, "destroy", "-auto-approve", "-input=false", *(f"-target={t}" for t in targets))
+        atmos(
+            env,
+            *terraform_args("destroy", instance, "-auto-approve", "-input=false", *(f"-target={t}" for t in targets)),
+        )
     if databases:
         with settings.connect() as conn:
             drop_objects(conn, databases, current_user="")
-        terraform(env, "state", "rm", PROTECTED_MODULE)
+        atmos_output(env, *terraform_args("state rm", instance, PROTECTED_MODULE))
+
+
+def cmd_clean(_args: argparse.Namespace) -> int:
+    """`just tf clean`: every object the stacks' Terraform states track goes, the prevent_destroy databases included.
+
+    The project stacks go first, the account stack (the persons they grant roles to) last.
+    """
+    require_terraform()
+    env = terraform_env()
+    stacks = instances(env)
+    tracked = {instance: atmos_output(env, *terraform_args("state list", instance)).split() for instance in stacks}
+    addresses = [address for listed in tracked.values() for address in listed]
+    if not addresses:
+        warn(
+            "The stacks' Terraform states track no objects, so there is nothing to remove. That says nothing "
+            "about the account, which may still be fully provisioned. Adopt it into the states first "
+            "(`just setup` and answer 3, or `just sf bootstrap --existing sync --account-settings skip`), or "
+            "point the stacks at the remote backend that holds the real states (terraform/README.md)."
+        )
+        return 1
+    settings = terraform_settings(env)
+    databases = [r for instance in stacks for r in managed_objects(env, instance) if r["type"] == "snowflake_database"]
+    if not confirm_clean(settings.account, addresses, databases):
+        print("Aborted; nothing was changed in Snowflake.")
+        return 1
+    for instance in reversed(stacks):
+        if tracked[instance]:
+            step(f"Removing stack {instance.stack} ({instance.component})")
+            clean_stack(env, settings, instance, tracked[instance])
     print_leftovers()
-    done("The Terraform state is empty; `just tf apply` provisions everything again.")
+    done("The stacks' Terraform states are empty; `just tf apply --all` provisions everything again.")
     return 0
 
 
@@ -1318,7 +1419,10 @@ def cmd_keygen(args: argparse.Namespace) -> int:
             "holds its public key, so that one signs in until the new one below is registered."
         )
     init_sql = INIT_SQL.relative_to(ROOT).as_posix()
-    print(f"\nPublic key body, for ALTER USER ... SET RSA_PUBLIC_KEY = '...' (see {init_sql}):\n")
+    print(
+        f"\nPublic key body, for ALTER USER ... SET RSA_PUBLIC_KEY = '...' (see {init_sql}), or for\n"
+        "`rsa_public_key` in the file of a service user (terraform/config/users, `type: service`):\n"
+    )
     print(public_key_body(public_path))
     return 0
 
@@ -1345,7 +1449,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     bootstrap.add_argument("--role", help="project role to work as (default: your engineer role in dev)")
     bootstrap.add_argument(
-        "--yes", action="store_true", help="terraform apply -auto-approve and skip the context prompt"
+        "--yes", action="store_true", help="apply every stack with -auto-approve and skip the context prompt"
     )
     bootstrap.add_argument(
         "--existing",
@@ -1393,7 +1497,7 @@ def main(argv: list[str] | None = None) -> int:
     keygen.add_argument("--force", action="store_true", help="replace an existing key pair, keeping it as .bak")
     keygen.set_defaults(func=cmd_keygen)
 
-    clean = sub.add_parser("clean", help="`just tf clean`: remove every object the Terraform state tracks")
+    clean = sub.add_parser("clean", help="`just tf clean`: remove every object the stacks' Terraform states track")
     clean.set_defaults(func=cmd_clean)
 
     args = parser.parse_args(argv)

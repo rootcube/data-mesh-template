@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "user.schema.json",
   "title": "User Configuration",
-  "description": "A person who assumes project roles. Roles are granted per project and environment; the login must exist in Snowflake unless create is true.",
+  "description": "A person or a service user who assumes project roles. Roles are granted per project and environment; a person's login must exist in Snowflake unless create is true, a service user is always created by Terraform, with its key.",
   "type": "object",
   "required": [
     "login",
@@ -20,6 +20,17 @@
       "description": "Display name",
       "maxLength": 100
     },
+    "type": {
+      "type": "string",
+      "enum": ["person", "service"],
+      "description": "person (default) logs in interactively; service is a TYPE = SERVICE user for a deployment (dlt with the ingest role, dbt with the transform role), created by Terraform with rsa_public_key",
+      "default": "person"
+    },
+    "rsa_public_key": {
+      "type": "string",
+      "description": "Service users only: the public key body `just sf keygen <login>` prints (one line, no BEGIN/END header); the private key stays in ~/.snowflake/keys/<login>.p8",
+      "pattern": "^MII[A-Za-z0-9+/]+=*$"
+    },
     "email": {
       "type": "string",
       "description": "Email, only used when creating the user",
@@ -36,7 +47,7 @@
     },
     "create": {
       "type": "boolean",
-      "description": "Create the user in Snowflake with a one-time password; false when the login already exists (SSO)",
+      "description": "Persons only: create the user in Snowflake with a one-time password; false when the login already exists (SSO)",
       "default": false
     },
     "disabled": {
@@ -86,5 +97,24 @@
       },
       "minItems": 1
     }
+  },
+  "if": {
+    "properties": {"type": {"const": "service"}},
+    "required": ["type"]
+  },
+  "then": {
+    "required": ["rsa_public_key"],
+    "properties": {
+      "login": {
+        "pattern": "^[A-Z][A-Z0-9_]*$",
+        "description": "Upper case, so the quoted name Terraform creates and the unquoted one a connection uses are the same user"
+      }
+    },
+    "not": {
+      "anyOf": [{"required": ["create"]}, {"required": ["email"]}, {"required": ["schema_prefix"]}]
+    }
+  },
+  "else": {
+    "not": {"required": ["rsa_public_key"]}
   }
 }

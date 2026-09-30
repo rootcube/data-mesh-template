@@ -208,6 +208,20 @@ not by code:
 | `roles/` | `engineer`, `analyst`, `ingest`, `transform`, ... | `code`: `eng`, `anl`, `ing`, `tfm`; `privileges.layers` by layer key, each an access key per environment |
 | `computes/` | `default`, `ingest`, `transform`, ... | `code`: empty for `default`, `ing`, `tfm` |
 
+The Atmos stacks under `terraform/stacks/`, each with a Terraform state of its own, are named by
+`name_template` in `atmos.yaml`:
+
+| Stack | Manifest | Component |
+|---|---|---|
+| `<project>-<env>`, the environment code (`example-dev`, `example-prd`) | `projects/<project>/<env>.yaml` with `vars: {project: <project>, environment: <env>}` | `snowflake-project` |
+| `account` | `account.yaml` | `snowflake-account` |
+| `<deployment>-<env>` (`dagster-prd`), also the Kubernetes namespace | `deployments/<deployment>/<env>.yaml` with `vars: {deployment: dagster, environment: <env>, ...}` | `dagster` |
+
+On Kubernetes the code locations are `dlt` and `dbt-<project>` (no `_` in Kubernetes names), the
+image is `dagster-starter:<tag>`, and a service user's login is upper case,
+`<PROJECT>_<ENV>_INGEST` or `_TRANSFORM` (`EXAMPLE_PRD_TRANSFORM`), its key secret
+`snowflake-<login in lower case, _ as ->`.
+
 ## Python and tests
 
 Python naming (constants, classes, functions, booleans) is covered in

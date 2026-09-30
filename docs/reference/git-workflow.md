@@ -40,7 +40,7 @@ flowchart LR
    release. See [Releases](#releases).
 
 Terraform changes follow the same path: the YAML under `terraform/config/` is reviewed and
-merged like code, and an administrator runs `just tf plan` / `just tf apply` from `main`
+merged like code, and an administrator runs `just tf plan --all` / `just tf apply --all` from `main`
 afterwards. See [Snowflake provisioning](../operate/snowflake-provisioning.md).
 
 ## Branch naming

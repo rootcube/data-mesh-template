@@ -1,0 +1,7 @@
+# Stack `example-dev`: project example (config/projects/example.yaml) in environment dev.
+import:
+  - catalog/snowflake-project
+
+vars:
+  project: example
+  environment: dev

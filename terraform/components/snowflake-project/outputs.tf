@@ -1,7 +1,20 @@
 # =============================================================================
-# Root Module Outputs
+# Component Outputs: one Project x Environment
 # =============================================================================
-# Exposes key resource information for debugging and downstream integration.
+# `just tf output snowflake-project -s <project>-<env>`; stage_names (stages.tf) and
+# personal_schemas (personal.tf) sit next to their resources.
+
+# The stack this state belongs to. The precondition stops a plan whose stack names a project or
+# environment code that config/ does not have, which would otherwise plan to remove everything.
+output "stack" {
+  description = "Project and environment code of this stack"
+  value       = "${var.project}-${var.environment}"
+
+  precondition {
+    condition     = contains(keys(local.projects), var.project) && length(try(local.projects[var.project].environments, [])) == 1
+    error_message = "Stack ${var.project}-${var.environment}: config/projects/${var.project}.yaml does not exist, or does not list an enabled environment with code ${var.environment} (config/environments)."
+  }
+}
 
 # -----------------------------------------------------------------------------
 # Database Outputs
@@ -73,17 +86,6 @@ output "warehouse_names" {
 # Role Outputs
 # -----------------------------------------------------------------------------
 
-output "platform_roles" {
-  description = "Map of created platform-level roles"
-  value = {
-    for key, role in module.platform_role : key => {
-      name    = role.name
-      id      = role.id
-      purpose = role.purpose
-    }
-  }
-}
-
 output "project_roles" {
   description = "Map of created project-level roles"
   value = {
@@ -112,9 +114,8 @@ output "access_roles" {
 }
 
 output "role_names" {
-  description = "List of all created role names (platform + project + access)"
+  description = "List of all created role names (project + access)"
   value = concat(
-    [for role in module.platform_role : role.name],
     [for role in module.project_role : role.name],
     [for role in module.access_role : role.name]
   )
@@ -147,21 +148,4 @@ output "role_grant_count" {
 output "role_access_grant_count" {
   description = "Number of access role grants to project roles created (role x layer)"
   value       = length(module.role_access_grant)
-}
-
-# -----------------------------------------------------------------------------
-# Configuration Summary
-# -----------------------------------------------------------------------------
-
-output "config_summary" {
-  description = "Summary of the loaded configuration"
-  value = {
-    project_count  = length(local.projects)
-    role_count     = length(local.roles)
-    access_count   = length(local.accesses)
-    layer_count    = length(local.layers)
-    compute_count  = length(local.computes)
-    enabled_roles  = [for k, r in local.roles : k if !try(r.disabled, false)]
-    required_roles = [for k, r in local.roles : k if try(r.required, false)]
-  }
 }

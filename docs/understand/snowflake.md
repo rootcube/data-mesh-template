@@ -28,7 +28,7 @@ For every project in `terraform/config/projects/` and each of its environments:
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` (X-Small, auto-suspend 60 s, created suspended) |
 | dlt load stage | internal stage `ST_DEFAULT` with a directory table in every source-layer schema, shared and personal | `_SRC.ST_DEFAULT`, `DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | `GRANT ROLE ... TO USER`, and the user itself when `create: true` | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
-| User × engineer role in `dev` | personal schemas `<PREFIX>_<LAYER>`, one per layer (`terraform/personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... |
+| User × engineer role in `dev` | personal schemas `<PREFIX>_<LAYER>`, one per layer (`snowflake-project/personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... |
 
 The example project has two environments, so the same set exists once more with `PRD`. Nothing
 is shared between the two. Each database keeps one day of Time Travel, or the
@@ -37,7 +37,7 @@ is shared between the two. Each database keeps one day of Time Travel, or the
 
 Terraform connects through Snowflake's system roles, so every object has the owner Snowflake
 recommends: `SYSADMIN` creates and owns the databases, schemas, stages and warehouses,
-`SECURITYADMIN` the roles and every grant, `USERADMIN` the users (`terraform/providers.tf`).
+`SECURITYADMIN` the roles and every grant, `USERADMIN` the users (each component's `providers.tf`).
 Every project role is granted to `SYSADMIN`, the recommended role hierarchy.
 
 Privileges on the layer schemas do not sit on the project roles. They sit on access roles, one
@@ -68,7 +68,7 @@ Every object name is built from the `code` fields of the YAML, uppercased; the p
 ## Personal schemas in development
 
 Development is shared: everyone who holds `RL_EXAMPLE_DEV__ENG` works in `DB_EXAMPLE_DEV`.
-Terraform gives every user with that role a copy of each layer (`terraform/personal.tf`, driven
+Terraform gives every user with that role a copy of each layer (`terraform/components/snowflake-project/personal.tf`, driven
 by the `personal` block in `roles/engineer.yaml`): `<PREFIX>_SRC`, `<PREFIX>_STG`, ..., owned by
 `SYSADMIN`, with the engineer role's privileges on them and a load stage of their own in
 `<PREFIX>_SRC`. The engineer role cannot create schemas itself, so a missing schema means the
@@ -108,18 +108,19 @@ People
 
 Service users
 :   The ingest and transform roles of a deployed environment are held by service users. An
-    administrator creates the user by hand (`CREATE USER <login> TYPE = SERVICE`), generates its
-    key pair with `just sf keygen <name>`, which prints the public key body, registers it with
-    `ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`, and grants the roles through a
-    `create: false` file in `terraform/config/users/`. The Terraform user itself is bootstrapped
-    the same way, with its key going into `modules/snowflake/init.sql`. It holds `SYSADMIN`,
+    administrator generates the key pair with `just sf keygen <LOGIN>`, which prints the public
+    key body, and puts it in the user's file in `terraform/config/users/` (`type: service`,
+    `rsa_public_key`); Terraform creates the user with that key and grants its roles
+    ([Onboarding](../operate/onboarding.md#a-service-user)). The Terraform user itself is
+    bootstrapped by hand, with its key going into `modules/snowflake/init.sql`. It holds `SYSADMIN`,
     `SECURITYADMIN` and `USERADMIN`, so encrypt its key and restrict where it logs in from
     ([Securing the Terraform user](../operate/snowflake-provisioning.md#securing-the-terraform-user)).
 
 The private key path, the passphrase and the rest of the connection are `.env` variables;
 `.env`, `*.p8` and `*.pub` are git-ignored, and `just sf setup` makes the private key and `.env`
 readable by you only (mode 600, or an owner-only ACL on Windows). A deployed environment fills
-the same variables with the service user's key and `RL_<PROJECT>_PRD__TFM` or `__ING`. Every
+the same variables with the service user's key and `RL_<PROJECT>_PRD__TFM` or `__ING`
+([Dagster on Kubernetes](../operate/kubernetes.md) sets them per code location). Every
 variable is on [Environment variables](../reference/environment-variables.md).
 
 ## One settings reader

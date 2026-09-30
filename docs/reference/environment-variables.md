@@ -77,10 +77,20 @@ You never set these; both the `justfile` and `.envrc` export them with the same 
 CI sets `DBT_TARGET=local`, `DUCKDB_PATH`, `DBT_PROFILES_DIR` and `DAGSTER_HOME` itself
 (`.github/workflows/ci.yml`); no Snowflake credentials exist there.
 
+## Deployed code locations (Kubernetes)
+
+On Kubernetes nobody writes a `.env`: the Dagster stack (`terraform/components/dagster`) sets the
+same variables on every code location and passes them to the run pods it launches:
+`ENVIRONMENT` (the stack's environment), `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER` (the location's
+service user), `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE`, an empty
+`SNOWFLAKE_SCHEMA`, and `SNOWFLAKE_PRIVATE_KEY_PATH` pointing at the key its secret mounts. The
+image sets `DLT_PROJECT_DIR`, `DLT_DATA_DIR` and `DBT_PROFILES_DIR` (`Dockerfile`); the chart
+sets `DAGSTER_HOME`. See [Dagster on Kubernetes](../operate/kubernetes.md).
+
 ## Platform administrators (Terraform)
 
 Terraform reads its provider settings from `TF_VAR_*` variables, kept in the same `.env`
-(the commented block at the bottom of `.env.example`). They map to `terraform/variables.tf`.
+(the commented block at the bottom of `.env.example`). They map to the `variables.tf` of each component under `terraform/components/`.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -91,5 +101,5 @@ Terraform reads its provider settings from `TF_VAR_*` variables, kept in the sam
 | `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PATH` | `~/.snowflake/keys/terraform.p8` | Private key of the service user (`just sf keygen terraform`) |
 | `TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE` | empty | Passphrase of that key, empty when it is not encrypted; `just sf bootstrap` asks for it and writes it |
 
-There is no role variable: the providers in `terraform/providers.tf` connect as `SYSADMIN`,
+There is no role variable: the providers in each component's `providers.tf` connect as `SYSADMIN`,
 `SECURITYADMIN` and `USERADMIN`, which `init.sql` grants to the service user.

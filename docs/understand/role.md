@@ -169,11 +169,13 @@ roles:
       - development
 ```
 
-`terraform/users.tf` turns every entry into a `GRANT ROLE ... TO USER`. `environments` may be
+`terraform/components/snowflake-project/users.tf` turns every entry into a `GRANT ROLE ... TO USER`,
+in the stack of that project and environment. `environments` may be
 `"*"` for every environment of the project. `create: false` means the login already exists
 (SSO); `create: true` creates it as a person with a one-time password
-(`just tf output -json initial_passwords`). A service user is created by hand, with its key
-pair registered through `RSA_PUBLIC_KEY`, and gets its roles from a `create: false` file.
+(`just tf output snowflake-account -s account -- -json initial_passwords`). `type: service`
+with an `rsa_public_key` makes it a service user, which Terraform creates with that key and no
+password ([Onboarding](../operate/onboarding.md#a-service-user)).
 
 Which role a tool runs as is not decided in Terraform but in `.env`:
 

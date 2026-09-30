@@ -2,7 +2,7 @@
 # Layer: Source
 # =============
 
-# `src` is a contract, not just a schema name: stages.tf keys the dlt load stages off it, and
+# `src` is a contract, not just a schema name: components/snowflake-project/stages.tf keys the dlt load stages off it, and
 # dbt_common's refresh_stages macro refreshes `<src schema>.ST_DEFAULT`. Renaming it drops every
 # load stage without an error.
 code: "src"
@@ -13,7 +13,7 @@ sort: 110
 disabled: false
 required: true
 
-# Stages and file formats live in this layer (dlt loads through `_SRC.ST_DEFAULT`, stages.tf).
+# Stages and file formats live in this layer (dlt loads through `_SRC.ST_DEFAULT`, snowflake-project/stages.tf).
 # `read` includes WRITE ON STAGES: `ALTER STAGE ... REFRESH` of the directory table, which dbt
 # runs before it reads the layer (dbt_common.refresh_stages), requires it. It allows putting and
 # removing load files on the stage, not changing tables.

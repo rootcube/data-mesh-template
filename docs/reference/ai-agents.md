@@ -72,7 +72,7 @@ listing project roles per environment, and their personal schemas exist only onc
 applies it.
 
 Everything past that is a human administrator's call against a real account: `just tf plan`,
-`just tf apply`, `just tf clean`, `init.sql`, `account_settings.sql`, and registering a key on
+`just tf apply`, `just tf clean`, `just tf-split-state`, `init.sql`, `account_settings.sql`, and registering a key on
 another user. Describe the change and stop. See
 [Snowflake provisioning](../operate/snowflake-provisioning.md).
 

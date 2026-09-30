@@ -5,7 +5,7 @@
 -- idempotent, so it is safe to run again on an account that was set up before.
 --
 -- Terraform provisions through Snowflake's system roles, so every object ends up
--- with the owner Snowflake recommends (see terraform/providers.tf):
+-- with the owner Snowflake recommends (see the providers.tf of the components under terraform/components):
 --   SYSADMIN       databases, schemas, stages, warehouses
 --   SECURITYADMIN  roles and all grants (MANAGE GRANTS)
 --   USERADMIN      users
@@ -58,7 +58,7 @@ GRANT OWNERSHIP ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURR
 -- 3. System roles for the Terraform user
 -- -----------------------------------------------------------------------------
 -- SECURITYADMIN inherits USERADMIN; granting USERADMIN as well lets the provider
--- alias for users (terraform/providers.tf) use it as its primary role.
+-- alias for users (terraform/components/snowflake-account/providers.tf) use it as its primary role.
 GRANT ROLE SYSADMIN      TO USER TERRAFORM_USER;
 GRANT ROLE SECURITYADMIN TO USER TERRAFORM_USER;
 GRANT ROLE USERADMIN     TO USER TERRAFORM_USER;

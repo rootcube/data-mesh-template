@@ -1,0 +1,43 @@
+# Atmos (https://atmos.tools) runs the Terraform components under terraform/components once per
+# stack under terraform/stacks: `account` (snowflake-account) and one `<project>-<env>` per project
+# and environment (snowflake-project). Each stack is a Terraform workspace with its own state.
+# `just tf ...` passes its arguments to `atmos terraform ...`; see terraform/README.md.
+base_path: "."
+
+components:
+  terraform:
+    base_path: "terraform/components"
+    apply_auto_approve: false
+    deploy_run_init: true
+    # backend.tf.json in each component, from the stacks' `backend_type` and `backend`
+    auto_generate_backend_file: true
+
+stacks:
+  base_path: "terraform/stacks"
+  included_paths:
+    - "**/*"
+  # Imported by the stacks, not stacks themselves
+  excluded_paths:
+    - "catalog/**/*"
+  # <project>-<env> for a project stack (vars of terraform/stacks/projects/<project>/<env>.yaml),
+  # <deployment>-<env> for a deployment (terraform/stacks/deployments/<deployment>/<env>.yaml,
+  # the Dagster one on Kubernetes), `account` for the one stack with neither.
+  name_template: >-
+    {{ if hasKey .vars "project" }}{{ .vars.project }}-{{ .vars.environment }}{{
+    else if hasKey .vars "deployment" }}{{ .vars.deployment }}-{{ .vars.environment }}{{
+    else }}account{{ end }}
+
+logs:
+  level: Warning
+
+settings:
+  telemetry:
+    enabled: false
+
+version:
+  check:
+    enabled: false
+  constraint:
+    require: ">= 1.230.0, < 2.0.0"
+    enforcement: fatal
+    message: "Install the Atmos release this configuration was written for: just install atmos"

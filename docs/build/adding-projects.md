@@ -61,16 +61,32 @@ underscores, and becomes the `<PROJECT>` part of every Snowflake name. It must e
 (`energy` in `energy.yaml`): Terraform names the objects after the file name, and
 `just tf-validate-config` rejects a `code` that differs.
 
-Validate the YAML (schemas plus cross-references), then plan and apply:
+Terraform provisions every project × environment as an Atmos stack of its own, with its own
+state: add one manifest per environment under `terraform/stacks/projects/<project>/`, named after
+the environment code, a copy of `terraform/stacks/projects/example/dev.yaml` with the new project:
+
+```yaml title="terraform/stacks/projects/energy/dev.yaml (new file)"
+# Stack `energy-dev`: project energy (config/projects/energy.yaml) in environment dev.
+import:
+  - catalog/snowflake-project
+
+vars:
+  project: energy
+  environment: dev
+```
+
+and `prd.yaml` the same with `environment: prd`. Validate the YAML (schemas, cross-references and
+the one-manifest-per-environment rule), then plan and apply:
 
 ```bash
 just tf-validate-config
-just tf plan
-just tf apply
+just tf plan --all
+just tf apply --all
 ```
 
 The plan lists what that one file becomes: a database per environment, its layer schemas, the
-project roles and the warehouses, all named after the code. The full mapping is in
+project roles and the warehouses, all named after the code, in the new stacks `energy-dev` and
+`energy-prd`. The full mapping is in
 [Snowflake provisioning](../operate/snowflake-provisioning.md). `just tf-validate-config` is also
 a pre-commit hook and a CI step, so the YAML is checked on every pull request; only `plan` and
 `apply` need the Terraform service user.

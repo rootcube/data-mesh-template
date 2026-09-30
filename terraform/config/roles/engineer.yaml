@@ -11,7 +11,7 @@ disabled: false
 required: true
 
 # Personal schemas: in these environments every user holding this role (config/users) gets
-# their own copy of each project layer, <PREFIX>_SRC, <PREFIX>_STG, ... (see personal.tf).
+# their own copy of each project layer, <PREFIX>_SRC, <PREFIX>_STG, ... (see components/snowflake-project/personal.tf).
 # Terraform creates them, owned by SYSADMIN, plus the user's own stage <PREFIX>_SRC.ST_DEFAULT;
 # this role gets the `access` tier's privileges (config/accesses, plus the layer's extras) on
 # them directly. The role cannot create schemas itself.

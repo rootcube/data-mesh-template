@@ -2,8 +2,10 @@
 
 Terraform turns the YAML under `config/` into Snowflake objects, following the platform's
 conceptual model: **Organisation** > **Team** > **Project** > **Environment** > { **Layers**,
-**Roles**, **Computes** }, plus **Users** who may assume project roles. Only platform
-administrators run this; engineers never need Terraform.
+**Roles**, **Computes** }, plus **Users** who may assume project roles. [Atmos](https://atmos.tools)
+runs it once per project and environment, each with a state of its own (see
+[Stacks and state](#stacks-and-state)). Only platform administrators run this; engineers never
+need Terraform or Atmos.
 
 This file doubles as the Snowflake provisioning page of the documentation site, so edit it
 here and the site follows.
@@ -19,9 +21,9 @@ For every project and each of its environments (`config/projects/<project>.yaml`
 | Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with warehouse grants and one access role per layer | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_PRD__TFM` |
 | Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding a tier of privileges on the layer schema (`view`, `read`, `edit`, `full`), four per layer | `AR_EXAMPLE_PRD__MRT__READ`, `AR_EXAMPLE_DEV__SRC__FULL` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` |
-| dlt load files | the default internal stage `ST_DEFAULT` of every source layer schema, shared and personal (`stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
+| dlt load files | the default internal stage `ST_DEFAULT` of every source layer schema, shared and personal (`snowflake-project/stages.tf`) | `DB_EXAMPLE_DEV._SRC.ST_DEFAULT`, `DB_EXAMPLE_DEV.DBT_USERNAME_SRC.ST_DEFAULT` |
 | User | role grants (and optionally the user itself) | `username@example.com` gets `RL_EXAMPLE_DEV__ENG` |
-| User × role with a `personal` block | a schema `<PREFIX>_<LAYER>` per layer in the listed environments (`personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... in `DB_EXAMPLE_DEV` |
+| User × role with a `personal` block | a schema `<PREFIX>_<LAYER>` per layer in the listed environments (`snowflake-project/personal.tf`) | `DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... in `DB_EXAMPLE_DEV` |
 
 Development is shared: engineers work in personal schemas `<PREFIX>_<LAYER>` (for example
 `DBT_USERNAME_STG`) of `DB_<PROJECT>_DEV`. Terraform creates them for every user who holds the
@@ -30,14 +32,14 @@ the privileges of the block's access tier (`full`) on them directly; the enginee
 create schemas itself. `<PREFIX>` is the
 user file's `schema_prefix`, or `DBT_` plus the login before the `@` with non-alphanumerics as
 `_`, uppercased (`DBT_USERNAME` for `username@example.com`).
-`just tf output -json personal_schemas` lists them per login. The privileges go to the shared
-role, so engineers can read and write each other's personal schemas. The other environments only
-use the provisioned `_<LAYER>` schemas.
+`just tf output snowflake-project -s <project>-dev -- -json personal_schemas` lists them per
+login. The privileges go to the shared role, so engineers can read and write each other's
+personal schemas. The other environments only use the provisioned `_<LAYER>` schemas.
 
-Terraform connects as `TERRAFORM_USER` through Snowflake's system roles (`providers.tf`), so every
-object gets the owner Snowflake recommends: `SYSADMIN` creates and owns databases, schemas,
-stages and warehouses, `SECURITYADMIN` the roles and every grant, `USERADMIN` the users. Every
-project and platform role is granted to `SYSADMIN`.
+Terraform connects as `TERRAFORM_USER` through Snowflake's system roles (each component's
+`providers.tf`), so every object gets the owner Snowflake recommends: `SYSADMIN` creates and owns
+databases, schemas, stages and warehouses, `SECURITYADMIN` the roles and every grant, `USERADMIN`
+the users. Every project and platform role is granted to `SYSADMIN`.
 
 ## One-time bootstrap
 
@@ -56,16 +58,18 @@ account parameters of `modules/snowflake/account_settings.sql` and applies them 
 since that user holds `ACCOUNTADMIN`), writes a `config/users/local/<you>.yaml` (engineer in development on
 every project; `users/local/` is git-ignored, the login exists in your account only) unless a user
 file lists your login, warns about user files whose login the account does
-not have (Terraform would fail on their grants), writes the `TF_VAR_*` block to `.env`, runs
-`terraform init` and `terraform apply` (you confirm the plan; `just sf bootstrap --yes` auto-approves) and ends
-like `just sf setup`. Rerunning it is safe: the prompts default to the values already in
+not have (Terraform would fail on their grants), writes the `TF_VAR_*` block to `.env`, applies
+every stack, the `account` stack first (you confirm each plan; `just sf bootstrap --yes`
+auto-approves), and ends like `just sf setup`. It installs Terraform and Atmos first when they
+are missing. Rerunning it is safe: the prompts default to the values already in
 `.env`, `init.sql` is idempotent, existing keys are kept when you say so, a key already registered
 on a user is replaced only after you confirm (the fingerprints are compared first), and Terraform
 applies only the difference. Objects Terraform would create that already exist (an account provisioned
 from another checkout: `just setup` answer 3, or `--existing ask|sync|wipe`) are either synced
-into the state and handed to their `SYSADMIN`, `SECURITYADMIN` or `USERADMIN` owner with
-`GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first. Objects the state already tracks but
-another role owns are handed back the same way, before the plan runs. This happens to an account an
+into the state of the stack that plans them and handed to their `SYSADMIN`, `SECURITYADMIN` or
+`USERADMIN` owner with `GRANT OWNERSHIP ... COPY CURRENT GRANTS`, or wiped first. Objects a
+stack's state already tracks but another role owns are handed back the same way, before the plans
+run. This happens to an account an
 earlier version provisioned: `init.sql` drops that version's `RL_PLATFORM_PROVISIONING`, and
 Snowflake gives what it owned to `ACCOUNTADMIN`, where Terraform can no longer change it.
 
@@ -107,12 +111,12 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
     TF_VAR_SNOWFLAKE_PRIVATE_KEY_PASSPHRASE=
     ```
 
-4. Initialize and check the configuration:
+4. Install Atmos (Terraform runs through it) and check the configuration:
 
     ```bash
-    just tf init
+    just install atmos
     just tf-validate-config
-    just tf plan
+    just tf plan --all
     ```
 
 The account parameters `modules/snowflake/account_settings.sql` sets (`just sf bootstrap` lists
@@ -138,16 +142,18 @@ One YAML file per object, validated against the JSON schemas in `config/_validat
 | `organisations/` | the organisation | one file |
 | `teams/` | teams that own projects | `organisation` refers to the organisation file name |
 | `projects/` | one file per project | `team`, `environments`, `layers`, `computes`, `roles`; `"*"` means all enabled |
-| `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere, so a project that still lists it plans to drop its database and the plan fails (see State and teardown); `data_retention_days` sets Time Travel |
+| `environments/` | dev, tst, acc, prd (and sandbox) | `disabled: true` hides an environment everywhere, so a project that still lists it plans to drop its database and the plan fails (see Stacks and state); `data_retention_days` sets Time Travel |
 | `layers/` | source, reference, staging, integration, mart, expose, metadata, temporary, ... | codes become schema names; optional `privileges` adds to an access tier on that layer (stages in `source`) |
 | `accesses/` | the access tiers view, read, edit, full | the privileges of a tier on a layer schema; each layer × tier becomes an access role |
 | `roles/` | project roles (engineer, analyst, ingest, transform, reporting, and operator disabled) and platform roles (`global/`, disabled) | privileges per compute and database, an access tier per layer and environment, inherited roles |
 | `computes/` | warehouse profiles and sizes | `default` has no suffix |
-| `users/` | who may assume which project roles | see onboarding below; the file name is the key, also in a sub-folder; `users/local/` (git-ignored) holds the files `just sf bootstrap` writes for your own account |
+| `users/` | who may assume which project roles: persons and service users (`type: service`) | see onboarding below; the file name is the key, also in a sub-folder; `users/local/` (git-ignored) holds the files `just sf bootstrap` writes for your own account |
 | `privileges/` | Snowflake privileges per object type | reference only: Terraform reads no bundles, roles name an access tier per layer instead |
 
-A new project is a copy of `projects/example.yaml` with its own `code`; `just tf plan` shows the
-databases, schemas, roles and warehouses it adds.
+A new project is a copy of `projects/example.yaml` with its own `code`, plus one stack manifest
+per environment in `stacks/projects/<project>/` (a copy of `stacks/projects/example/`, with that
+project's `project` and environment codes; `just tf-validate-config` checks the two agree).
+`just tf plan --all` shows the databases, schemas, roles and warehouses it adds.
 
 ## Onboarding a person
 
@@ -163,23 +169,25 @@ databases, schemas, roles and warehouses it adds.
         environments: [development]
     ```
 
-2. `just tf apply`. Besides the grants, this creates the person's personal schemas
-   (`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... with the stage `DBT_USERNAME_SRC.ST_DEFAULT`),
-   so it has to happen before their first dlt load or dbt run. For created users, hand out the
-   password from `just tf output -json initial_passwords`.
+2. `just tf apply --all`. The `account` stack creates the person when `create: true`; the stack
+   of each project and environment in their `roles` grants the roles and creates their personal
+   schemas (`DBT_USERNAME_SRC`, `DBT_USERNAME_STG`, ... with the stage
+   `DBT_USERNAME_SRC.ST_DEFAULT`), so it has to happen before their first dlt load or dbt run. For
+   created users, hand out the password from
+   `just tf output snowflake-account -s account -- -json initial_passwords`.
 
 3. The person runs `just sf setup`, which logs in once, registers a key pair and writes
    their `.env` with `SNOWFLAKE_ROLE=RL_EXAMPLE_DEV__ENG`, `SNOWFLAKE_DATABASE=DB_EXAMPLE_DEV`,
    `SNOWFLAKE_WAREHOUSE=WH_EXAMPLE_DEV` and their personal schema prefix, `DBT_USERNAME`.
 
-A different prefix is `schema_prefix: DBT_OTHER` in the user file plus a `just tf apply`.
+A different prefix is `schema_prefix: DBT_OTHER` in the user file plus a `just tf apply --all`.
 `just sf setup` proposes it from that file; a `.env` that already holds `SNOWFLAKE_SCHEMA` needs
 the new value by hand.
 
-System users for deployed environments (the transform and ingest roles) are created by hand:
-`CREATE USER <login> TYPE = SERVICE`, then `just sf keygen <login>` and
-`ALTER USER <login> SET RSA_PUBLIC_KEY = '...'`. Grant them `RL_<PROJECT>_<ENV>__TFM` or
-`__ING` through a `create: false` user file with the same `roles` list.
+Service users for deployed environments (the transform and ingest roles) are user files too:
+`type: service`, an upper-case `login` and the `rsa_public_key` that `just sf keygen <LOGIN>`
+prints; the `account` stack creates them (`TYPE = SERVICE`, no password) and the project stacks
+grant their roles ([Onboarding](onboarding.md#a-service-user)).
 
 !!! note "If a person cannot register their own key"
     `ALTER USER ... SET RSA_PUBLIC_KEY` on your own user is allowed by default. If an account
@@ -187,19 +195,23 @@ System users for deployed environments (the transform and ingest roles) are crea
 
 ## Differences from rootcube/platform
 
-This folder is a port of the platform repository's Terraform with five additions, kept small
+This folder is a port of the platform repository's Terraform with six additions, kept small
 so they can flow back upstream:
 
-- `config/users/` and `users.tf`: role grants to logins (and optional user creation).
-- `personal` on a role and `personal.tf`: personal schemas per user holding the role (the
-  engineer role in dev), with the user file's optional `schema_prefix`.
+- Atmos and the two components (`components/snowflake-account`, `components/snowflake-project`):
+  one state per project and environment instead of one root module over all of them.
+- `config/users/` and the `users.tf` of both components: role grants to logins (and optional user
+  creation).
+- `personal` on a role and `snowflake-project/personal.tf`: personal schemas per user holding the
+  role (the engineer role in dev), with the user file's optional `schema_prefix`.
 - `privileges.database` on a role: extra database privileges per environment on top of the
   implicit `USAGE` (none of the shipped roles needs any).
 - `config/layers/metadata.yaml` (`_MTD`): where dbt writes run metadata.
-- `config/accesses/` and the access roles (`main.tf`): a role names a tier (`view`, `read`,
-  `edit`, `full`) per layer and environment instead of listing privileges; the privileges sit
-  on one access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` per layer and tier, four per
-  layer, which the project role inherits. A layer adds its own extras to a tier under `privileges`.
+- `config/accesses/` and the access roles (`snowflake-project/main.tf`): a role names a tier
+  (`view`, `read`, `edit`, `full`) per layer and environment instead of listing privileges; the
+  privileges sit on one access role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` per layer and tier,
+  four per layer, which the project role inherits. A layer adds its own extras to a tier under
+  `privileges`.
 
 The provider is Snowflake only; the dbt Cloud, GitHub and Kubernetes providers of the platform
 repository are not part of the starter.
@@ -222,15 +234,17 @@ models:
 
 ## Provider versions
 
-`.terraform.lock.hcl` is committed: it pins the exact provider versions (and their checksums for
-Windows, Linux and macOS) that the `~> 2.0` and `~> 3.6` constraints in `providers.tf` resolved
-to, so every administrator and CI plan with the same provider. Upgrade deliberately, then review
-the plan and commit the lock file:
+Each component commits its `.terraform.lock.hcl`: it pins the exact provider versions (and their
+checksums for Windows, Linux and macOS) that the constraints in the component's `providers.tf`
+resolved to, so every administrator and CI plan with the same provider. Upgrade deliberately, in
+every component, then review the plans and commit the lock files:
 
 ```bash
-just tf init -upgrade
-just tf providers lock -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_amd64 -platform=darwin_arm64
-just tf plan
+for c in terraform/components/*/; do
+  (cd "$c" && terraform init -backend=false -upgrade &&
+    terraform providers lock -platform=windows_amd64 -platform=linux_amd64 -platform=darwin_amd64 -platform=darwin_arm64)
+done
+just tf plan --all
 ```
 
 ## Securing the Terraform user
@@ -262,34 +276,73 @@ mv ~/.snowflake/keys/terraform.enc.p8 ~/.snowflake/keys/terraform.p8
 `just sf keygen terraform --force` is not a way to do this: it writes a new key pair, which
 Terraform cannot use until an `ACCOUNTADMIN` registers its public key on `TERRAFORM_USER`.
 
-## State and teardown
+## Stacks and state
 
-State is local (`terraform.tfstate`, git-ignored). Move it to a remote backend before several
-administrators share the configuration.
+[Atmos](https://atmos.tools) (`atmos.yaml` in the repository root) runs the Terraform root
+modules under `components/` once per stack under `stacks/`:
 
-Keep the state file itself confidential, encrypted in a remote backend. Besides the one-time
-passwords of created users it holds the result of the `SHOW USERS` check in `users.tf`: the name,
-login, email, owner and last login of every user in the account, whenever at least one enabled
-user file has `create: false`.
+| Stack | Component | Holds |
+|-------|-----------|-------|
+| `account` (`stacks/account.yaml`) | `snowflake-account` | the platform roles, the persons with `create: true` and the service users |
+| `<project>-<env>` (`stacks/projects/<project>/<env>.yaml`) | `snowflake-project` | one project in one environment: database, schemas, roles, access roles, warehouses, stages, personal schemas and every grant, the users' role grants included |
+| `dagster-<env>` (`stacks/deployments/dagster/<env>.yaml`) | `dagster` | Dagster on Kubernetes for one environment ([Dagster on Kubernetes](kubernetes.md)) |
 
-!!! warning "Share the user files before you share the state"
-    `config/users/local/` is git-ignored, and `users.tf` and `personal.tf` are driven purely by
-    the user files a checkout happens to have. Once two administrators share one backend, an
-    `apply` from the checkout that lacks the other's file revokes their role grants and **drops
-    their personal schemas**, with everything in them. The schemas carry no `prevent_destroy` (it
-    would block `just tf clean`, which destroys everything but the databases), so nothing stops
-    that plan. Commit a user file per person under `config/users/` and keep `users/local/` for
-    single-administrator accounts.
+All read the same `config/` through `modules/config`. The project stacks depend on `account`
+(they grant roles to the users it creates), the Dagster stacks on both, so `--all` applies
+`account` first and destroys it last. A Dagster stack needs its cluster running; `just sf
+bootstrap` and `just tf clean` leave it alone.
+`just tf` hands its arguments to `atmos terraform`:
+
+```bash
+just tf plan --all                                   # every stack, account first
+just tf plan snowflake-project -s example-dev        # one project in one environment
+just tf apply snowflake-project -s example-prd
+just tf output snowflake-project -s example-dev -- -json personal_schemas
+```
+
+Flags after `--` go to Terraform unchanged. Every run warns that `TF_VAR_*` variables "may
+interfere with Atmos's control of Terraform": expected, the provider settings come from `.env` on
+purpose and no stack sets them.
+
+Every stack has its own local state, git-ignored, at
+`components/<component>/terraform.tfstate.d/<stack>/terraform.tfstate`: a plan refreshes one
+project and environment, not all of them. The backend is set once for all stacks in
+`stacks/catalog/defaults.yaml`. Move to a remote backend, shared and locked, before several
+administrators share the configuration: change it there and run
+`just tf init <component> -s <stack> -- -migrate-state` for every stack. Never run
+`atmos terraform clean`: it deletes these local states along with the files Atmos generates.
+
+A checkout from before Atmos has one state, `terraform/terraform.tfstate`, for everything. The
+components kept its resource addresses, so `just tf-split-state` moves each resource into the
+state of its stack (`--dry-run` shows where everything goes first) and keeps the original as
+`terraform.tfstate.pre-atmos`. Nothing changes in Snowflake: `just tf plan --all` then shows no
+changes but the outputs, which the next `just tf apply --all` records.
+
+Keep the states themselves confidential, encrypted in a remote backend. Besides the one-time
+passwords of created users (the `account` state), a project state holds the result of the
+`SHOW USERS` check in `snowflake-project/users.tf`: the name, login, email, owner and last login of
+every user in the account, whenever that stack grants a role to a user file with `create: false`.
+
+!!! warning "Share the user files before you share the states"
+    `config/users/local/` is git-ignored, and the `users.tf` and `personal.tf` of the components
+    are driven purely by the user files a checkout happens to have. Once two administrators share
+    one backend, an `apply` from the checkout that lacks the other's file revokes their role
+    grants and **drops their personal schemas**, with everything in them. The schemas carry no
+    `prevent_destroy` (it would block `just tf clean`, which destroys everything but the
+    databases), so nothing stops that plan. Commit a user file per person under `config/users/`
+    and keep `users/local/` for single-administrator accounts.
 
 Databases carry `prevent_destroy` (`modules/snowflake/database/main.tf`): a plan that would drop
 one fails, whether it comes from `just tf destroy` or from removing an environment from a project
-(or a project file).
+(or a project file). A stack manifest naming a project or environment code that `config/` does
+not have fails its plan too (the `stack` output of `snowflake-project`) instead of planning to
+remove everything in it.
 
-To remove everything this checkout's state tracks on purpose, databases and all their data
-included, run `just tf clean`. It lists what goes and asks you to type the account name back. It
-then has Terraform destroy everything but the databases, drops the databases as `TERRAFORM_USER`
-(`SYSADMIN`, which owns them) and removes them from the state last. A run that stops halfway can
-simply be repeated. `just tf apply` provisions everything again afterwards. A dropped database can
-be restored with `UNDROP DATABASE` while its Time Travel retention lasts (one day, or what the
-environment's `data_retention_days` says). The bootstrap objects from `init.sql`, the account
-parameters and your own key stay.
+To remove everything the stacks' states track on purpose, databases and all their data included,
+run `just tf clean`. It lists what goes and asks you to type the account name back. Then, stack by
+stack and the `account` stack last, it has Terraform destroy everything but the databases, drops
+the databases as `TERRAFORM_USER` (`SYSADMIN`, which owns them) and removes them from the state
+last. A run that stops halfway can simply be repeated. `just tf apply --all` provisions everything
+again afterwards. A dropped database can be restored with `UNDROP DATABASE` while its Time Travel
+retention lasts (one day, or what the environment's `data_retention_days` says). The bootstrap
+objects from `init.sql`, the account parameters and your own key stay.

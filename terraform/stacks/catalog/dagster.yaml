@@ -1,0 +1,8 @@
+# Dagster on Kubernetes (terraform/components/dagster). A stack under deployments/dagster/
+# imports this and sets the environment, the cluster and the image.
+import:
+  - catalog/defaults
+
+components:
+  terraform:
+    dagster: {}

@@ -30,13 +30,14 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
 **`Object does not exist, or operation cannot be performed` in dbt or dlt**
 :   A wrong role or database in `.env`, or a role you were never granted. `just sf check` shows
     what you are connected as; it should be `RL_<PROJECT>_DEV__ENG` and `DB_<PROJECT>_DEV`. Your
-    administrator can list your grants with `just tf output -json user_role_grants`.
+    administrator can list your grants with `just tf output snowflake-account -s account -- -json user_role_grants`.
 
 **`Insufficient privileges to operate on database` on your first load or build**
 :   dlt or dbt tried to create a schema, which the engineer role may not do: your personal
     schemas do not exist yet, or `SNOWFLAKE_SCHEMA` in `.env` is not the prefix they were
     created with. Terraform creates them when an administrator applies your
-    `terraform/config/users/` file (`just tf output -json personal_schemas` lists them);
+    `terraform/config/users/` file (`just tf output snowflake-project -s <project>-dev -- -json personal_schemas`
+    lists them);
     `just sf check` shows which schemas exist. A different prefix needs `schema_prefix` in that
     file and another apply.
 
@@ -86,11 +87,18 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
     ```
 
 **`exactly one of AccountRoleGrantPrivileges fields ... must be set` on a Terraform apply**
-:   The state tracks grants the account no longer has (the account was provisioned since from
+:   A stack's state tracks grants the account no longer has (the account was provisioned since from
     another checkout, or changed by hand), and the provider cannot revoke a grant without
-    privileges. Run `just setup` again (answer 3): it removes them from the state before it
-    applies. With a plain `just tf apply`, find each grant's address with `just tf state list`,
-    remove it with `just tf state rm '<address>'` and apply again.
+    privileges. Run `just setup` again (answer 3): it removes them from the states before it
+    applies. With a plain `just tf apply`, find each grant's address in the stack the error names
+    with `just tf state list <component> -s <stack>`, remove it with
+    `just tf state rm <component> -s <stack> -- '<address>'` and apply again.
+
+**`Error asking for state migration action` on the first plan of a stack**
+:   The stack's state file under `terraform/components/<component>/terraform.tfstate.d/` was there
+    before the component's first `terraform init`, so Terraform offers to migrate it onto itself
+    and cannot ask. `just tf-split-state` initializes first; after placing states by hand, move
+    `terraform.tfstate.d/` aside, run `just tf init <component> -s <stack>`, and move it back.
 
 **`just pre-commit` fails with `terraform: command not found`**
 :   The `terraform fmt` hook needs the Terraform binary when it runs on all files. Install
