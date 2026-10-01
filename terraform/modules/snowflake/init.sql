@@ -34,7 +34,7 @@ ALTER USER IF EXISTS TERRAFORM_USER UNSET PASSWORD
 
 
 -- -----------------------------------------------------------------------------
--- 2. Create Warehouse (owned by SYSADMIN)
+-- 2. Create Warehouses (owned by SYSADMIN)
 -- -----------------------------------------------------------------------------
 CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM_PROVISIONING
   WAREHOUSE_SIZE = 'XSMALL'
@@ -52,6 +52,26 @@ ALTER WAREHOUSE IF EXISTS WH_PLATFORM_PROVISIONING SET
 ;
 
 GRANT OWNERSHIP ON WAREHOUSE WH_PLATFORM_PROVISIONING TO ROLE SYSADMIN COPY CURRENT GRANTS;
+
+-- The administrators' own warehouse, for ad-hoc queries on the account: as small and as
+-- short-lived as a warehouse gets. `just sf bootstrap` makes it the default of the person
+-- running it when theirs is missing or goes in section 5 (COMPUTE_WH on a trial account).
+CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM
+  WAREHOUSE_SIZE = 'XSMALL'
+  AUTO_SUSPEND = 60
+  AUTO_RESUME = True
+  INITIALLY_SUSPENDED = True
+  COMMENT = 'Warehouse for the account administrators'
+;
+
+ALTER WAREHOUSE IF EXISTS WH_PLATFORM SET
+  WAREHOUSE_SIZE = 'XSMALL'
+  AUTO_SUSPEND = 60
+  AUTO_RESUME = True
+  COMMENT = 'Warehouse for the account administrators'
+;
+
+GRANT OWNERSHIP ON WAREHOUSE WH_PLATFORM TO ROLE SYSADMIN COPY CURRENT GRANTS;
 
 
 -- -----------------------------------------------------------------------------
@@ -92,7 +112,8 @@ ALTER USER IF EXISTS TERRAFORM_USER SET
 -- A new account ships the COMPUTE_WH warehouse, the SNOWFLAKE_SAMPLE_DATA share and
 -- the Snowsight Templates learning environment (SNOWFLAKE_LEARNING_ROLE, _WH, _DB,
 -- owned by ACCOUNTADMIN). None of them belongs to the platform, and Terraform has its
--- own warehouse (section 2). A user whose default warehouse was COMPUTE_WH simply
+-- own warehouse (section 2), as do the administrators (WH_PLATFORM): `just sf bootstrap`
+-- makes it the default of the person running it when theirs was COMPUTE_WH; anyone else
 -- picks another one. SNOWFLAKE_SAMPLE_DATA comes back any time with
 -- CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM SHARE SFC_SAMPLES.SAMPLE_DATA.
 -- The learning environment is switched off first, or Snowflake provisions it again
