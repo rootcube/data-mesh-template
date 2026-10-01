@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.22](https://github.com/rootcube/data-mesh-template/compare/v0.1.21...v0.1.22) (2026-10-01)
+
+
+### Bug Fixes
+
+* **bootstrap:** give the admin WH_PLATFORM as default warehouse before COMPUTE_WH goes ([#77](https://github.com/rootcube/data-mesh-template/issues/77)) ([b2bcb1c](https://github.com/rootcube/data-mesh-template/commit/b2bcb1cfc83c65e254deca39f51b413c986f2876))
+* **terraform:** run a plain terraform init, Atmos's -reconfigure asks to migrate workspaces ([#78](https://github.com/rootcube/data-mesh-template/issues/78)) ([a89c3ae](https://github.com/rootcube/data-mesh-template/commit/a89c3ae0e484b160fea4e51ac0318aedf6e6e792))
+
 ## [0.1.21](https://github.com/rootcube/data-mesh-template/compare/v0.1.20...v0.1.21) (2026-10-01)
 
 
