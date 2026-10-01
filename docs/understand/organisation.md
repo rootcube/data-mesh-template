@@ -44,8 +44,8 @@ implementation of this boundary: one account, one Organisation. It is identified
 | Engineers, in `.env` | `SNOWFLAKE_ACCOUNT` (written by `just sf setup`) |
 | Administrators, for the Terraform provider | `TF_VAR_SNOWFLAKE_ORGANIZATION` and `TF_VAR_SNOWFLAKE_ACCOUNT` |
 
-The objects that let Terraform manage the account (`TERRAFORM_USER` with the system roles, and
-the warehouse `WH_PLATFORM_PROVISIONING`) are created once by
+The objects that let Terraform manage the account (`TERRAFORM_USER` with the system roles, the
+warehouse `WH_PLATFORM_PROVISIONING` and the administrators' `WH_PLATFORM`) are created once by
 `terraform/modules/snowflake/init.sql`, run as `ACCOUNTADMIN`, which also sets the account-wide
 parameters: UTC, ISO weeks and formats, and the security and timeout defaults. They belong to
 the Organisation level, not to any Project. See

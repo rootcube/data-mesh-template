@@ -199,8 +199,8 @@ Project { #project }
 Provisioning objects { #provisioning-objects }
 :   What `terraform/modules/snowflake/init.sql` creates once as `ACCOUNTADMIN`: the service user
     `TERRAFORM_USER` (key pair only) with the system roles `SYSADMIN`, `SECURITYADMIN` and
-    `USERADMIN`, and the warehouse `WH_PLATFORM_PROVISIONING`. The account parameters live next
-    to it, in `account_settings.sql`.
+    `USERADMIN`, the warehouse `WH_PLATFORM_PROVISIONING` and `WH_PLATFORM`, the administrators'
+    own. The account parameters live next to it, in `account_settings.sql`.
 
 Purpose { #purpose }
 :   The role code that ends a role name: `ENG` (engineer), `ANL` (analyst), `ING` (ingest),

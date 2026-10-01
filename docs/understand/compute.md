@@ -78,7 +78,9 @@ Two details of `terraform/components/snowflake-project/main.tf` are worth knowin
   (`sizes[0]`). Put the size you want the role to use first, or grant the others by hand.
 
 The account-level `WH_PLATFORM_PROVISIONING` (X-Small) is the warehouse Terraform itself runs
-on. It comes from `init.sql`, not from a compute profile.
+on, and `WH_PLATFORM` (X-Small, suspended after a minute) the one for the administrators' ad-hoc
+queries, the default of whoever ran the bootstrap. Both come from `init.sql`, not from a compute
+profile.
 
 ## In the repo
 

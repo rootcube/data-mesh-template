@@ -85,7 +85,9 @@ The manual equivalent, for accounts where you do not hold `ACCOUNTADMIN` yoursel
    block of `TERRAFORM_USER` and paste the public key body, then run the whole script as
    `ACCOUNTADMIN` in Snowsight. It creates `TERRAFORM_USER`
    with the system roles `SYSADMIN` (its default role), `SECURITYADMIN` and `USERADMIN`, the
-   warehouse `WH_PLATFORM_PROVISIONING` (owned by `SYSADMIN`, usable by `USERADMIN`). It drops
+   warehouse `WH_PLATFORM_PROVISIONING` (owned by `SYSADMIN`, usable by `USERADMIN`) and `WH_PLATFORM`,
+   an X-Small warehouse for the administrators' own queries (`just sf bootstrap` makes it your default
+   when yours was `COMPUTE_WH` or none; by hand, `ALTER USER <you> SET DEFAULT_WAREHOUSE = WH_PLATFORM`). It drops
    what earlier versions created: `RL_PLATFORM_PROVISIONING`, the custom role they provisioned
    with, `DB_PLATFORM_PROVISIONING`, a database for a Terraform state that is in fact a local
    file, and `RM_PLATFORM_PROVISIONING`, a resource monitor that capped only that warehouse; what

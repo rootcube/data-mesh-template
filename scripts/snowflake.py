@@ -73,6 +73,7 @@ ENV_EXAMPLE = ROOT / ".env.example"
 KEY_DIR = Path.home() / ".snowflake" / "keys"
 TF_DIR = ROOT / "terraform"
 INIT_SQL = TF_DIR / "modules" / "snowflake" / "init.sql"
+PLATFORM_WAREHOUSE = "WH_PLATFORM"  # init.sql: the administrators' own warehouse
 ACCOUNT_SQL = TF_DIR / "modules" / "snowflake" / "account_settings.sql"
 TERRAFORM_KEY = "terraform"
 # Import blocks for objects an earlier Terraform state created, next to the component they are adopted
@@ -354,8 +355,8 @@ def discover_context(
     return dataclasses.replace(chosen, schema=personal_schema(chosen))
 
 
-def registered_fingerprints(conn: Any, user: str) -> dict[str, str]:
-    """RSA_PUBLIC_KEY_FP and RSA_PUBLIC_KEY_2_FP of `user` as DESC USER shows them, when set; {} for an unknown user."""
+def user_properties(conn: Any, user: str) -> dict[str, str]:
+    """Every set property of `user` as DESC USER shows it (unset ones left out); {} for an unknown user."""
     from snowflake.connector.errors import ProgrammingError
 
     try:
@@ -364,11 +365,13 @@ def registered_fingerprints(conn: Any, user: str) -> dict[str, str]:
         return {}
     columns = [d[0].lower() for d in cursor.description]
     name, value = columns.index("property"), columns.index("value")
-    return {
-        str(row[name]): str(row[value])
-        for row in cursor.fetchall()
-        if row[name] in ("RSA_PUBLIC_KEY_FP", "RSA_PUBLIC_KEY_2_FP") and row[value] not in (None, "", "null")
-    }
+    return {str(row[name]): str(row[value]) for row in cursor.fetchall() if row[value] not in (None, "", "null")}
+
+
+def registered_fingerprints(conn: Any, user: str) -> dict[str, str]:
+    """RSA_PUBLIC_KEY_FP and RSA_PUBLIC_KEY_2_FP of `user` as DESC USER shows them, when set; {} for an unknown user."""
+    properties = user_properties(conn, user)
+    return {slot: properties[slot] for slot in ("RSA_PUBLIC_KEY_FP", "RSA_PUBLIC_KEY_2_FP") if slot in properties}
 
 
 def slot_needs_key(conn: Any, user: str, slot: str, public_path: Path, generated: bool = False) -> bool:
@@ -618,6 +621,20 @@ def finish_settings(settings: SnowflakeSettings, args: argparse.Namespace) -> in
         return 1
     write_settings(settings)
     return 0
+
+
+def ensure_default_warehouse(conn: Any, user: str, warehouse: str) -> None:
+    """Give `user` `warehouse` as default when it has none, or one init.sql drops (COMPUTE_WH on a trial account).
+
+    A default of its own stays. The bootstrap runs this right after init.sql, so the person running it is never
+    left without a warehouse, whatever becomes of the Terraform applies after.
+    """
+    dropped = set(re.findall(r"^DROP WAREHOUSE IF EXISTS (\w+);", INIT_SQL.read_text(encoding="utf-8"), flags=re.M))
+    current = user_properties(conn, user).get("DEFAULT_WAREHOUSE", "")
+    if current and current.upper() not in dropped:
+        return
+    conn.cursor().execute(f"ALTER USER {quote_ident(user)} SET DEFAULT_WAREHOUSE = {quote_ident(warehouse)}")
+    ok(f"Default warehouse of {user} is now {warehouse}{f' (was {current}, dropped)' if current else ''}")
 
 
 def provisioning_sql(public_key: str | None, slot: str) -> str:
@@ -1219,7 +1236,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         exact_user = conn.cursor().execute("SELECT CURRENT_USER()").fetchone()[0]
         ok(f"Logged in as {exact_user} on {account} (role ACCOUNTADMIN)")
 
-        step("2/5 Account settings, Terraform service user and warehouse, trial defaults dropped (init.sql)")
+        step("2/5 Account settings, Terraform service user and warehouses, trial defaults dropped (init.sql)")
         apply_account_settings(conn, args.account_settings, args.yes)
         tf_private, tf_public = key_paths(TERRAFORM_KEY)
         tf_passphrase = terraform_key_passphrase()
@@ -1227,6 +1244,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         for cursor in conn.execute_string(provisioning_sql(public_key, slot)):
             cursor.close()
         ok(f"TERRAFORM_USER ready{f', {slot} set from {tf_public}' if public_key else ''}")
+        ensure_default_warehouse(conn, exact_user, PLATFORM_WAREHOUSE)
 
         step("3/5 Your own key pair")
         warn(

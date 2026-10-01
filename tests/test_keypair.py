@@ -399,11 +399,23 @@ def test_init_sql_drops_the_trial_defaults_once_terraform_has_its_own_warehouse(
         "DROP ROLE IF EXISTS SNOWFLAKE_LEARNING_ROLE;",
     ):
         assert statement in sql
-    assert sql.index("CREATE WAREHOUSE IF NOT EXISTS WH_PLATFORM_PROVISIONING") < sql.index(
-        "DROP WAREHOUSE IF EXISTS COMPUTE_WH"
-    )
+    for warehouse in ("WH_PLATFORM_PROVISIONING", "WH_PLATFORM"):
+        assert sql.index(f"CREATE WAREHOUSE IF NOT EXISTS {warehouse}\n") < sql.index(
+            "DROP WAREHOUSE IF EXISTS COMPUTE_WH"
+        )
     disable = sql.index("SELECT SYSTEM$DISABLE_SNOWFLAKE_LEARNING_ENVIRONMENT();")
     assert disable < sql.index("DROP WAREHOUSE IF EXISTS SNOWFLAKE_LEARNING_WH")
+
+
+def test_ensure_default_warehouse_replaces_a_dropped_or_missing_default_only() -> None:
+    script = load_script()
+    columns = ["property", "value", "default", "description"]
+    desc = f"DESC USER {script.quote_ident('ADMIN')}"
+    alter = f"ALTER USER {script.quote_ident('ADMIN')} SET DEFAULT_WAREHOUSE = {script.quote_ident('WH_PLATFORM')}"
+    for current, replaced in [("COMPUTE_WH", True), ("null", True), ("WH_OWN", False)]:
+        conn = FakeConnection({desc: (columns, [["DEFAULT_WAREHOUSE", current, "null", ""]])})
+        script.ensure_default_warehouse(conn, "ADMIN", "WH_PLATFORM")
+        assert conn.executed == ([desc, alter] if replaced else [desc]), current
 
 
 def test_account_settings_set_utc_and_list_their_parameters() -> None:
