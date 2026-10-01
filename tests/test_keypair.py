@@ -236,11 +236,13 @@ def test_apply_stack_imports_the_adopted_objects_for_that_one_apply(
     seen: list[tuple[tuple[str, ...], bool]] = []
     monkeypatch.setattr(script, "atmos", lambda env, *args: seen.append((args, instance.adopt_file.exists())))
     script.apply_stack({}, instance, [PLANNED[0]], yes=True)
-    assert seen == [(("terraform", "apply", "snowflake-project", "-s", "example-dev", "--", "-auto-approve"), True)]
+    assert seen == [
+        (("terraform", "apply", "snowflake-project", "-s", "example-dev", "--skip-init", "--", "-auto-approve"), True)
+    ]
     assert not instance.adopt_file.exists()
     seen.clear()
     script.apply_stack({}, instance, [], yes=False)
-    assert seen == [(("terraform", "apply", "snowflake-project", "-s", "example-dev"), False)]
+    assert seen == [(("terraform", "apply", "snowflake-project", "-s", "example-dev", "--skip-init"), False)]
 
 
 def test_apply_stacks_stops_at_a_stack_that_was_not_applied(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -469,10 +471,12 @@ def test_forget_vanished_grants_removes_only_revokes_of_grants_the_account_lost(
         {"address": "schema", "type": "snowflake_schema", "change": {"actions": ["delete"], "before": {}}},
     ]
     script.forget_vanished_grants({}, instance, changes)
-    assert calls == [("terraform", "state", "rm", "snowflake-project", "-s", "example-dev", "--", "gone", "replaced")]
+    assert calls == [
+        ("terraform", "state", "rm", "snowflake-project", "-s", "example-dev", "--skip-init", "--", "gone", "replaced")
+    ]
     calls.clear()
     script.forget_vanished_grants({}, instance, [grant_change(f"g{i}", ["delete"], []) for i in range(150)])
-    assert [len(args) - 7 for args in calls] == [100, 50]
+    assert [len(args) - 8 for args in calls] == [100, 50]
 
 
 def test_usable_prefix_follows_the_user_schema_and_refuses_placeholders() -> None:
@@ -948,6 +952,8 @@ def fake_atmos(monkeypatch: pytest.MonkeyPatch, script: ModuleType, tracked: lis
             return "\n".join(states[stack])
         if args[1] == "show":
             return json.dumps(STATE) if states[stack] else '{"format_version": "1.0"}'
+        if args[1] == "init":
+            return ""
         calls.append(args)
         return ""
 
@@ -974,7 +980,7 @@ def test_clean_destroys_the_rest_then_drops_the_databases(monkeypatch: pytest.Mo
     monkeypatch.setattr(SnowflakeSettings, "connect", lambda self: conn)
     monkeypatch.setattr("builtins.input", lambda prompt: "myorg-acc")
     assert script.cmd_clean(None) == 0
-    stack = ("snowflake-project", "-s", "example-dev", "--")
+    stack = ("snowflake-project", "-s", "example-dev", "--skip-init", "--")
     assert calls == [
         ("terraform", "destroy", *stack, "-auto-approve", "-input=false", "-target=snowflake_stage_internal.default"),
         ("terraform", "state", "rm", *stack, "module.database"),
