@@ -309,7 +309,11 @@ Every stack has its own local state, git-ignored, at
 project and environment, not all of them. The backend is set once for all stacks in
 `stacks/catalog/defaults.yaml`. Move to a remote backend, shared and locked, before several
 administrators share the configuration: change it there and run
-`just tf init <component> -s <stack> -- -migrate-state` for every stack. Never run
+`just tf init <component> -s <stack> -- -migrate-state` for every stack. Terraform also offers
+to "migrate all workspaces" when a component has states under `terraform.tfstate.d/` but no
+`.terraform/` (states copied from another machine, or `.terraform/` removed): answer `yes` to
+`just tf init <component> -s <stack>`, which copies each state onto itself; the bootstrap's own
+init runs without input and stops on "input is disabled" until you have. Never run
 `atmos terraform clean`: it deletes these local states along with the files Atmos generates.
 
 A checkout from before Atmos has one state, `terraform/terraform.tfstate`, for everything. The
