@@ -9,6 +9,10 @@ components:
     base_path: "terraform/components"
     apply_auto_approve: false
     deploy_run_init: true
+    # Atmos's default is `terraform init -reconfigure`, which ignores the saved backend and then
+    # asks to "migrate all workspaces" to the very same local backend once a stack has a state
+    # under terraform.tfstate.d. A plain init sees the saved backend unchanged and asks nothing.
+    init_run_reconfigure: false
     # backend.tf.json in each component, from the stacks' `backend_type` and `backend`
     auto_generate_backend_file: true
 

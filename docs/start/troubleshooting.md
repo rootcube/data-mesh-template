@@ -94,11 +94,15 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
     with `just tf state list <component> -s <stack>`, remove it with
     `just tf state rm <component> -s <stack> -- '<address>'` and apply again.
 
-**`Error asking for state migration action` on the first plan of a stack**
-:   The stack's state file under `terraform/components/<component>/terraform.tfstate.d/` was there
-    before the component's first `terraform init`, so Terraform offers to migrate it onto itself
-    and cannot ask. `just tf-split-state` initializes first; after placing states by hand, move
-    `terraform.tfstate.d/` aside, run `just tf init <component> -s <stack>`, and move it back.
+**`Error asking for state migration action` on a plan, or on the bootstrap's init**
+:   A state under `terraform/components/<component>/terraform.tfstate.d/` exists while the
+    component has no `.terraform/` (states copied from another machine, `.terraform/` removed, or
+    states placed by hand before the first init), so Terraform offers to migrate the workspaces
+    onto themselves and cannot ask: the bootstrap and `just tf clean` run init without input.
+    Run `just tf init <component> -s <stack>` yourself and answer `yes`; the copy is onto the same
+    files and changes nothing. `just tf-split-state` initializes before it places states. If this
+    happens on every plan, `init_run_reconfigure` in `atmos.yaml` is on: with `-reconfigure`,
+    Terraform ignores the saved backend and asks every time.
 
 **`just pre-commit` fails with `terraform: command not found`**
 :   The `terraform fmt` hook needs the Terraform binary when it runs on all files. Install

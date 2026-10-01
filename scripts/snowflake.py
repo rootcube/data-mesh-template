@@ -812,7 +812,7 @@ def instances(env: dict[str, str]) -> list[Instance]:
     ]
     found.sort(key=lambda instance: (instance.component != ACCOUNT_COMPONENT, instance.stack))
     for instance in found:
-        atmos_output(env, "terraform", "init", instance.component, "-s", instance.stack)
+        atmos_output(env, "terraform", "init", instance.component, "-s", instance.stack, "--", "-input=false")
     return found
 
 
