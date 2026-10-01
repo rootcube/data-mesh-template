@@ -117,9 +117,10 @@ install tool="all":
         uv)        command -v uv >/dev/null 2>&1 && echo "uv already installed" || curl -LsSf https://astral.sh/uv/install.sh | sh ;;
         tfenv)     brew_install tfenv https://github.com/tfutils/tfenv ;;
         tf|terraform)
-                   command -v tfenv >/dev/null 2>&1 || brew_install tfenv https://github.com/tfutils/tfenv
-                   tfenv install latest && tfenv use latest ;;
-        atmos)     brew_install atmos https://atmos.tools/install ;;
+                   if command -v terraform >/dev/null 2>&1; then echo "terraform already installed"; else
+                       command -v tfenv >/dev/null 2>&1 || brew_install tfenv https://github.com/tfutils/tfenv
+                       tfenv install latest && tfenv use latest; fi ;;
+        atmos)     if command -v brew >/dev/null 2>&1 && brew list atmos >/dev/null 2>&1; then brew upgrade atmos; else brew_install atmos https://atmos.tools/install; fi ;;
         k3d)       brew_install k3d https://k3d.io ;;
         kubectl)   brew_install kubectl https://kubernetes.io/docs/tasks/tools/ ;;
         direnv)    brew_install direnv https://direnv.net/docs/installation.html

@@ -736,8 +736,19 @@ class Instance:
 
 
 def terraform_args(command: str, instance: Instance, *flags: str) -> list[str]:
-    """`terraform <command> <component> -s <stack> -- <flags>`: Atmos hands the flags to Terraform unchanged."""
-    return ["terraform", *command.split(), instance.component, "-s", instance.stack, *(["--", *flags] if flags else [])]
+    """`terraform <command> <component> -s <stack> --skip-init -- <flags>`: Atmos passes the flags on unchanged.
+
+    instances() ran `terraform init` already; skipping it here keeps its output off stdout, which callers parse.
+    """
+    return [
+        "terraform",
+        *command.split(),
+        instance.component,
+        "-s",
+        instance.stack,
+        "--skip-init",
+        *(["--", *flags] if flags else []),
+    ]
 
 
 def atmos(env: dict[str, str], *args: str) -> None:
@@ -787,7 +798,11 @@ def atmos_output(env: dict[str, str], *args: str) -> str:
 
 
 def instances(env: dict[str, str]) -> list[Instance]:
-    """Every Snowflake component instance of the stacks, the account one first: the project stacks depend on it."""
+    """Every Snowflake component instance of the stacks, initialized, the account one first (the others depend on it).
+
+    `terraform init` runs here once per instance rather than in front of every command (Atmos's default), which
+    would put its output on stdout ahead of the JSON and state listings the callers parse.
+    """
     described = json.loads(atmos_output(env, "describe", "stacks", "--format", "json", "--sections", "workspace"))
     found = [
         Instance(component, stack)
@@ -795,7 +810,10 @@ def instances(env: dict[str, str]) -> list[Instance]:
         for component in config["components"]["terraform"]
         if component in SNOWFLAKE_COMPONENTS
     ]
-    return sorted(found, key=lambda instance: (instance.component != ACCOUNT_COMPONENT, instance.stack))
+    found.sort(key=lambda instance: (instance.component != ACCOUNT_COMPONENT, instance.stack))
+    for instance in found:
+        atmos_output(env, "terraform", "init", instance.component, "-s", instance.stack)
+    return found
 
 
 def planned_changes(env: dict[str, str], instance: Instance) -> list[dict[str, Any]]:
@@ -924,6 +942,8 @@ def apply_stacks(
     A declined confirmation (anything but `yes`) or a failed apply stops the run with the stack's name;
     Terraform has already said why. The stacks applied before it stay applied.
     """
+    if not yes:
+        print(style(DIM, "Terraform asks before each stack: it applies on a full `yes` only, `y` cancels."))
     for instance in stacks:
         step(f"Applying stack {instance.stack} ({instance.component})")
         try:
