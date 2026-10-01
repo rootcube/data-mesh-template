@@ -38,6 +38,6 @@ version:
   check:
     enabled: false
   constraint:
-    require: ">= 1.230.0, < 2.0.0"
+    require: ">= 1.229.0, < 2.0.0"
     enforcement: fatal
     message: "Install the Atmos release this configuration was written for: just install atmos"

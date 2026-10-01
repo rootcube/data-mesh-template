@@ -191,9 +191,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t dagster-starter:ci .
       - name: Code locations load in the image
+        # DAGSTER_HOME as the chart sets it: without one the CLI makes a temporary instance in the
+        # working directory, /app, which the image's dagster user cannot write.
         run: |
           for module in orchestrator.locations.dlt.definitions orchestrator.locations.dbt.dbt_example.definitions; do
-            docker run --rm -e ENVIRONMENT=prd dagster-starter:ci dagster definitions validate -m "$module"
+            docker run --rm -e ENVIRONMENT=prd -e DAGSTER_HOME=/tmp dagster-starter:ci dagster definitions validate -m "$module"
           done
 
   docs:
