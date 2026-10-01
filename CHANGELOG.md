@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.21](https://github.com/rootcube/data-mesh-template/compare/v0.1.20...v0.1.21) (2026-10-01)
+
+
+### Bug Fixes
+
+* add --skip-init flag to Terraform commands to suppress output during initialization ([#75](https://github.com/rootcube/data-mesh-template/issues/75)) ([2b2dae2](https://github.com/rootcube/data-mesh-template/commit/2b2dae2e4b1a68195da4c5c991767a196ca6e423))
+* set DAGSTER_HOME environment variable in CI for proper directory access ([#73](https://github.com/rootcube/data-mesh-template/issues/73)) ([6982aea](https://github.com/rootcube/data-mesh-template/commit/6982aeae66a69db32536ef80deae07e4a3c80e07))
+
 ## [0.1.20](https://github.com/rootcube/data-mesh-template/compare/v0.1.19...v0.1.20) (2026-09-30)
 
 
