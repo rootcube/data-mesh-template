@@ -164,11 +164,14 @@ to GitHub Pages at the `site_url` in `mkdocs.yml`. Not a check on your pull requ
 `docs` job is.
 
 Dependabot, weekly on Monday, from `.github/dependabot.yml`: one grouped pull request per
-ecosystem for Python packages (`uv.lock`), GitHub Actions and the Terraform providers, with
-conventional titles (`chore(deps)`, `ci(deps)`) so they never bump the release version on their
+ecosystem for Python packages (`uv.lock`), GitHub Actions and the Terraform providers, and one
+per bump of the `Dockerfile` base image, with conventional titles (`chore(deps)`, `ci(deps)`) so they never bump the release version on their
 own. Security updates for vulnerable Python packages arrive separately as soon as an advisory
 matches; they are a repository setting (**Settings > Advanced Security > Dependabot security
-updates**). dbt packages and pre-commit hooks are not covered; bump those by hand.
+updates**). Not covered, so bumped by hand: dbt packages, the pre-commit hooks
+(`uv run pre-commit autoupdate --freeze`), the Terraform and Atmos releases CI and `just install atmos`
+fetch (`.github/workflows/ci.yml`, `justfile`) and the Dagster Helm chart default
+(`terraform/components/dagster/variables.tf`, kept equal to the Dagster version in `uv.lock`).
 
 Every workflow pins its actions to a full commit SHA with a trailing `# vX.Y.Z` comment, which
 Dependabot keeps up to date. Review those pull requests like any other; CI runs on them.

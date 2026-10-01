@@ -36,7 +36,7 @@ project     := "dbt_example"
 dbt_project := "dbt" / project
 # The Atmos release `just install atmos` fetches on Windows (Homebrew installs its latest elsewhere);
 # atmos.yaml states the versions this configuration works with.
-atmos_version := "1.230.0"
+atmos_version := "1.230.1"
 # The local Kubernetes cluster (k3d) and the image `just k8s build` imports into it: the image of
 # terraform/stacks/deployments/dagster/*.yaml, whose kube_context is k3d-<cluster>.
 k8s_cluster := "dagster"
