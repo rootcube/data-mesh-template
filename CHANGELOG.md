@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.23](https://github.com/rootcube/data-mesh-template/compare/v0.1.22...v0.1.23) (2026-10-02)
+
+
+### Features
+
+* add ingest and transform computes, update roles and configurations ([#81](https://github.com/rootcube/data-mesh-template/issues/81)) ([d32d26e](https://github.com/rootcube/data-mesh-template/commit/d32d26eddbf021635dfcc3dc6dee7e6c3cd1ddde))
+
+
+### Bug Fixes
+
+* **docs:** update comment syntax from Jinja-style to standard block comments across SQL files ([#80](https://github.com/rootcube/data-mesh-template/issues/80)) ([1bf8312](https://github.com/rootcube/data-mesh-template/commit/1bf8312ac12f18761e02f33c84b61d0779814f5a))
+
 ## [0.1.22](https://github.com/rootcube/data-mesh-template/compare/v0.1.21...v0.1.22) (2026-10-01)
 
 
