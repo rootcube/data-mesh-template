@@ -394,24 +394,34 @@ sqlfluff *args:
 
 # --- Terraform (platform administrators) -----------------------------------
 
-# run Terraform through Atmos on the stacks, e.g. `just tf plan --all`, `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
+# run Terraform through Atmos on the stacks, e.g. `just tf plan --all` (the Snowflake stacks; a Dagster deployment has `just k8s deploy`), `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
 [unix]
 [positional-arguments]
 tf cmd *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    case "$1" in
-        clean) uv run python scripts/snowflake.py clean ;;
-        *)     atmos terraform "$@" ;;
-    esac
+    # `--all` is every stack that provisions Snowflake. A deployment (a stack under
+    # terraform/stacks/deployments/, which sets `vars.deployment`) needs its cluster: `just k8s deploy`.
+    if [ "$1" = clean ]; then
+        uv run python scripts/snowflake.py clean
+    elif [[ " $* " == *" --all "* ]]; then
+        cmd="$1"; shift
+        atmos terraform "$cmd" --query '.vars.deployment == null' "$@"
+    else
+        atmos terraform "$@"
+    fi
 
-# run Terraform through Atmos on the stacks, e.g. `just tf plan --all`, `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
+# run Terraform through Atmos on the stacks, e.g. `just tf plan --all` (the Snowflake stacks; a Dagster deployment has `just k8s deploy`), `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
 [windows]
 [positional-arguments]
 [script]
 [extension(".ps1")]
 tf cmd *args:
-    if ($args[0] -eq "clean") { uv run python scripts/snowflake.py clean } else { atmos terraform @args }
+    # `--all` is every stack that provisions Snowflake. A deployment (a stack under
+    # terraform/stacks/deployments/, which sets `vars.deployment`) needs its cluster: `just k8s deploy`.
+    if ($args[0] -eq "clean") { uv run python scripts/snowflake.py clean }
+    elseif ($args -contains "--all") { $rest = @($args | Select-Object -Skip 1); atmos terraform $args[0] --query '.vars.deployment == null' @rest }
+    else { atmos terraform @args }
     exit $LASTEXITCODE
 
 # validate the YAML configuration under terraform/config against its JSON schemas
@@ -433,10 +443,7 @@ k8s cmd stack="dagster-prd":
         build)  docker build -t {{k8s_image}} .
                 k3d image import {{k8s_image}} -c {{k8s_cluster}} ;;
         # The image keeps its tag, so the running code servers only pick up a new build on a restart.
-        # Atmos skips a disabled stack without an error, so stop here instead of failing on the restart.
-        deploy) enabled=$(atmos describe component dagster -s {{stack}} --query .metadata.enabled | tr -d '[:space:]')
-                if [ "$enabled" = false ]; then echo "{{stack}} is disabled: set metadata.enabled to true for dagster in its file under terraform/stacks/deployments/" >&2; exit 1; fi
-                just k8s build
+        deploy) just k8s build
                 atmos terraform apply dagster -s {{stack}}
                 kubectl --context "$context" -n {{stack}} rollout restart deployment ;;
         ui)     pod=$(kubectl --context "$context" -n {{stack}} get pods -l component=dagster-webserver -o jsonpath='{.items[0].metadata.name}')
@@ -460,10 +467,7 @@ k8s cmd stack="dagster-prd":
         }
         "build" { docker build -t {{k8s_image}} .; Check; k3d image import {{k8s_image}} -c {{k8s_cluster}}; Check }
         # The image keeps its tag, so the running code servers only pick up a new build on a restart.
-        # Atmos skips a disabled stack without an error, so stop here instead of failing on the restart.
         "deploy" {
-            $enabled = atmos describe component dagster -s {{stack}} --query .metadata.enabled; Check
-            if ("$enabled".Trim() -eq "false") { Write-Host "{{stack}} is disabled: set metadata.enabled to true for dagster in its file under terraform/stacks/deployments/"; exit 1 }
             just k8s build; Check
             atmos terraform apply dagster -s {{stack}}; Check
             kubectl --context $context -n {{stack}} rollout restart deployment; Check

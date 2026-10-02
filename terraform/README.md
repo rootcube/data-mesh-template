@@ -290,14 +290,15 @@ modules under `components/` once per stack under `stacks/`:
 | `dagster-<env>` (`stacks/deployments/dagster/<env>.yaml`) | `dagster` | Dagster on Kubernetes for one environment ([Dagster on Kubernetes](kubernetes.md)) |
 
 All read the same `config/` through `modules/config`. The project stacks depend on `account`
-(they grant roles to the users it creates), the Dagster stacks on both, so `--all` applies
-`account` first and destroys it last. A Dagster stack needs its cluster running; `just sf
-bootstrap` and `just tf clean` leave it alone, and `--all` skips it while it has
-`metadata.enabled: false`, for a machine without the cluster.
-`just tf` hands its arguments to `atmos terraform`:
+(they grant roles to the users it creates), so `--all` applies `account` first and destroys it
+last. A Dagster stack is a deployment: it needs its cluster running and the service users'
+private keys, so `just sf bootstrap`, `just tf clean` and `--all` leave it alone, and
+`just k8s deploy` applies it.
+`just tf` hands its arguments to `atmos terraform`; with `--all` it adds the filter that keeps
+the deployments out (`--query '.vars.deployment == null'`):
 
 ```bash
-just tf plan --all                                   # every stack, account first
+just tf plan --all                                   # every Snowflake stack, account first
 just tf plan snowflake-project -s example-dev        # one project in one environment
 just tf apply snowflake-project -s example-prd
 just tf output snowflake-project -s example-dev -- -json personal_schemas

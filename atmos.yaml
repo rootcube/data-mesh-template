@@ -1,7 +1,8 @@
 # Atmos (https://atmos.tools) runs the Terraform components under terraform/components once per
 # stack under terraform/stacks: `account` (snowflake-account) and one `<project>-<env>` per project
 # and environment (snowflake-project). Each stack is a Terraform workspace with its own state.
-# `just tf ...` passes its arguments to `atmos terraform ...`; see terraform/README.md.
+# `just tf ...` passes its arguments to `atmos terraform ...`, and with `--all` adds a filter that
+# leaves the deployments out (the Dagster stack has `just k8s deploy`); see terraform/README.md.
 base_path: "."
 
 components:
