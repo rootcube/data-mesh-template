@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.24](https://github.com/rootcube/data-mesh-template/compare/v0.1.23...v0.1.24) (2026-10-02)
+
+
+### Bug Fixes
+
+* add ingest and transform computes, update roles and configurations ([#83](https://github.com/rootcube/data-mesh-template/issues/83)) ([cdaea9d](https://github.com/rootcube/data-mesh-template/commit/cdaea9d782ebf6ed96c9fca9a2b6e87a9b43a500))
+
 ## [0.1.23](https://github.com/rootcube/data-mesh-template/compare/v0.1.22...v0.1.23) (2026-10-02)
 
 
