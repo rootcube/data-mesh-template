@@ -1,4 +1,4 @@
-{#-
+/*
     LOCAL ADDITION - not part of vendored dbt_artifacts upstream.
 
     Uploads `dbt source freshness` results (SourceFreshnessResult objects): one row
@@ -8,7 +8,7 @@
     create_metadata_tables.sql.
 
     Nullable fields: max_loaded_at/snapshotted_at/age are None on runtime errors.
--#}
+*/
 
 {% macro upload_source_freshness(freshness_results) -%}
     {{ return(adapter.dispatch("get_source_freshness_dml_sql", "dbt_common")(freshness_results)) }}

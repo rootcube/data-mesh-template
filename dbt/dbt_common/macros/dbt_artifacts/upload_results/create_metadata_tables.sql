@@ -1,4 +1,4 @@
-{#
+/*
     LOCAL ADDITION - not part of vendored dbt_artifacts upstream.
 
     Makes the upload path self-sufficient: `upload_results` writes into the
@@ -32,7 +32,7 @@
     table. If a future upstream sync changes a dataset's columns, both this file and
     `get_column_name_lists.sql` must be updated, and any already-created tables in every
     environment must be ALTERed by hand to match.
-#}
+*/
 
 {% macro create_metadata_tables_if_not_exist(datasets=none) %}
 

@@ -548,8 +548,11 @@ dependency order.
 ## Macros
 
 - `snake_case` names, one macro per concern, one file per macro.
-- Every macro file starts with a `/*{# ... #}*/` block comment describing what it does, its
-  inputs and usage (`dbt/dbt_common/macros/search_optimization.sql` is the model to copy).
+- Every macro file starts with a block comment describing what it does, its inputs and usage
+  (`dbt/dbt_common/macros/search_optimization.sql` is the model to copy): `/*` and `*/` on lines
+  of their own, the text indented four spaces. Every other comment outside a macro takes the
+  same form; inside a macro, use a Jinja comment `{# ... #}`, which never reaches the rendered
+  SQL.
 - Only create a macro for logic reused across multiple models; never abstract one-off logic.
 - Shared macros live in `dbt/dbt_common/macros/` and are called with the package prefix:
   `{{ dbt_common.utc_now() }}`, `{{ dbt_common.log_run_info() }}`. Project-specific macros go in

@@ -1,4 +1,4 @@
-{#
+/*
     Vendored replacement for dbt_artifacts' graph-based get_relation.
 
     Resolves the raw upload tables by convention instead of graph lookup, so
@@ -7,7 +7,7 @@
     layer (_MTD) of the project database and are created on demand (dev) by
     `dbt_common.create_metadata_tables_if_not_exist()` in the upload path itself.
     A monitoring project can consume them as dbt sources; nothing builds them as models.
-#}
+*/
 
 {% macro get_relation(relation_name) %}
     {% if execute %}

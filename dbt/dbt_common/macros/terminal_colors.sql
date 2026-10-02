@@ -1,8 +1,8 @@
-/*{#
+/*
     Returns a dict of ANSI terminal color codes.
     Set dbt var `terminal_colors: false` to disable (e.g. for dbt Fusion, which cannot render ANSI escapes).
     Set dbt var `terminal_colors: true` to enable (e.g. for dbt core).
-#}*/
+*/
 
 {% macro terminal_colors() %}
   {% set enabled = var('terminal_colors', false) %}
