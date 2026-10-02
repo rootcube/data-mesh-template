@@ -23,7 +23,7 @@ For every project in `terraform/config/projects/` and each of its environments:
 |---------|------------------|------------------------|
 | Project × Environment | database `DB_<PROJECT>_<ENV>`, `PUBLIC` schema dropped | `DB_EXAMPLE_DEV` |
 | Layer | schema `_<LAYER>` in that database | `_SRC`, `_REF`, `_STG`, `_INT`, `_MRT`, `_EXP`, `_MTD`, `_TMP` |
-| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per warehouse, one access role per layer, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ANL`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
+| Role | account role `RL_<PROJECT>_<ENV>__<PURPOSE>` with `USAGE` on the database, grants per warehouse, one access role per layer, and inheritance | `RL_EXAMPLE_DEV__ENG`, `RL_EXAMPLE_DEV__ING`, `RL_EXAMPLE_DEV__TFM` |
 | Layer × Access | account role `AR_<PROJECT>_<ENV>__<LAYER>__<ACCESS>` holding the tier's privileges on the layer schema (all and future tables, views, ...), four per layer | `AR_EXAMPLE_DEV__SRC__FULL`, `AR_EXAMPLE_PRD__MRT__READ` |
 | Compute | warehouse `WH_<PROJECT>_<ENV>[__<COMPUTE>_<SIZE>]` | `WH_EXAMPLE_DEV` (X-Small, auto-suspend 60 s, created suspended) |
 | dlt load stage | internal stage `ST_DEFAULT` with a directory table in every source-layer schema, shared and personal | `_SRC.ST_DEFAULT`, `DBT_USERNAME_SRC.ST_DEFAULT` |
@@ -42,9 +42,9 @@ Every project role is granted to `SYSADMIN`, the recommended role hierarchy.
 
 Privileges on the layer schemas do not sit on the project roles. They sit on access roles, one
 per layer and tier, which the project roles inherit: `read` on `_MRT` is
-`AR_EXAMPLE_PRD__MRT__READ`, held by both `RL_EXAMPLE_PRD__ENG` and `RL_EXAMPLE_PRD__ANL`. A
-layer can add to a tier, which is how the source layer carries stage privileges and the
-temporary layer becomes scratch space. Every tier and grant: [Access](access.md) and
+`AR_EXAMPLE_PRD__MRT__READ`, held by `RL_EXAMPLE_PRD__ENG` (and by `RL_EXAMPLE_PRD__ANL` in a
+project that lists the optional analyst role). A layer can add to a tier, which is how the
+source layer carries stage privileges and the temporary layer becomes scratch space. Every tier and grant: [Access](access.md) and
 [Role](role.md).
 
 ```mermaid
@@ -52,7 +52,6 @@ flowchart LR
     U["your login"] --> R["RL_EXAMPLE_DEV__ENG"]
     R -. inherits .-> TFM["RL_EXAMPLE_DEV__TFM"]
     R -. inherits .-> ING["RL_EXAMPLE_DEV__ING"]
-    R -. inherits .-> ANL["RL_EXAMPLE_DEV__ANL"]
     R --> WH["WH_EXAMPLE_DEV"]
     R --> DB["DB_EXAMPLE_DEV"]
     R -. inherits .-> AR["AR_EXAMPLE_DEV__SRC__FULL · AR_EXAMPLE_DEV__STG__FULL · ... (one per layer)"]

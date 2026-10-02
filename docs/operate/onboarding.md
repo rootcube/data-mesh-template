@@ -43,10 +43,12 @@ The fields, from `terraform/config/_validation/schemas/user.schema.json`:
 
 A grant only exists when the role is in the project's `roles` list and the environment in its
 `environments` list; other combinations are skipped without an error. For the `example` project
-that means `ingest`, `transform`, `engineer` or `analyst` in `development` or `production`.
+that means `ingest`, `transform` or `engineer` in `development` or `production` (`analyst` is
+optional and not listed).
 Engineers get `engineer` in `development`, which becomes the account role `RL_EXAMPLE_DEV__ENG`.
-That role also inherits `transform` and `ingest` in development and `analyst` everywhere
-(`privileges.roles` in `terraform/config/roles/engineer.yaml`), so one grant is enough.
+That role also inherits `transform` and `ingest` in development, and `analyst` everywhere in a
+project that lists it (`privileges.roles` in `terraform/config/roles/engineer.yaml`), so one
+grant is enough.
 
 ### 2. Apply
 
@@ -181,9 +183,10 @@ anything without a layer into `_TMP`, its fallback when `SNOWFLAKE_SCHEMA` is em
 !!! note "Warehouse grants of the system roles"
     `ingest` and `transform` receive warehouse privileges on the `default` compute and on their
     own `ingest` and `transform` computes (`privileges.computes` in their role files). Grants are
-    only created for computes the project lists, so with `computes: [default]` they use
-    `WH_EXAMPLE_<ENV>`; add `ingest` and `transform` to the project to give them dedicated
-    warehouses (`WH_EXAMPLE_<ENV>__ING_S`, `WH_EXAMPLE_<ENV>__TFM_S`).
+    only created for computes the project lists. The example project lists both, so they also
+    get dedicated warehouses (`WH_EXAMPLE_<ENV>__ING_S` and `__ING_M`, `WH_EXAMPLE_<ENV>__TFM_S`,
+    `__TFM_M` and `__TFM_L`); a project with `computes: [default]` runs them on
+    `WH_<PROJECT>_<ENV>`.
 
 ## Removing access
 

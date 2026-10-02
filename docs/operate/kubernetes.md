@@ -35,16 +35,23 @@ themselves for as long as the cluster runs, against `DB_<PROJECT>_<ENV>`.
 Once per machine. uv manages the Python side (the image is built from `uv.lock`), but none of
 this is Python:
 
-- **A Docker engine.** On Windows it needs WSL2: `wsl --install --no-distribution` in an
-  administrator shell, then a reboot. Then either [Rancher Desktop](https://rancherdesktop.io)
-  (`winget install SUSE.RancherDesktop`, free) with *Kubernetes* switched off and the *dockerd
-  (moby)* engine, or Docker Desktop, which companies of 250 people or $10M revenue and up need a
-  paid subscription for. On macOS and Linux any Docker engine does (Docker Desktop, OrbStack,
-  Colima, Rancher Desktop).
-- **k3d and kubectl**: `just install k3d` and `just install kubectl` (winget on Windows, Homebrew
-  elsewhere).
+- **A Docker engine** with BuildKit, for the `Dockerfile`'s cache mounts: Docker Desktop on
+  Windows and macOS, Docker Engine from your distribution on Linux. On Windows it needs WSL2:
+  `wsl --install --no-distribution` in an administrator shell, then a reboot. Docker Desktop is
+  free for personal use and small companies; from 250 people or $10M revenue it needs a paid
+  subscription. [Rancher Desktop](https://rancherdesktop.io) is the free alternative
+  (`winget install SUSE.RancherDesktop`, or `brew install rancher`), started with *Kubernetes*
+  switched off and the *dockerd (moby)* engine.
+- **k3d and kubectl**: the local cluster and its CLI.
 - **Terraform and Atmos**, as for the [Snowflake provisioning](snowflake-provisioning.md), with
   the `TF_VAR_SNOWFLAKE_*` block in `.env`.
+
+`just install k8s` handles the first two: Docker Desktop on Windows (winget) and macOS
+(Homebrew), k3d and kubectl. Docker Desktop asks for administrator rights while it installs;
+start it once afterwards to accept its terms, and sign out and in when it asks. On Windows
+without WSL2 it installs no Docker engine and prints the WSL2 command instead; run it again after
+the reboot. On Linux it points to the Docker Engine install. `just install docker`, `k3d` and
+`kubectl` do one each.
 
 ## Service users
 
@@ -85,6 +92,12 @@ Terraform state.
 
 ## Deploy
 
+`metadata.enabled` in `terraform/stacks/deployments/dagster/prd.yaml` switches the stack on and
+off. On a machine without the cluster, set it to `false`, so `just tf plan --all` skips the stack
+instead of failing on the missing kubeconfig. Atmos skips a disabled stack without a word, also
+when it is named, so `just k8s deploy` checks the flag first and stops with an error while it is
+`false`, before it builds anything.
+
 ```bash
 just k8s up        # create (or start) the k3d cluster `dagster`, kube context k3d-dagster
 just k8s deploy    # build the image, apply the stack dagster-prd, restart the code servers
@@ -102,8 +115,9 @@ After a code change, `just k8s deploy` again: the image keeps its tag, so the re
 code servers to pick up the new build. `just k8s down` stops the cluster and keeps everything in
 it, run history included; `k3d cluster delete dagster` removes it all.
 
-`just tf plan --all` includes the Dagster stacks, which need their cluster running. Without it,
-plan the Snowflake stacks by name (`just tf plan snowflake-project -s example-prd`).
+`just tf plan --all` includes every enabled Dagster stack, which needs its cluster running. To
+leave one out while its cluster is stopped or gone, set `enabled: false` under `metadata` of its
+`dagster` component again; the Snowflake stacks plan as before.
 
 ## How it fits together
 
@@ -117,7 +131,10 @@ the local Dagster, dlt and DuckDB state never enter the build.
 
 **The stack** (`terraform/components/dagster`) derives everything from `config/`: a code location
 per project in the environment, and for each its service user, role, warehouse and database,
-passed as the `SNOWFLAKE_*` variables the code reads anyway. `includeConfigInLaunchedRuns` gives
+passed as the `SNOWFLAKE_*` variables the code reads anyway. The warehouse is the first size of
+the location's own compute profile, `ingest` for `dlt` and `transform` for `dbt-<project>`
+(`WH_EXAMPLE_PRD__ING_S`, `WH_EXAMPLE_PRD__TFM_S`), when the project lists that profile, and
+`WH_<PROJECT>_<ENV>` when it does not. `includeConfigInLaunchedRuns` gives
 every run pod the environment, secret and volume of its location. The chart's Postgres gets a
 generated password before it first creates its volume. The chart version equals the `dagster`
 version in `uv.lock`; upgrade both together.

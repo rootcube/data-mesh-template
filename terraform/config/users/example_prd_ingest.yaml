@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../_validation/schemas/user.schema.json
+# Service user of the deployment: only the public key is here; the private key is ~/.snowflake/keys/EXAMPLE_PRD_INGEST.p8.
+login: "EXAMPLE_PRD_INGEST"
+name: "dlt in example production"
+type: service
+rsa_public_key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8nIPsO80Se5U2BY2rIAlcTeuSKhfZOAYThuyJsll8QJdmdyQObMiC1Ql6qmwX81ChxDHpLStY1mqkNO2MnrlGjlQf/0dxCFGqLmaR2zf1pDz7yfiALWQKZ5vZAXIva1XGfbitVr1woLaoaqlh7wTxigI7dW3BWRX+vsdWxh4fidunralllT25Nnob0sDq7laZFUtpQ21ke24r/7qhICyhZ0ZFC45P0vf8g3A2PqLylEc2+OnnYQ+Nnr44O2+xNKnuZR/FUv4A1MCv5Erk2VYg9DxEf+ZoQOs0CsEylGktlN8/Dhf/Eq7aBBv9Rb9OnO1DF4DHvZjC1KSvxKvivQ7PwIDAQAB"
+roles:
+  - project: example
+    role: ingest
+    environments: [production]

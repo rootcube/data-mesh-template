@@ -16,7 +16,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just init` | Install uv if missing, `uv sync --all-groups`, create `.env` from `.env.example`, create `.dagster/`, `.dlt/data/` and `.duckdb/data/`, `dbt deps` and `dbt parse` in every project |
 | `just info` | Tool and package versions, `.env` and private key status, what to run next, the local state folders and the installed packages of every dbt project, and one line per key `.env.example` sets that your `.env` misses (or the other way round) |
 | `just reset-local` | Delete the git-ignored local state (`.dagster/` except `dagster.yaml`, `.dlt/data/`, `src/orchestrator/defs/.local_defs_state/`, `dbt/*/target/`, `dbt/*/logs/`, `logs/`, `.cache/`), recreate `.dagster/` and `.dlt/data/`, then `dbt deps` and `dbt parse` in every project. Stop `just start` first |
-| `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `atmos` (Homebrew on macOS and Linux; on Windows Scoop, or else the release the justfile pins, checked against its checksums, into `~\.local\bin`), `direnv`, or `all` (the default); `k3d` and `kubectl` for the local Kubernetes cluster, and `gh`, are available too but not part of `all` |
+| `just install [tool]` | Install a tool uv does not manage: `uv`, `terraform` (tfenv on macOS and Linux), `atmos` (Homebrew on macOS and Linux; on Windows Scoop, or else the release the justfile pins, checked against its checksums, into `~\.local\bin`), `direnv`, or `all` (the default); `docker` (Docker Desktop on Windows and macOS, Docker Engine by hand on Linux), `k3d` and `kubectl` for the local Kubernetes cluster (`k8s` installs all three), and `gh`, are available too but not part of `all` |
 
 ## Snowflake
 
@@ -71,7 +71,6 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 | `just tf output snowflake-account -s account -- -json user_role_grants` | Roles per login, over every project and environment |
 | `just tf output snowflake-project -s <project>-dev -- -json personal_schemas` | Personal schemas per login in that project |
 | `just tf-validate-config` | Validate the YAML under `terraform/config/` (sub-folders included) against its JSON schemas and cross references: a project's `code` equals its file name, users name existing projects, roles and environments, no two user files share a name, and there is one stack manifest `terraform/stacks/projects/<project>/<env>.yaml` per project and enabled environment |
-| `just tf-split-state` | One-off: split a checkout's pre-Atmos `terraform/terraform.tfstate` into one state per stack, keeping the original as `terraform.tfstate.pre-atmos`; `--dry-run` shows where everything goes |
 
 ## Kubernetes (local k3d)
 
@@ -83,7 +82,7 @@ defaults to `dagster-prd`.
 |---------|--------------|
 | `just k8s up` | Create the k3d cluster `dagster` (kube context `k3d-dagster`), or start it when it exists |
 | `just k8s build` | `docker build` of the code location image `dagster-starter:local`, imported into the cluster |
-| `just k8s deploy [stack]` | `build`, then `atmos terraform apply dagster -s <stack>` (you confirm), then a restart of the code servers so they run the new build |
+| `just k8s deploy [stack]` | `build`, then `atmos terraform apply dagster -s <stack>` (you confirm), then a restart of the code servers so they run the new build. Stops with an error first while the stack has `metadata.enabled: false` |
 | `just k8s ui [stack]` | Forward the webserver to <http://localhost:3000> until Ctrl+C |
 | `just k8s down` | Stop the cluster; everything in it stays, run history included |
 

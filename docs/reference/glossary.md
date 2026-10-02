@@ -223,8 +223,8 @@ Resource (dlt) { #resource-dlt }
 Role { #role }
 :   A set of grants per project and environment (`terraform/config/roles/<key>.yaml`),
     provisioned as the account role `RL_<PROJECT>_<ENV>__<PURPOSE>`. Person roles: engineer
-    (required), analyst. System roles: ingest (dlt), transform (dbt). See
-    [Role](../understand/role.md).
+    (required), analyst (optional, not in `example`). System roles: ingest (dlt), transform
+    (dbt). See [Role](../understand/role.md).
 
 Schedule (Dagster) { #schedule }
 :   A cron that launches a job, `schedule__<location>__<name>`: the daily load per dlt source and

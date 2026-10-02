@@ -16,6 +16,10 @@ vars:
 components:
   terraform:
     dagster:
+      # false on a machine without the cluster (`just k8s up`): Atmos skips a disabled stack, in
+      # `--all` and by name alike, and `just k8s deploy` refuses to run.
+      metadata:
+        enabled: true
       # The service users (account) and their role grants (the project stacks) come first
       dependencies:
         components:

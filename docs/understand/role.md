@@ -29,13 +29,14 @@ Type
 
 ## The project roles
 
-One file per role under `terraform/config/roles/`. The example project lists four; two more
-ship with the starter.
+One file per role under `terraform/config/roles/`. The example project lists the three required
+ones; `analyst` is optional and left commented out in `projects/example.yaml`, and two more ship
+with the starter.
 
 | Key (file) | `code` | Type | Purpose | `required` | In `example` |
 |------------|--------|------|---------|------------|--------------|
 | `engineer` | `eng` | person | Develops and maintains ingestion and transformation pipelines | yes | yes |
-| `analyst` | `anl` | person | Read-focused exploration and consumption | no | yes |
+| `analyst` | `anl` | person | Read-focused exploration and consumption | no | no (commented out) |
 | `ingest` | `ing` | system | Ingestion tooling (dlt) loading the source layer | yes | yes |
 | `transform` | `tfm` | system | Transformation tooling (dbt) reading and writing across layers | yes | yes |
 | `reporting` | `rpt` | hybrid | Reporting systems reading curated data | no | no |
@@ -91,7 +92,8 @@ queries, `edit` also changes data in existing tables, `full` also creates object
     user with this role their own `<PREFIX>_<LAYER>` schemas, created by Terraform, with `full`
     on them, including `READ` and `WRITE` on their load stage; the role has no `CREATE SCHEMA`.
     Computes: `USAGE`, `OPERATE`, `MONITOR` on `default`, `ingest` and `transform`. Inherits
-    `transform` and `ingest` in `dev` and `tst`, and `analyst` everywhere. There is no `acc`
+    `transform` and `ingest` in `dev` and `tst`, and `analyst` everywhere when the project lists
+    it (`example` does not). There is no `acc`
     entry, so an engineer in acceptance would only get scratch space in the temporary layer.
 
 === "analyst (ANL)"
@@ -102,6 +104,9 @@ queries, `edit` also changes data in existing tables, `full` also creates object
     | `temporary` | `read` (scratch) |
 
     Computes: `USAGE` on `default`.
+
+    Optional: `example` does not deploy it. Uncomment `- analyst` under `roles` in
+    `projects/example.yaml` to get `RL_EXAMPLE_<ENV>__ANL`, for people or tools that only read.
 
 === "ingest (ING)"
 
@@ -126,10 +131,11 @@ system roles write.
 
 !!! note "System roles and warehouses"
     `ingest` and `transform` ask for the `default` compute plus their own `ingest` and
-    `transform` profiles. Warehouse grants are created only for profiles a project lists, so
-    with `projects/example.yaml` (`default` only) `RL_EXAMPLE_<ENV>__ING` and
-    `RL_EXAMPLE_<ENV>__TFM` run on `WH_EXAMPLE_<ENV>`; list the extra profiles to give them
-    dedicated warehouses. See [Compute](compute.md).
+    `transform` profiles. Warehouse grants are created only for profiles a project lists.
+    `projects/example.yaml` lists both, so next to `WH_EXAMPLE_<ENV>` the role
+    `RL_EXAMPLE_<ENV>__ING` gets `WH_EXAMPLE_<ENV>__ING_S` and `__ING_M`, and
+    `RL_EXAMPLE_<ENV>__TFM` gets `WH_EXAMPLE_<ENV>__TFM_S`, `__TFM_M` and `__TFM_L`. A project
+    with `default` only runs them on `WH_<PROJECT>_<ENV>`. See [Compute](compute.md).
 
 ## Inheritance
 
@@ -141,15 +147,16 @@ graph LR
     subgraph dev["DB_EXAMPLE_DEV"]
         ENGD[RL_EXAMPLE_DEV__ENG] --> TFMD[RL_EXAMPLE_DEV__TFM]
         ENGD --> INGD[RL_EXAMPLE_DEV__ING]
-        ENGD --> ANLD[RL_EXAMPLE_DEV__ANL]
     end
     subgraph prd["DB_EXAMPLE_PRD"]
-        ENGP[RL_EXAMPLE_PRD__ENG] --> ANLP[RL_EXAMPLE_PRD__ANL]
+        ENGP[RL_EXAMPLE_PRD__ENG]
     end
 ```
 
 An arrow means "inherits". In development an engineer can do everything the system roles can,
-which is what local development needs. In production an engineer inherits only the analyst.
+which is what local development needs. In production an engineer inherits nothing and reads
+through its own `read` tiers. A project that lists `analyst` adds `RL_<PROJECT>_<ENV>__ANL`
+under the engineer in every environment.
 `test` is listed for the system roles too, but the example project has no test environment.
 
 ## Users
