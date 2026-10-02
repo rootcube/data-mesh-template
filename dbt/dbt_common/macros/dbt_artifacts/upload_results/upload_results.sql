@@ -1,4 +1,6 @@
-{# dbt doesn't like us ref'ing in an operation so we fetch the info from the graph #}
+/*
+    dbt doesn't like us ref'ing in an operation so we fetch the info from the graph
+*/
 
 {% macro upload_results(results) -%}
 

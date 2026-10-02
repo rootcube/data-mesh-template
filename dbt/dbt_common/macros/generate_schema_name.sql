@@ -1,4 +1,4 @@
-/*{#
+/*
     Schema naming for every project that installs dbt_common.
 
     Layers map to schemas of the project database DB_<PROJECT>_<ENV>. In the shared environments
@@ -24,7 +24,7 @@
         dispatch:
           - macro_namespace: dbt
             search_order: ["dbt_common", "dbt"]
-#}*/
+*/
 
 {% macro generate_schema_name(custom_schema_name, node) -%}
 
@@ -42,9 +42,11 @@
 {%- endmacro %}
 
 
-/*{# Dispatch entry point, picked up by `adapter.dispatch('generate_schema_name', 'dbt')` when
-   `dbt_common` is in the consuming project's dispatch search_order. Delegates to the public
-   macro above so user code can also call `dbt_common.generate_schema_name(...)` directly. #}*/
+/*
+    Dispatch entry point, picked up by `adapter.dispatch('generate_schema_name', 'dbt')` when
+    `dbt_common` is in the consuming project's dispatch search_order. Delegates to the public
+    macro above so user code can also call `dbt_common.generate_schema_name(...)` directly.
+*/
 {% macro default__generate_schema_name(custom_schema_name, node) -%}
   {{ return(dbt_common.generate_schema_name(custom_schema_name, node)) }}
 {%- endmacro %}

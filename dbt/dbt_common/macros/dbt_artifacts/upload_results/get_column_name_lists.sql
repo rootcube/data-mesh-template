@@ -1,7 +1,7 @@
-{#
+/*
     These are the column lists used as part of the upload macros - the order here should be the same
     as the order in each individual `upload_dataset` macro.
-#}
+*/
 {% macro get_column_name_list(dataset) -%}
 
     {% if dataset == "exposures" %}

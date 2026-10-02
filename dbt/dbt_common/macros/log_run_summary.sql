@@ -1,10 +1,10 @@
-/*{#
+/*
     Logs a run summary at the end of each dbt invocation.
     Shows totals by status, slowest models, failed tests, and total runtime.
 
     Usage (in on-run-end):
       - "{{ dbt_common.log_run_summary(results) }}"
-#}*/
+*/
 
 {% macro log_run_summary(results) %}
 
@@ -20,7 +20,7 @@
   {% set red     = c.red %}
   {% set yellow  = c.yellow %}
   {% set reset   = c.reset %}
-  {% set divider = dim ~ '─' * 80 ~ reset %}
+  {% set divider = dim ~ '-' * 80 ~ reset %}
 
   {# Categorize results #}
   {% set models_pass = [] %}
@@ -109,7 +109,7 @@
     {{ log(divider, info=true) }}
     {{ log(red ~ '  Failed tests:' ~ reset, info=true) }}
     {% for res in tests_fail %}
-      {{ log(red ~ '    ✗ ' ~ reset ~ res.node.name ~ dim ~ ' — ' ~ res.message ~ reset, info=true) }}
+      {{ log(red ~ '    x ' ~ reset ~ res.node.name ~ dim ~ ' - ' ~ res.message ~ reset, info=true) }}
     {% endfor %}
   {% endif %}
 
@@ -118,7 +118,7 @@
     {{ log(divider, info=true) }}
     {{ log(yellow ~ '  Warned tests:' ~ reset, info=true) }}
     {% for res in tests_warn %}
-      {{ log(yellow ~ '    ⚠ ' ~ reset ~ res.node.name ~ dim ~ ' — ' ~ res.message ~ reset, info=true) }}
+      {{ log(yellow ~ '    ! ' ~ reset ~ res.node.name ~ dim ~ ' - ' ~ res.message ~ reset, info=true) }}
     {% endfor %}
   {% endif %}
 
@@ -127,7 +127,7 @@
     {{ log(divider, info=true) }}
     {{ log(red ~ '  Failed models:' ~ reset, info=true) }}
     {% for res in models_fail %}
-      {{ log(red ~ '    ✗ ' ~ reset ~ res.node.name ~ dim ~ ' — ' ~ res.message ~ reset, info=true) }}
+      {{ log(red ~ '    x ' ~ reset ~ res.node.name ~ dim ~ ' - ' ~ res.message ~ reset, info=true) }}
     {% endfor %}
   {% endif %}
 

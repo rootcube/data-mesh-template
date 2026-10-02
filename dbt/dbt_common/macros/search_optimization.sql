@@ -1,4 +1,4 @@
-/*{#
+/*
     Adds search optimization to a table for fast lookups.
     Safely skips views and ephemeral models.
 
@@ -14,7 +14,7 @@
         +post-hook:
           - "{{ dbt_common.search_optimization(this) }}"
           - "{{ dbt_common.search_optimization(this, 'EQUALITY(col_a), SUBSTRING(col_b)') }}"
-#}*/
+*/
 
 {% macro search_optimization(target_relation, operations='EQUALITY(*), SUBSTRING(*)') %}
 

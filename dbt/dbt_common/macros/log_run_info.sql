@@ -1,5 +1,7 @@
-/*{# Logs run context at the start of each dbt invocation. The banner reads its values from
-   Snowflake, so any other adapter (the local DuckDB target) is skipped. #}*/
+/*
+    Logs run context at the start of each dbt invocation. The banner reads its values from
+    Snowflake, so any other adapter (the local DuckDB target) is skipped.
+*/
 
 {% macro log_run_info() %}
 
@@ -18,9 +20,9 @@
   {% set sf_organization = run_query("SELECT LOWER(CURRENT_ORGANIZATION_NAME())").columns[0].values()[0] %}
   {% set sf_account = run_query("SELECT LOWER(CURRENT_ACCOUNT_NAME())").columns[0].values()[0] %}
   {% set sf_user = run_query("SELECT CURRENT_USER()").columns[0].values()[0] %}
-  {% set sf_base_url = 'https://app.snowflake.com/' ~ sf_organization ~ '/' ~ sf_account %}
-  {% set url_query = sf_base_url ~ '/#/compute/history/queries?query_tag=dbt_invocation_id:' ~ invocation_id ~ '&user=NAMED%3A' ~ sf_user %}
-  {% set url_catalog = sf_base_url ~ '/#/data/databases/' ~ target.database %}
+  {% set sf_url_base = 'https://app.snowflake.com/' ~ sf_organization ~ '/' ~ sf_account %}
+  {% set sf_url_query = sf_url_base ~ '/#/compute/history/queries?query_tag=dbt_invocation_id:' ~ invocation_id ~ '&user=NAMED%3A' ~ sf_user %}
+  {% set sf_url_catalog = sf_url_base ~ '/#/data/databases/' ~ target.database %}
 
   {{ log('', info=true) }}
   {{ log(divider, info=true) }}
@@ -35,8 +37,8 @@
   {{ log(cyan ~ '  Threads       : ' ~ bold ~ target.threads ~ reset, info=true) }}
   {{ log(cyan ~ '  User          : ' ~ bold ~ sf_user ~ dim ~ ' [' ~ target.user ~ ']' ~ reset, info=true) }}
   {{ log(divider, info=true) }}
-  {{ log(cyan ~ '  Catalog       : ' ~ link ~ url_catalog ~ reset, info=true) }}
-  {{ log(cyan ~ '  Queries       : ' ~ link ~ url_query ~ reset, info=true) }}
+  {{ log(cyan ~ '  Catalog       : ' ~ link ~ sf_url_catalog ~ reset, info=true) }}
+  {{ log(cyan ~ '  Queries       : ' ~ link ~ sf_url_query ~ reset, info=true) }}
   {{ log(divider, info=true) }}
   {{ log('', info=true) }}
 
