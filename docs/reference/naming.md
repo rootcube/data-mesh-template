@@ -133,7 +133,7 @@ source declares the same key under `config.meta.dagster.asset_key` and the table
 | Job (dbt) | `job__<location>__<name>`, with `build_all`, `run_all`, `test_all`, `seed_all`, `source_freshness`, `build_fresher` | `job__dbt_example__build_all` |
 | Schedule | `schedule__<location>__<name>` | `schedule__dlt__ingest_knmi`, `schedule__dbt_example__source_freshness` |
 | Sensor | `sensor__<location>__<name>` | `sensor__dbt_example__source_freshness` |
-| Op | `op__<location>__<name>`, the name of the job it runs in | `op__dbt_example__build_fresher` |
+| Op | `op__<location>__<name>`, the name of the job it runs in | `op__dbt_example__source_freshness` |
 | Asset key (dbt model) | `<project>/models/<layer folder>/<domain>/<name>`; nodes from a package get `<project>/packages/<package>/...` | `dbt_example/models/02_stg/knmi/stg__knmi__climate_hourly`, `dbt_example/packages/dbt_common/models/04_mrt/common/dim__common__calendar` |
 | Asset key (dbt seed) | `<project>/seeds/<name>`, or `<project>/packages/<package>/seeds/<name>` | `dbt_example/packages/dbt_common/seeds/seed_month` |
 | Asset group (dbt) | the key without its last segment | `dbt_example/models/02_stg/knmi` |

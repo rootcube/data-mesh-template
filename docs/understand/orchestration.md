@@ -149,25 +149,35 @@ same set from `build_dbt_defs()`. Below, `<source>` is a folder under
 | `job__dlt__ingest_<source>` | `dlt` | Every asset with key prefix `dlt/ingest/<source>`: one source's load |
 | `job__dlt__ingest_all` | `dlt` | Every asset with key prefix `dlt/ingest` |
 | `job__<project>__build_all` | `<project>` | Every asset in the location (`AssetSelection.all()`): `dbt build` for the whole project, asset by asset, so a retry re-runs only what failed |
-| `job__<project>__run_all` | `<project>` | `dbt run`: the models, no tests |
-| `job__<project>__test_all` | `<project>` | `dbt test` |
-| `job__<project>__seed_all` | `<project>` | `dbt seed` |
+| `job__<project>__run_all` | `<project>` | The models (`resource_type:model`) without their checks: `dbt run`, no tests |
+| `job__<project>__test_all` | `<project>` | Every asset check (`AssetSelection.all_asset_checks()`), no asset: `dbt test`, one check result per test |
+| `job__<project>__seed_all` | `<project>` | The seeds (`resource_type:seed`) without their checks: `dbt seed` |
 | `job__<project>__source_freshness` | `<project>` | `dbt source freshness`, then one observation per source on its asset with the `max_loaded_at` dbt found. A stale source is a warning; a `sources.json` dbt did not write fails the run |
-| `job__<project>__build_fresher` | `<project>` | `dbt build --select <sources_selector>`: the sensor below launches it with the downstream of the sources that got fresher; from the Launchpad, any dbt selector goes in `sources_selector` |
+| `job__<project>__build_fresher` | `<project>` | `dbt build --select source:<source>.<table>+ ...` for the sources whose observed `max_loaded_at` changed since its last successful run started (dbt's `source_status:fresher+`, with the event log as the state); nothing when none did. Launched by hand or by the sensor below, it works out the sources itself |
 
-`build_all` is an asset job: the UI shows one materialization per model. The other five are one
-op each around the plain dbt command (`dbt_command_job()` in `shared.py`): they log the dbt
-output but materialize nothing, which is what a plain test pass or a seed reload wants. All ops
-take the `dbt` resource, a `DbtCliResource` pointed at the component's project, so every job
-runs the same project with the same profiles.
+Every dbt job but the two freshness jobs is an asset job: the UI shows one materialization
+per model or seed and one result per test, under the asset's *Checks*. The dbt integration runs
+each as one `dbt build --select` of the selected nodes. Leaving the checks out of `run_all` and
+`seed_all` turns dbt's indirect selection off, so no test runs. A run of checks only, `test_all`
+or *Execute checks* in the UI, runs `dbt test` instead (`DataMeshDbtProjectComponent.get_cli_args()`
+in `shared.py`): nothing is built, and every selected test runs, where `dbt build` would skip the
+tests on everything downstream of a test that fails with severity `error`.
+
+The freshness jobs are one op each. `source_freshness` runs `dbt source freshness` and records
+observations, never a materialization. `build_fresher` is an op because what it builds is only
+known once it runs, and an asset job's selection is fixed at launch; it streams dbt's results
+through the same translator as the assets, so the UI shows the same materializations and check
+results, on the same asset keys. All of them take the `dbt` resource, a `DbtCliResource` pointed
+at the component's project, so every job runs the same project with the same profiles.
 
 That split decides what a retry costs. *Re-execute, from failure* on a finished run is the
 retry path, and there is no separate retry job. On the asset jobs it re-runs only the failed
 and never-attempted assets, which the dbt integration translates into a `dbt build --select` of
 exactly those models (failed dbt tests appear as failed asset checks on a model that succeeded,
 and come along). On the dlt jobs it re-runs only the resources that failed, and because every
-pipeline merges on a primary key, an overlapping window is safe to pull twice. The op jobs are
-a single op, so they re-run the whole dbt command.
+pipeline merges on a primary key, an overlapping window is safe to pull twice. The freshness
+jobs are a single op, so they re-run the whole dbt command; for `build_fresher` that is every
+source that got fresher since its last success, as a failed run moves nothing.
 
 ## Schedules and sensors
 
@@ -181,16 +191,16 @@ own: the load lands, the next freshness check sees it, the sensor rebuilds its d
 | `schedule__dlt__ingest_<source>` | daily at 06:00 UTC (`0 6 * * *`) | Launches `job__dlt__ingest_<source>`; these carry the daily load, one run per source |
 | `schedule__dlt__ingest_all` | same cron, stopped everywhere | Opt-in: launches `job__dlt__ingest_all`, every load in one run. Start it and stop the per-source schedules, or every load runs twice |
 | `schedule__<project>__source_freshness` | every hour (`0 * * * *`) | Launches `job__<project>__source_freshness` |
-| `sensor__<project>__source_freshness` | every 5 minutes | Reads each source's latest observation, compares its `max_loaded_at` with the cursor and, when any advanced, launches `job__<project>__build_fresher` with `source:<source>.<table>+ ...` for exactly those sources |
+| `sensor__<project>__source_freshness` | every 5 minutes | Applies the rule of `job__<project>__build_fresher` and launches it when any source got fresher, once per change set (a failed run is not relaunched until a source moves again), and never while a run of it is in progress |
 
 A source takes part when its YAML has a `freshness` block and a `loaded_at_field` or
 `loaded_at_query`; `src_knmi.yml` derives one from dlt's `_dlt_load_id`, and dbt skips the
-sources that have neither. The first tick after the sensor starts sees every source as new and
-builds the whole downstream once; from then on only what changed. The job and the sensor meet
-in the event log, not in dbt's `sources.json`: the observations sit on the source's asset (the
-dlt asset, through the shared key), so the history of every check shows there too, and the job
-can run in a pod of its own on Kubernetes while the sensor runs in the code server, both reading
-the same instance storage.
+sources that have neither. Until `build_fresher` first succeeds, every observed source counts
+as fresher and the whole downstream builds once; from then on only what changed. The jobs and
+the sensor meet in the event log and the run history, not in dbt's `sources.json`: the
+observations sit on the source's asset (the dlt asset, through the shared key), so the history
+of every check shows there too, and each job can run in a pod of its own on Kubernetes while the
+sensor runs in the code server, all reading the same instance storage.
 
 All of them start **stopped** in `dev` and `local` (`SnowflakeSettings.is_personal`), so nothing
 fires by itself on a laptop; switch them on under *Automation* in the UI to try the chain. In

@@ -40,7 +40,7 @@ locals {
 
   # This stack's project, in this stack's environment only. Every key below is built from the
   # project and environment keys, so the resource addresses are the ones a single root module
-  # over all projects and environments gave them (scripts/split_state.py relies on it).
+  # over all projects and environments gave them.
   projects = {
     for key, project in module.config.projects : key => merge(project, {
       environments = [for environment_key in project.environments : environment_key if environment_key == local.environment_key]

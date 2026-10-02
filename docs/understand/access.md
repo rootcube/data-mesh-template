@@ -113,8 +113,10 @@ with the tier's privileges (plus the layer's extras) on `DB_<PROJECT>_<ENV>._<LA
 grants it to the project roles that name it ([Naming](../reference/naming.md)). All four exist
 for every layer, whether a role uses them or not: the example project, with two environments
 and eight layers, gets 64. A tier nobody names, such as `view`, is a role with privileges and
-no grantee, ready for a grant by hand or for a role added later. Changing a role's tier moves
-one grant; changing a tier's privileges changes every access role of that tier at once.
+no grantee, ready for a role that names it later. Access roles are never granted to users, by
+hand or otherwise: a user reaches a layer only through a project role (`config/users`), and
+only project roles hold access roles. Changing a role's tier moves one grant; changing a tier's
+privileges changes every access role of that tier at once.
 
 ```mermaid
 graph LR

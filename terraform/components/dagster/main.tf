@@ -43,24 +43,31 @@ locals {
   }
 
   # The code locations: Dagster module, the project whose database they work in, the system role they run as
+  # and the compute profile whose warehouse they run on
   locations = merge(
-    { dlt = { module = "orchestrator.locations.dlt.definitions", project = var.dlt_project, role = "ingest" } },
+    { dlt = { module = "orchestrator.locations.dlt.definitions", project = var.dlt_project, role = "ingest", compute = "ingest" } },
     {
       for key in keys(local.projects) : "dbt-${replace(key, "_", "-")}" => {
         module  = "orchestrator.locations.dbt.dbt_${key}.definitions"
         project = key
         role    = "transform"
+        compute = "transform"
       }
     }
   )
 
-  # Per location: the service user and the Snowflake objects its role works with
+  # Per location: the service user and the Snowflake objects its role works with. The warehouse is the
+  # first size of the location's compute profile when the project lists it, else the project's default one.
   identities = {
     for name, location in local.locations : name => {
-      login     = try(local.service_logins["${location.project}/${location.role}"][0], null)
-      role      = upper("RL_${location.project}_${var.environment}__${module.config.role_codes[location.role]}")
-      warehouse = upper("WH_${location.project}_${var.environment}")
-      database  = upper("DB_${location.project}_${var.environment}")
+      login = try(local.service_logins["${location.project}/${location.role}"][0], null)
+      role  = upper("RL_${location.project}_${var.environment}__${module.config.role_codes[location.role]}")
+      warehouse = upper(
+        contains(try(module.config.projects[location.project].computes, []), location.compute)
+        ? "WH_${location.project}_${var.environment}__${module.config.compute_codes[location.compute]}_${module.config.computes[location.compute].sizes[0]}"
+        : "WH_${location.project}_${var.environment}"
+      )
+      database = upper("DB_${location.project}_${var.environment}")
     }
   }
   missing_identities = [for name, location in local.locations : "${location.role} of ${location.project} (${name})" if local.identities[name].login == null]

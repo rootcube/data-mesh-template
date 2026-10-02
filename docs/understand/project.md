@@ -50,12 +50,16 @@ layers:
 
 computes:
   - default
+  - ingest
+  - transform
 
 roles:
   - ingest
   - transform
   - engineer
-  - analyst
+  # Optional, not deployed by default: read on mart and expose (RL_EXAMPLE_<ENV>__ANL).
+  # Uncomment when people or tools need read-only access; the engineer role then inherits it too.
+  # - analyst
 ```
 
 The lists hold **keys**, the file names under `environments/`, `layers/`, `computes/` and

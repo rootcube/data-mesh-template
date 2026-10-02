@@ -9,6 +9,9 @@
 # Load .env into every recipe (Snowflake settings written by `just sf setup`).
 set dotenv-load := true
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+# Multi-line [windows] recipes carry [script] and run as one .ps1 file; a failing command does not
+# stop such a script by itself, so they check $LASTEXITCODE. The [unix] recipes use a shebang.
+set script-interpreter := ["powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
 
 # Local state lives inside the repo, so deleting .dagster/ (keep dagster.yaml), .dlt/data/ and .duckdb/ resets everything.
 export DAGSTER_HOME     := justfile_directory() / ".dagster"
@@ -54,14 +57,8 @@ default:
 # --- Setup ------------------------------------------------------------------
 
 # bootstrap: install uv if missing, create .venv, create .env, install dbt packages
-[unix]
 init: _init
     @echo ""; echo "Done. Next: just setup"
-
-# bootstrap: install uv if missing, create .venv, create .env, install dbt packages
-[windows]
-init: _init
-    @Write-Host ""; Write-Host "Done. Next: just setup"
 
 [unix]
 [private]
@@ -89,15 +86,28 @@ _init:
 
 [windows]
 [private]
+[script]
+[extension(".ps1")]
 _init:
-    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" }
-    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "$PWD\.venv`"" -Quiet)) { if (Get-Process | Where-Object { $_.Path -like "$PWD\.venv\*" }) { Write-Host "checkout moved since .venv was created, but programs still run from it (Dagster?); stop them (just stop) and rerun"; exit 1 }; Write-Host "checkout moved since .venv was created, recreating it"; Remove-Item -Recurse -Force .venv }
-    uv sync --all-groups
-    if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null }
+    function Check { if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"; Check }
+    # A moved or renamed checkout leaves .venv scripts pointing at the old path; rebuild it, unless
+    # programs still run from it (Windows cannot delete their files).
+    if ((Test-Path .venv\Scripts\activate.bat) -and -not (Select-String -Path .venv\Scripts\activate.bat -SimpleMatch "$PWD\.venv`"" -Quiet)) {
+        if (Get-Process | Where-Object { $_.Path -like "$PWD\.venv\*" }) {
+            Write-Host "checkout moved since .venv was created, but programs still run from it (Dagster?); stop them (just stop) and rerun"
+            exit 1
+        }
+        Write-Host "checkout moved since .venv was created, recreating it"
+        Remove-Item -Recurse -Force .venv
+    }
+    uv sync --all-groups; Check
+    # An installed git hook also carries the venv path; refresh it in the same case.
+    if (Test-Path .git\hooks\pre-commit) { uv run pre-commit install | Out-Null; Check }
     if (-not (Test-Path .env)) { Copy-Item .env.example .env; Write-Host "created .env from .env.example" }
     New-Item -ItemType Directory -Force -Path .dagster, .dlt\data, .duckdb\data | Out-Null
-    uv run python scripts/dbt_all.py deps --quiet
-    uv run python scripts/dbt_all.py parse --target local --quiet
+    uv run python scripts/dbt_all.py deps --quiet; Check
+    uv run python scripts/dbt_all.py parse --target local --quiet; Check
 
 # everything in one go: `just init`, then the wizard (fresh account -> bootstrap incl. Terraform install; provisioned -> key pair + .env)
 setup: _init
@@ -107,7 +117,7 @@ setup: _init
 info:
     uv run python scripts/info.py
 
-# install a tool uv does not manage: all | uv | tfenv | terraform | atmos | direnv (Homebrew on macOS/Linux); `k3d`, `kubectl` (local Kubernetes) and `gh` are optional and not part of `all`
+# install a tool uv does not manage: all | uv | tfenv | terraform | atmos | direnv (Homebrew on macOS/Linux); `docker`, `k3d`, `kubectl` (local Kubernetes, `k8s` for all three) and `gh` are optional and not part of `all`
 [unix]
 install tool="all":
     #!/usr/bin/env bash
@@ -121,25 +131,64 @@ install tool="all":
                        command -v tfenv >/dev/null 2>&1 || brew_install tfenv https://github.com/tfutils/tfenv
                        tfenv install latest && tfenv use latest; fi ;;
         atmos)     if command -v brew >/dev/null 2>&1 && brew list atmos >/dev/null 2>&1; then brew upgrade atmos; else brew_install atmos https://atmos.tools/install; fi ;;
+        # Docker Desktop on macOS, as on Windows (the cask, not the `docker` formula, which is the CLI
+        # alone): it ships buildx, which the Dockerfile's cache mounts need. A paid subscription from
+        # 250 employees or $10M revenue. Linux runs Docker Engine itself, from the distribution.
+        docker)    if command -v docker >/dev/null 2>&1; then echo "docker already installed"
+                   elif [ "$(uname -s)" = Darwin ]; then brew_install docker-desktop https://docs.docker.com/desktop/
+                       echo "then: start Docker Desktop once (accept its terms), and open a new terminal"
+                   else echo "install Docker Engine by hand: https://docs.docker.com/engine/install/"; exit 1; fi ;;
         k3d)       brew_install k3d https://k3d.io ;;
         kubectl)   brew_install kubectl https://kubernetes.io/docs/tasks/tools/ ;;
+        k8s)       for t in docker k3d kubectl; do just install "$t" || echo "$t: install by hand"; done ;;
         direnv)    brew_install direnv https://direnv.net/docs/installation.html
                    echo 'then add to ~/.zshrc (or ~/.bashrc): eval "$(direnv hook zsh)"' ;;
         gh)        brew_install gh https://cli.github.com/
                    echo "then: gh auth login" ;;
         all)       for t in uv terraform atmos direnv; do just install "$t" || echo "$t: install by hand"; done ;;
-        *)         echo "usage: just install [all|uv|tfenv|terraform|atmos|k3d|kubectl|direnv|gh]"; exit 1 ;;
+        *)         echo "usage: just install [all|uv|tfenv|terraform|atmos|docker|k3d|kubectl|k8s|direnv|gh]"; exit 1 ;;
     esac
 
-# install a tool uv does not manage: all | uv | terraform | atmos | direnv (winget); `k3d`, `kubectl` (local Kubernetes) and `gh` are optional and not part of `all`
+# install a tool uv does not manage: all | uv | terraform | atmos | direnv (winget); `docker` (Docker Desktop), `k3d`, `kubectl` (local Kubernetes, `k8s` for all three) and `gh` are optional and not part of `all`
 [windows]
+[script]
+[extension(".ps1")]
 install tool="all":
-    @switch ("{{tool}}") { "uv" { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } } { $_ -in "tf", "terraform" } { if (Get-Command terraform -ErrorAction SilentlyContinue) { "terraform already installed" } else { winget install --id Hashicorp.Terraform -e } } "atmos" { just _install-atmos } "k3d" { if (Get-Command k3d -ErrorAction SilentlyContinue) { "k3d already installed" } else { winget install --id k3d.k3d -e } } "kubectl" { if (Get-Command kubectl -ErrorAction SilentlyContinue) { "kubectl already installed" } else { winget install --id Kubernetes.kubectl -e } } "direnv" { if (Get-Command direnv -ErrorAction SilentlyContinue) { "direnv already installed" } else { winget install --id direnv.direnv -e }; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' } "gh" { if (Get-Command gh -ErrorAction SilentlyContinue) { "gh already installed" } else { winget install --id GitHub.cli -e }; Write-Host "then: gh auth login" } "tfenv" { Write-Host "tfenv is not available on Windows; use: just install terraform" } "all" { just install uv; just install terraform; just install atmos; just install direnv } default { Write-Host "usage: just install [all|uv|terraform|atmos|k3d|kubectl|direnv|gh]"; exit 1 } }
+    # winget's "no applicable upgrade": installed, but after this terminal started, so not on its PATH yet
+    $upToDate = -1978335189
+    function Install-Tool($command, $id) {
+        if (Get-Command $command -ErrorAction SilentlyContinue) { "$command already installed"; return }
+        winget install --id $id -e
+        if ($LASTEXITCODE -eq $upToDate) { "$command already installed; open a new terminal to use it"; $global:LASTEXITCODE = 0 }
+    }
+    switch ("{{tool}}") {
+        "uv"      { if (Get-Command uv -ErrorAction SilentlyContinue) { "uv already installed" } else { powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex" } }
+        { $_ -in "tf", "terraform" } { Install-Tool terraform Hashicorp.Terraform }
+        "atmos"   { just _install-atmos }
+        "docker"  {
+            if (Get-Command docker -ErrorAction SilentlyContinue) { "docker already installed"; break }
+            # Docker Desktop runs its engine in WSL2, whose install needs administrator rights and a reboot
+            wsl --status *> $null
+            if ($LASTEXITCODE -ne 0) { Write-Host "WSL2 first (Docker Desktop runs its engine in it): wsl --install --no-distribution in an administrator shell, reboot, then just install docker again"; exit 1 }
+            Install-Tool docker Docker.DockerDesktop
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Write-Host "then: start Docker Desktop once (accept its terms; sign out and in when it asks), and open a new terminal"
+        }
+        "k3d"     { Install-Tool k3d k3d.k3d }
+        "kubectl" { Install-Tool kubectl Kubernetes.kubectl }
+        "k8s"     { just install docker; just install k3d; just install kubectl }
+        "direnv"  { Install-Tool direnv direnv.direnv; Write-Host 'then add to $PROFILE: Invoke-Expression "$(direnv hook pwsh)"' }
+        "gh"      { Install-Tool gh GitHub.cli; Write-Host "then: gh auth login" }
+        "tfenv"   { Write-Host "tfenv is not available on Windows; use: just install terraform" }
+        "all"     { just install uv; just install terraform; just install atmos; just install direnv }
+        default   { Write-Host "usage: just install [all|uv|terraform|atmos|docker|k3d|kubectl|k8s|direnv|gh]"; exit 1 }
+    }
+    exit $LASTEXITCODE
 
 # Atmos has no winget package: Scoop when you have it, otherwise the release binary, checked against
 # the release's SHA256SUMS, into ~\.local\bin (on PATH through uv's installer).
 [windows]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 _install-atmos:
     $ErrorActionPreference = "Stop"; $ProgressPreference = "SilentlyContinue"
@@ -174,7 +223,7 @@ sf cmd *args:
 # key-pair auth: `just sf setup` (one-time), `bootstrap` (fresh account), `context` (pick a project), `check`, `query "SELECT 1"`, `keygen <name>`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 sf cmd *args:
     uv run python scripts/snowflake.py @args
@@ -227,8 +276,24 @@ stop:
 
 # stop the `dagster dev` instance on the Dagster port (webserver, daemon and code servers); another program on the port is reported, not killed
 [windows]
+[script]
+[extension(".ps1")]
 stop:
-    @Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -gt 4 -and $_ -ne $PID }; foreach ($id in $p) { $line = (Get-CimInstance Win32_Process -Filter "ProcessId = $id").CommandLine; if ($line -like "*dagster*") { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue } else { Write-Host "port {{port}} is in use by pid $id`: $line"; exit 1 } }; exit 0
+    # The `dagster dev` processes of this port, by command line: webserver, daemon and code servers
+    Get-CimInstance Win32_Process |
+        Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like "*dagster dev -w workspace.yaml*-p {{port}}*" } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    # Still listening: a dagster process that survived, or something that is not ours
+    $owners = Get-NetTCPConnection -LocalPort {{port}} -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique |
+        Where-Object { $_ -gt 4 -and $_ -ne $PID }
+    foreach ($id in $owners) {
+        $line = (Get-CimInstance Win32_Process -Filter "ProcessId = $id").CommandLine
+        if ($line -like "*dagster*") { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; continue }
+        Write-Host "port {{port}} is in use by pid $id`: $line"
+        exit 1
+    }
+    exit 0
 
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 [unix]
@@ -239,7 +304,7 @@ dagster *args:
 # run the Dagster CLI, e.g. `just dagster asset list -m orchestrator.locations.dlt.definitions`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 dagster *args:
     uv run dagster @args
@@ -274,7 +339,7 @@ dlt cmd *args: _dirs
 # run a dlt pipeline outside Dagster: `just dlt list`, `just dlt run knmi`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 dlt cmd *args: _dirs
     uv run python -m dlt_pipelines @args
@@ -291,7 +356,7 @@ dbt *args:
 # run dbt in dbt/dbt_example (override: `just project=dbt_x dbt build`), e.g. `just dbt build`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 dbt *args:
     cd {{dbt_project}}; uv run dbt @args
@@ -306,7 +371,7 @@ dbt-all *args:
 # run one dbt command in every project under dbt/, e.g. `just dbt-all deps`, `just dbt-all parse`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 dbt-all *args:
     uv run python scripts/dbt_all.py @args
@@ -321,7 +386,7 @@ sqlfluff *args:
 # lint or fix SQL with sqlfluff from the dbt project, e.g. `just sqlfluff lint models`
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 sqlfluff *args:
     cd {{dbt_project}}; uv run sqlfluff @args --config '{{sqlfluff_config}}'
@@ -343,7 +408,7 @@ tf cmd *args:
 # run Terraform through Atmos on the stacks, e.g. `just tf plan --all`, `just tf plan snowflake-project -s example-dev`, `just tf apply --all`; `just tf clean` removes every object the stacks' states track, databases and their data included
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 tf cmd *args:
     if ($args[0] -eq "clean") { uv run python scripts/snowflake.py clean } else { atmos terraform @args }
@@ -352,10 +417,6 @@ tf cmd *args:
 # validate the YAML configuration under terraform/config against its JSON schemas
 tf-validate-config:
     uv run python terraform/config/_validation/validate_configs.py
-
-# one-off: split a pre-Atmos terraform/terraform.tfstate into one state per stack (`--dry-run` to see where everything goes)
-tf-split-state *args:
-    uv run python scripts/split_state.py {{args}}
 
 # --- Kubernetes (local k3d) ------------------------------------------------
 # The Dagster deployment of a stack terraform/stacks/deployments/dagster/<env>.yaml; its namespace
@@ -372,7 +433,10 @@ k8s cmd stack="dagster-prd":
         build)  docker build -t {{k8s_image}} .
                 k3d image import {{k8s_image}} -c {{k8s_cluster}} ;;
         # The image keeps its tag, so the running code servers only pick up a new build on a restart.
-        deploy) just k8s build
+        # Atmos skips a disabled stack without an error, so stop here instead of failing on the restart.
+        deploy) enabled=$(atmos describe component dagster -s {{stack}} --query .metadata.enabled | tr -d '[:space:]')
+                if [ "$enabled" = false ]; then echo "{{stack}} is disabled: set metadata.enabled to true for dagster in its file under terraform/stacks/deployments/" >&2; exit 1; fi
+                just k8s build
                 atmos terraform apply dagster -s {{stack}}
                 kubectl --context "$context" -n {{stack}} rollout restart deployment ;;
         ui)     pod=$(kubectl --context "$context" -n {{stack}} get pods -l component=dagster-webserver -o jsonpath='{.items[0].metadata.name}')
@@ -384,7 +448,7 @@ k8s cmd stack="dagster-prd":
 
 # local Kubernetes for Dagster: `just k8s up` (create or start the k3d cluster), `build` (image into the cluster), `deploy [stack]` (build + apply + restart), `ui [stack]` (webserver on :3000), `down`
 [windows]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 k8s cmd stack="dagster-prd":
     $context = "k3d-{{k8s_cluster}}"
@@ -396,7 +460,10 @@ k8s cmd stack="dagster-prd":
         }
         "build" { docker build -t {{k8s_image}} .; Check; k3d image import {{k8s_image}} -c {{k8s_cluster}}; Check }
         # The image keeps its tag, so the running code servers only pick up a new build on a restart.
+        # Atmos skips a disabled stack without an error, so stop here instead of failing on the restart.
         "deploy" {
+            $enabled = atmos describe component dagster -s {{stack}} --query .metadata.enabled; Check
+            if ("$enabled".Trim() -eq "false") { Write-Host "{{stack}} is disabled: set metadata.enabled to true for dagster in its file under terraform/stacks/deployments/"; exit 1 }
             just k8s build; Check
             atmos terraform apply dagster -s {{stack}}; Check
             kubectl --context $context -n {{stack}} rollout restart deployment; Check
@@ -422,7 +489,7 @@ docs cmd="serve" *args:
 # serve the docs on http://localhost:8000 (`just docs build` for a static site/)
 [windows]
 [positional-arguments]
-[script("powershell.exe", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File")]
+[script]
 [extension(".ps1")]
 docs cmd="serve" *args:
     uv run --group docs zensical @args

@@ -100,9 +100,9 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
     states placed by hand before the first init), so Terraform offers to migrate the workspaces
     onto themselves and cannot ask: the bootstrap and `just tf clean` run init without input.
     Run `just tf init <component> -s <stack>` yourself and answer `yes`; the copy is onto the same
-    files and changes nothing. `just tf-split-state` initializes before it places states. If this
-    happens on every plan, `init_run_reconfigure` in `atmos.yaml` is on: with `-reconfigure`,
-    Terraform ignores the saved backend and asks every time.
+    files and changes nothing. If this happens on every plan, `init_run_reconfigure` in
+    `atmos.yaml` is on: with `-reconfigure`, Terraform ignores the saved backend and asks every
+    time.
 
 **`just pre-commit` fails with `terraform: command not found`**
 :   The `terraform fmt` hook needs the Terraform binary when it runs on all files. Install

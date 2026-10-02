@@ -91,8 +91,11 @@ Homebrew on macOS and Linux and winget on Windows:
 | `tfenv` | macOS and Linux only: the Terraform version manager on its own, without installing a Terraform version |
 | `atmos` | Runs Terraform once per project and environment ([Stacks and state](../operate/snowflake-provisioning.md#stacks-and-state)); needed wherever `terraform` is. Homebrew on macOS and Linux; on Windows Scoop when you have it, otherwise the release the justfile pins, checked against its checksums, into `~\.local\bin` |
 | `direnv` | Activates `.venv` and loads `.env` when you `cd` into the checkout (the repo ships an `.envrc`), which `just` already does for its own recipes |
+| `docker` | A Docker engine for [Dagster on Kubernetes](../operate/kubernetes.md): Docker Desktop on Windows (winget) and macOS (Homebrew), which needs a paid subscription from 250 people or $10M revenue ([free alternative](../operate/kubernetes.md#prerequisites)); on Windows it needs WSL2 first, and stops with the command to add it when it is missing. On Linux, Docker Engine from your distribution, by hand |
+| `k3d`, `kubectl` | The local Kubernetes cluster that [Dagster on Kubernetes](../operate/kubernetes.md) runs on, and its CLI |
+| `k8s` | `docker`, `k3d` and `kubectl` in one go |
 | `gh` | The GitHub CLI, for pull requests from the terminal |
-| `all` | `uv`, `terraform`, `atmos` and `direnv`; `gh` stays optional and is not part of it |
+| `all` | `uv`, `terraform`, `atmos` and `direnv`; `docker`, `k3d`, `kubectl` and `gh` stay optional and are not part of it |
 
 Engineers on a provisioned platform need none of them.
 

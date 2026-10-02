@@ -292,7 +292,8 @@ modules under `components/` once per stack under `stacks/`:
 All read the same `config/` through `modules/config`. The project stacks depend on `account`
 (they grant roles to the users it creates), the Dagster stacks on both, so `--all` applies
 `account` first and destroys it last. A Dagster stack needs its cluster running; `just sf
-bootstrap` and `just tf clean` leave it alone.
+bootstrap` and `just tf clean` leave it alone, and `--all` skips it while it has
+`metadata.enabled: false`, for a machine without the cluster.
 `just tf` hands its arguments to `atmos terraform`:
 
 ```bash
@@ -317,12 +318,6 @@ to "migrate all workspaces" when a component has states under `terraform.tfstate
 `just tf init <component> -s <stack>`, which copies each state onto itself; the bootstrap's own
 init runs without input and stops on "input is disabled" until you have. Never run
 `atmos terraform clean`: it deletes these local states along with the files Atmos generates.
-
-A checkout from before Atmos has one state, `terraform/terraform.tfstate`, for everything. The
-components kept its resource addresses, so `just tf-split-state` moves each resource into the
-state of its stack (`--dry-run` shows where everything goes first) and keeps the original as
-`terraform.tfstate.pre-atmos`. Nothing changes in Snowflake: `just tf plan --all` then shows no
-changes but the outputs, which the next `just tf apply --all` records.
 
 Keep the states themselves confidential, encrypted in a remote backend. Besides the one-time
 passwords of created users (the `account` state), a project state holds the result of the

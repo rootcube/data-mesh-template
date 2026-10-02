@@ -27,12 +27,12 @@ graph TD
     PRJ --> PRD["Environment<br/>production (prd)"]
 
     DEV --> LDEV["Layers<br/>src ref stg int mrt exp mtd tmp"]
-    DEV --> RDEV["Roles<br/>eng anl ing tfm"]
-    DEV --> CDEV["Computes<br/>default"]
+    DEV --> RDEV["Roles<br/>eng ing tfm"]
+    DEV --> CDEV["Computes<br/>default ing tfm"]
 
     PRD --> LPRD["Layers<br/>src ref stg int mrt exp mtd tmp"]
-    PRD --> RPRD["Roles<br/>eng anl ing tfm"]
-    PRD --> CPRD["Computes<br/>default"]
+    PRD --> RPRD["Roles<br/>eng ing tfm"]
+    PRD --> CPRD["Computes<br/>default ing tfm"]
 
     USR["User<br/>username@example.com"] -. is granted .-> RDEV
 ```

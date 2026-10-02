@@ -74,8 +74,9 @@ Everything you just did by hand is automated too, and switched off in `dev` so t
 loads or builds on its own. Under *Automation* you find a daily schedule per dlt source and, per
 dbt project, an hourly freshness schedule and a freshness sensor, all stopped. To watch the chain
 once: launch the project's `job__<project>__source_freshness` from *Jobs*, then start its sensor.
-The next tick sees every source as fresher than anything in its cursor and launches
-`job__<project>__build_fresher` for their downstream. Stop the sensor again when you are done.
+The next tick sees every source as fresher than the last successful `job__<project>__build_fresher`
+(there is none yet) and launches it for their downstream; launching that job by hand does the
+same. Stop the sensor again when you are done.
 What these are named and why: [Orchestration](../understand/orchestration.md#jobs).
 
 ## What you now have in Snowflake
