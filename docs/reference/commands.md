@@ -65,7 +65,7 @@ Every recipe loads `.env` and runs through `uv run`, so nothing needs activating
 
 | Command | What it does |
 |---------|--------------|
-| `just tf <cmd> <args>` | `atmos terraform <cmd> <args>`: Terraform once per stack, each with its own state (see [Stacks and state](../operate/snowflake-provisioning.md#stacks-and-state)). `just tf plan --all` and `just tf apply --all` run every stack, the `account` stack first; `just tf plan snowflake-project -s example-dev` runs one project in one environment; flags after `--` go to Terraform. `just tf destroy` is refused while the databases carry `prevent_destroy` |
+| `just tf <cmd> <args>` | `atmos terraform <cmd> <args>`: Terraform once per stack, each with its own state (see [Stacks and state](../operate/snowflake-provisioning.md#stacks-and-state)). `just tf plan --all` and `just tf apply --all` run every Snowflake stack, the `account` stack first, and leave the Dagster deployment to `just k8s deploy`; `just tf plan snowflake-project -s example-dev` runs one project in one environment; flags after `--` go to Terraform. `just tf destroy` is refused while the databases carry `prevent_destroy` |
 | `just tf clean` | Remove every object the stacks' Terraform states track, databases and their data included. It lists them and asks you to type the account name, then stack by stack (the `account` stack last) has Terraform destroy the rest, drops the databases as `TERRAFORM_USER` and removes them from the state last, then names what stays: the `init.sql` objects (`TERRAFORM_USER` with its system roles and key, `WH_PLATFORM_PROVISIONING`, `WH_PLATFORM`) and the account parameters, with the SQL to drop or unset them. `just tf apply --all` provisions everything again. States that track nothing are reported as an error, not as success: the account may still be provisioned, and `just sf bootstrap --existing sync` adopts it |
 | `just tf output snowflake-account -s account -- -json initial_passwords` | One-time passwords of persons Terraform created |
 | `just tf output snowflake-account -s account -- -json user_role_grants` | Roles per login, over every project and environment |
@@ -82,7 +82,7 @@ defaults to `dagster-prd`.
 |---------|--------------|
 | `just k8s up` | Create the k3d cluster `dagster` (kube context `k3d-dagster`), or start it when it exists |
 | `just k8s build` | `docker build` of the code location image `dagster-starter:local`, imported into the cluster |
-| `just k8s deploy [stack]` | `build`, then `atmos terraform apply dagster -s <stack>` (you confirm), then a restart of the code servers so they run the new build. Stops with an error first while the stack has `metadata.enabled: false` |
+| `just k8s deploy [stack]` | `build`, then `atmos terraform apply dagster -s <stack>` (you confirm), then a restart of the code servers so they run the new build |
 | `just k8s ui [stack]` | Forward the webserver to <http://localhost:3000> until Ctrl+C |
 | `just k8s down` | Stop the cluster; everything in it stays, run history included |
 

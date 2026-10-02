@@ -68,8 +68,8 @@ password). Terraform creates them from their user file, the project stacks grant
 
 2. A user file per service user, with `type: service` and that body:
 
-    ```yaml title="terraform/config/users/example_prd_transform.yaml (new file)"
-    # yaml-language-server: $schema=../_validation/schemas/user.schema.json
+    ```yaml title="terraform/config/users/local/example_prd_transform.yaml (new file)"
+    # yaml-language-server: $schema=../../_validation/schemas/user.schema.json
     login: "EXAMPLE_PRD_TRANSFORM"
     name: "dbt in example production"
     type: service
@@ -81,9 +81,13 @@ password). Terraform creates them from their user file, the project stacks grant
     ```
 
     and the same for `EXAMPLE_PRD_INGEST` with `role: ingest`. Logins are upper case; a service
-    user holds system roles only (`just tf-validate-config` checks both). A public key may be
-    committed; put the files under `users/local/` instead when the key pair belongs to your own
-    account only (a trial, say).
+    user holds system roles only (`just tf-validate-config` checks both). `users/local/` is
+    git-ignored, and these files belong there for as long as the key pairs are yours alone:
+    whoever applies a checkout creates the service users its user files name, with the public
+    keys in them, so a committed file gives every such account a user only you can sign in as.
+    Commit them under `config/users/` when several administrators share one account and its
+    states ([Stacks and state](snowflake-provisioning.md#stacks-and-state)); a repository that
+    others start their own platform from, like the starter itself, carries none.
 3. `just tf apply --all`: the `account` stack creates the users, `example-prd` grants the roles.
 
 The private keys stay in `~/.snowflake/keys/`. The Dagster stack reads them from there into one
@@ -92,11 +96,10 @@ Terraform state.
 
 ## Deploy
 
-`metadata.enabled` in `terraform/stacks/deployments/dagster/prd.yaml` switches the stack on and
-off. On a machine without the cluster, set it to `false`, so `just tf plan --all` skips the stack
-instead of failing on the missing kubeconfig. Atmos skips a disabled stack without a word, also
-when it is named, so `just k8s deploy` checks the flag first and stops with an error while it is
-`false`, before it builds anything.
+The Dagster stack is a deployment, not provisioning: it needs its cluster running and the service
+users' private keys on the machine. `just tf <command> --all` therefore leaves it out, so the
+Snowflake stacks plan and apply on a machine that has neither. `just k8s deploy` applies the
+stack, and `just tf plan dagster -s dagster-prd` plans it by name.
 
 ```bash
 just k8s up        # create (or start) the k3d cluster `dagster`, kube context k3d-dagster
@@ -114,10 +117,6 @@ shows them; every pod should be `Running` and ready. Another environment is anot
 After a code change, `just k8s deploy` again: the image keeps its tag, so the recipe restarts the
 code servers to pick up the new build. `just k8s down` stops the cluster and keeps everything in
 it, run history included; `k3d cluster delete dagster` removes it all.
-
-`just tf plan --all` includes every enabled Dagster stack, which needs its cluster running. To
-leave one out while its cluster is stopped or gone, set `enabled: false` under `metadata` of its
-`dagster` component again; the Snowflake stacks plan as before.
 
 ## How it fits together
 

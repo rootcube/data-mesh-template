@@ -104,6 +104,12 @@ Symptom first, fix underneath. Two commands answer most of what these entries as
     `atmos.yaml` is on: with `-reconfigure`, Terraform ignores the saved backend and asks every
     time.
 
+**`'config_path' refers to an invalid path` on a plan or apply of `dagster`**
+:   The Dagster stack reads the kubeconfig of its cluster and this machine has none. `just k8s up`
+    creates the local k3d cluster and its kube context
+    ([Dagster on Kubernetes](../operate/kubernetes.md)). To work on Snowflake only, name a
+    Snowflake stack or use `--all`, which leaves the Dagster stack out: `just tf plan --all`.
+
 **`just pre-commit` fails with `terraform: command not found`**
 :   The `terraform fmt` hook needs the Terraform binary when it runs on all files. Install
     Terraform, or rely on the git hook, which only fires the Terraform hooks for changed `.tf`

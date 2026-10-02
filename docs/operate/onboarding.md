@@ -158,7 +158,10 @@ Terraform creates them, `TYPE = SERVICE` with a key pair and no password, from a
     ```
 
     The login is upper case, and a service user holds system roles only (`ingest`, `transform`);
-    `just tf-validate-config` checks both.
+    `just tf-validate-config` checks both. The file goes under the git-ignored
+    `terraform/config/users/local/` while the key pair is yours alone, and under
+    `terraform/config/users/` once administrators share the account
+    ([Service users](kubernetes.md#service-users)).
 3. `just tf apply --all`: the `account` stack creates the user, the project stack grants the role.
 
 The private key (`~/.snowflake/keys/EXAMPLE_PRD_TRANSFORM.p8`) is what the deployment signs in
